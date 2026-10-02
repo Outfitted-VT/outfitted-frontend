@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.DS_Store
+Thumbs.db
+*.log
+data/
+__pycache__/
+
+# Xcode
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+xcuserdata/
+*.xccheckout
+DerivedData/
+*.hmap
+*.ipa
+
+# Android
+.gradle/
+build/
+*.apk
+*.aab
+local.properties
+.idea/
+*.iml
