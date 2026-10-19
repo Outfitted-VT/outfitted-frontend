@@ -3,17 +3,20 @@ import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { currentUser, posts, history } from "./data.js";
-import { icons } from "./icons.js";
-import { PIPELINE_STEPS, rebuildAvatar } from "./pipeline.js";
-import { tryOnPage, connectTryOn } from "./tryon.js";
-import { getCurrentUser, signIn, signOut, signUp } from "./auth.js";
-import { landingPage } from "./landing.js";
+import { rebuildAvatar } from "./pipeline.js";
+import { renderFeedView } from "./views/feed.js";
+import { renderFittingRoomView } from "./views/fitting-room.js";
+import { renderChatView } from "./views/chat.js";
+import { renderProfileView } from "./views/profile.js";
+import { renderCommentsDrawer } from "./views/comments-drawer.js";
+import { renderCreateFitSheet } from "./views/create-fit-sheet.js";
+import { renderRebuildModal } from "./views/rebuild-modal.js";
 
 // Native Capacitor platform initialization
 if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
   try {
     StatusBar.setStyle({ style: Style.Light }).catch(() => {});
-    StatusBar.setBackgroundColor({ color: "#f6f6f3" }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: "#f9f9f6" }).catch(() => {});
     SplashScreen.hide().catch(() => {});
   } catch (err) {
     console.debug("Capacitor features not initialized:", err);
@@ -22,932 +25,664 @@ if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
 
 const app = document.querySelector("#app");
 
-const CAMERA_VIEWS = {
-  front: "0deg 82deg auto",
-  side: "90deg 82deg auto",
-  back: "180deg 82deg auto",
-};
-
-let activePostForComments = null;
+// Current app state
+let currentTab = "feed";
+let is3DModelActive = false;
+let isZoomed = false;
+let isSpinning = false;
+let activePostForComments = "sophia";
 
 function showToast(message) {
-  const existing = document.querySelector(".toast-notice");
+  const existing = document.querySelector(".app-toast");
   if (existing) existing.remove();
   const toast = document.createElement("div");
-  toast.className = "toast-notice";
-  toast.innerHTML = `${icons.check}<span>${message}</span>`;
+  toast.className =
+    "app-toast fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-primary text-on-primary px-4 py-2.5 rounded-full font-label-md text-label-md shadow-2xl flex items-center gap-2 animate-bounce";
+  toast.innerHTML = `<span class="material-symbols-outlined text-[18px] text-tertiary-fixed">check_circle</span><span>${message}</span>`;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 2800);
 }
 
-function pieceTile(piece) {
-  const visual = piece.model
-    ? `<model-viewer
-        class="piece-model"
-        src="${piece.model}"
-        alt="${piece.name}, 3D model"
-        camera-controls
-        disable-zoom
-        disable-pan
-        touch-action="pan-y"
-        interaction-prompt="none"
-        auto-rotate
-        auto-rotate-delay="0"
-        rotation-per-second="20deg"
-        camera-orbit="20deg 80deg auto"
-        environment-image="neutral"
-        tone-mapping="neutral"
-        shadow-intensity="0.6"
-        loading="lazy"
-      ></model-viewer>
-      <span class="piece-badge">3D</span>`
-    : "";
-  return `
-    <figure class="piece${piece.model ? " piece-featured" : ""}" style="--swatch:${piece.color}">
-      <div class="piece-swatch">${visual}</div>
-      <figcaption>${piece.name}</figcaption>
-    </figure>`;
-}
-
-function lookBoard(pieces) {
-  const featured = pieces.some((piece) => piece.model);
-  const ordered = featured ? [...pieces].sort((a, b) => Boolean(b.model) - Boolean(a.model)) : pieces;
-  return `
-    <div class="look-board${featured ? " look-board-featured" : ""}">
-      ${ordered.map(pieceTile).join("")}
-    </div>`;
-}
-
-function poll(post) {
-  const total = post.votes.yes + post.votes.no;
-  const yesShare = total > 0 ? Math.round((post.votes.yes / total) * 100) : 50;
-  return `
-    <div class="poll" data-post="${post.id}">
-      <p class="poll-question">Would you wear it?</p>
-      <div class="poll-options">
-        <button class="poll-option" data-vote="yes">Wear it</button>
-        <button class="poll-option" data-vote="no">Rethink</button>
-      </div>
-      <div class="poll-result" hidden>
-        <div class="poll-bar"><span style="width:${yesShare}%"></span></div>
-        <p><strong>${yesShare}%</strong> say wear it · ${total} votes</p>
-      </div>
-    </div>`;
-}
-
-function postCard(post) {
-  const commentCount = post.commentsList ? post.commentsList.length : post.comments;
-  const recentComments = post.commentsList || [];
-  return `
-    <article class="post" id="post-${post.id}">
-      <header class="post-head">
-        <span class="avatar-chip">${post.initial}</span>
-        <div class="post-meta">
-          <strong>${post.author}</strong>
-          <small>${post.audience} · ${post.time}</small>
-        </div>
-        <button class="icon-button" aria-label="Post options">${icons.more}</button>
-      </header>
-      ${lookBoard(post.pieces)}
-      <div class="post-body">
-        <h3>${post.title}</h3>
-        <p>${post.caption}</p>
-        ${poll(post)}
-
-        <div class="post-discussion" id="discussion-${post.id}">
-          <div class="discussion-head">
-            <h4>Friend Discussion (${commentCount})</h4>
-            ${commentCount > 2 ? `<button type="button" class="text-link comment-trigger" data-comment-post="${post.id}" style="font-size:0.75rem;">View all</button>` : ""}
-          </div>
-          <div class="comments-inline-list" id="inline-comments-${post.id}">
-            ${recentComments.slice(-3).map((c) => `
-              <div class="comment-inline-row">
-                <span class="avatar-chip micro">${c.initial}</span>
-                <p><strong>${c.author}</strong> <span>${c.text}</span> <small>${c.time}</small></p>
-              </div>
-            `).join("")}
-          </div>
-          <form class="inline-comment-form" data-inline-post="${post.id}">
-            <input type="text" placeholder="Add styling advice or opinion..." required />
-            <button type="submit" class="button button-dark" style="height:34px; padding:0 14px; font-size:0.75rem;">Post</button>
-          </form>
-        </div>
-      </div>
-      <footer class="post-actions">
-        <button class="action like-button" aria-pressed="false">${icons.heart}<span>${post.likes}</span></button>
-        <button class="action comment-trigger" data-comment-post="${post.id}">${icons.comment}<span>${commentCount}</span></button>
-        <button class="action action-end share-trigger" data-share-post="${post.id}">${icons.share}<span>Share</span></button>
-      </footer>
-    </article>`;
-}
-
-function fittingRoom() {
-  return `
-    <section class="fitting-room" id="fitting-room" aria-labelledby="fitting-room-title">
-      <div class="room-head">
-        <div>
-          <p class="eyebrow">Fitting room</p>
-          <h2 id="fitting-room-title">Your avatar</h2>
-        </div>
-        <span class="status-pill" id="avatar-status">Default body</span>
-      </div>
-
-      <div class="stage">
-        <model-viewer
-          id="avatar"
-          src="./assets/avatar.glb"
-          alt="Your 3D avatar"
-          camera-controls
-          touch-action="pan-y"
-          disable-zoom
-          interaction-prompt="none"
-          camera-orbit="${CAMERA_VIEWS.front}"
-          min-camera-orbit="auto 40deg auto"
-          max-camera-orbit="auto 100deg auto"
-          field-of-view="26deg"
-          environment-image="neutral"
-          tone-mapping="neutral"
-          exposure="0.95"
-          shadow-intensity="1.1"
-          shadow-softness="0.9"
-          rotation-per-second="18deg"
-        ></model-viewer>
-        <button class="rebuild-button" id="open-rebuild">${icons.camera}<span>Rebuild avatar</span></button>
-        <div class="stage-controls" role="group" aria-label="Camera view">
-          ${Object.keys(CAMERA_VIEWS)
-            .map((view) => `<button class="view-button${view === "front" ? " active" : ""}" data-view="${view}">${view}</button>`)
-            .join("")}
-          <button class="icon-button spin-button" id="spin" aria-label="Auto-rotate" aria-pressed="false">${icons.rotate}</button>
-        </div>
-      </div>
-
-      <dl class="measurements">
-        <div><dt>Height</dt><dd>163 cm</dd></div>
-        <div><dt>Build</dt><dd>Average</dd></div>
-        <div><dt>Fit pref.</dt><dd>Relaxed</dd></div>
-      </dl>
-
-      <a class="passport-link" href="#try-on">
-        <span><strong>Fit passport</strong><small>Use this avatar at partner stores</small></span>
-        <span class="beta-tag">Beta</span>
-      </a>
-    </section>`;
-}
-
-function historyPanel() {
-  return `
-    <section class="history" id="history" aria-labelledby="history-title">
-      <div class="room-head">
-        <h2 id="history-title">Shared history</h2>
-        <a class="text-link" href="#history">View all</a>
-      </div>
-      <ul id="history-list">
-        ${history
-          .map(
-            (item) => `
-              <li>
-                <span>${item.name}<small>${item.date}</small></span>
-                <b class="tag ${item.status === "Live" ? "tag-live" : ""}">${item.status}</b>
-              </li>`
-          )
-          .join("")}
-      </ul>
-    </section>`;
-}
-
-function authDialog() {
-  return `
-    <dialog class="auth" id="auth-dialog" aria-labelledby="auth-heading">
-      <form class="auth-card" id="auth-form" method="dialog">
-        <button type="button" class="icon-button close" id="close-auth" aria-label="Close">${icons.close}</button>
-        <p class="eyebrow">Outfitted</p>
-        <h2 id="auth-heading">Welcome back</h2>
-        <p class="auth-lede">Sign in to save fits, follow friends, and start sharing.</p>
-        <div class="segmented" role="tablist">
-          <button type="button" role="tab" class="active" data-mode="signin" aria-selected="true">Sign in</button>
-          <button type="button" role="tab" data-mode="signup" aria-selected="false">Create account</button>
-        </div>
-        <label id="name-row" hidden>Name<input type="text" id="auth-name" autocomplete="name" maxlength="80" placeholder="Your name" /></label>
-        <label>Email<input type="email" id="auth-email" required autocomplete="email" placeholder="you@example.com" /></label>
-        <label>Password<input type="password" id="auth-password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters" /></label>
-        <p class="form-error" id="auth-error" role="alert" hidden></p>
-        <button class="button button-dark button-block" id="auth-submit">Sign in</button>
-      </form>
-    </dialog>`;
-}
-
-function greeting() {
-  const hour = new Date().getHours();
-  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-}
-
-function voteShare(post) {
-  const total = post.votes.yes + post.votes.no;
-  return { total, yes: total > 0 ? Math.round((post.votes.yes / total) * 100) : 50 };
-}
-
-function liveFitCard() {
-  const live = posts.find((post) => post.author === currentUser.name) || posts[0];
-  if (!live) return "";
-  const { total, yes } = voteShare(live);
-  return `
-    <a class="today-card live-card" href="#post-${live.id}">
-      <div class="today-head">
-        <p class="eyebrow">Your live fit</p>
-        <span class="tag tag-live">Live</span>
-      </div>
-      <div class="live-body">
-        <div class="mini-swatches">
-          ${live.pieces.map((piece) => `<span style="--swatch:${piece.color}"></span>`).join("")}
-        </div>
-        <div>
-          <h2>${live.title}</h2>
-          <p class="live-stat" id="live-stat"><strong>${yes}%</strong> say wear it</p>
-        </div>
-      </div>
-      <div class="poll-bar"><span id="live-bar" style="width:${yes}%"></span></div>
-      <p class="today-foot" id="live-foot">${total} votes · ${live.commentsList ? live.commentsList.length : live.comments} comments</p>
-    </a>`;
-}
-
-function waitingCard() {
-  const waiting = posts.filter((post) => post.author !== currentUser.name);
-  return `
-    <a class="today-card" href="#post-${waiting[0]?.id}">
-      <p class="eyebrow">Waiting on you</p>
-      <div class="face-stack">
-        ${waiting.map((post) => `<span class="avatar-chip">${post.initial}</span>`).join("")}
-      </div>
-      <h2>${waiting.length} friends want your take</h2>
-      <p class="today-foot today-cta">Start voting →</p>
-    </a>`;
-}
-
-function createCard() {
-  return `
-    <button class="today-card create-card" id="card-open-new-fit">
-      <span class="create-icon">${icons.plus}</span>
-      <h2>Start a new fit</h2>
-      <p>Put a look on your avatar and ask your circle.</p>
-    </button>`;
-}
-
-/* ---------- New Fit Creator Dialog ---------- */
-function newFitDialog() {
-  return `
-    <dialog class="sheet sheet-medium" id="new-fit-dialog" aria-labelledby="new-fit-heading">
-      <div class="sheet-card">
-        <button type="button" class="icon-button close" data-close-new-fit aria-label="Close">${icons.close}</button>
-        <p class="eyebrow">Fit Sharing</p>
-        <h2 id="new-fit-heading">Create a new fit</h2>
-        <p class="sheet-lede">Assemble pieces and get instant feedback from friends.</p>
-
-        <form class="fit-form-grid" id="new-fit-form">
-          <label>
-            Fit Title
-            <input type="text" id="fit-title" required placeholder="e.g. Friday night dinner" />
-          </label>
-
-          <label>
-            Question / Caption
-            <textarea id="fit-caption" rows="2" required placeholder="e.g. Thinking of pairing this with dark boots. Honest thoughts?"></textarea>
-          </label>
-
-          <label>
-            Audience
-            <select id="fit-audience">
-              <option value="Close friends">Close friends</option>
-              <option value="Followers">Followers</option>
-              <option value="Public">Public circle</option>
-            </select>
-          </label>
-
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-              <span style="font-size:0.82rem; font-weight:600;">Pieces & Swatches</span>
-              <button type="button" class="text-link" id="add-piece-row" style="font-size:0.75rem;">+ Add piece</button>
-            </div>
-            <div class="pieces-inputs-list" id="pieces-inputs-list">
-              <div class="piece-input-row">
-                <input type="color" class="piece-color-input" value="#111111" title="Swatch color" />
-                <input type="text" class="piece-name-input" required placeholder="Piece name (e.g. Oversized knit)" />
-              </div>
-              <div class="piece-input-row">
-                <input type="color" class="piece-color-input" value="#34466b" title="Swatch color" />
-                <input type="text" class="piece-name-input" required placeholder="Piece name (e.g. Straight denim)" />
-              </div>
-            </div>
-          </div>
-
-          <button class="button button-primary button-block" type="submit" style="margin-top: 12px;">
-            ${icons.plus}<span>Publish to Circle</span>
-          </button>
-        </form>
-      </div>
-    </dialog>`;
-}
-
-/* ---------- Comments Drawer Dialog ---------- */
-function commentsDialog() {
-  return `
-    <dialog class="sheet sheet-medium" id="comments-dialog" aria-labelledby="comments-heading">
-      <div class="sheet-card">
-        <button type="button" class="icon-button close" data-close-comments aria-label="Close">${icons.close}</button>
-        <p class="eyebrow">Discussion</p>
-        <h2 id="comments-heading">Fit Comments</h2>
-        <p class="sheet-lede" id="comments-subheading">Feedback and styling takes from friends.</p>
-
-        <div class="comments-list" id="comments-list-container"></div>
-
-        <form class="comment-form" id="comment-add-form">
-          <input type="text" id="comment-input" required placeholder="Give your honest opinion or styling tip..." />
-          <button class="button button-dark" type="submit">${icons.send}</button>
-        </form>
-      </div>
-    </dialog>`;
-}
-
-/* ---------- 3D Rebuild Avatar Dialog ---------- */
-function rebuildDialog() {
-  return `
-    <dialog class="sheet" id="rebuild-dialog" aria-labelledby="rebuild-heading">
-      <div class="sheet-card">
-        <button type="button" class="icon-button close" data-close aria-label="Close">${icons.close}</button>
-        <p class="eyebrow">Fitting room</p>
-        <h2 id="rebuild-heading">Rebuild your avatar</h2>
-
-        <div class="rebuild-step" data-stage="pick">
-          <p class="sheet-lede">Upload one full-body photo. We will build a 3D body that matches your shape.</p>
-          <label class="dropzone" id="dropzone">
-            <input type="file" id="photo-input" accept="image/*" hidden />
-            <img id="photo-preview" alt="Selected photo" hidden />
-            <span class="dropzone-empty" id="dropzone-empty">
-              <span class="rebuild-icon">${icons.camera}</span>
-              <strong>Choose a photo</strong>
-              <small>or drop it here · JPG or PNG</small>
-            </span>
-          </label>
-          <ul class="tips">
-            <li>Stand straight, head to toe in frame</li>
-            <li>Fitted clothes, arms slightly away from the body</li>
-            <li>Plain background, good light</li>
-          </ul>
-          <button class="button button-primary button-block" id="start-rebuild" disabled>${icons.sparkle}<span>Build my avatar</span></button>
-        </div>
-
-        <div class="rebuild-step" data-stage="run" hidden>
-          <p class="sheet-lede">This usually takes under a minute. You can keep this open.</p>
-          <ol class="pipeline">
-            ${PIPELINE_STEPS.map(
-              (step) => `
-                <li data-step="${step.id}">
-                  <span class="step-dot"></span>
-                  <span>${step.label}${step.detail ? `<small>${step.detail}</small>` : ""}</span>
-                </li>`
-            ).join("")}
-          </ol>
-        </div>
-
-        <div class="rebuild-step" data-stage="done" hidden>
-          <div class="done-badge">${icons.check}</div>
-          <p class="sheet-lede">Your new avatar is ready in the fitting room.</p>
-          <button class="button button-dark button-block" data-close>See my avatar</button>
-        </div>
-      </div>
-    </dialog>`;
-}
-
-function render() {
+function renderApp() {
   app.innerHTML = `
-    <div class="landing" id="landing" hidden>${landingPage()}</div>
-
-    <div id="app-shell">
-    <header class="topbar">
-      <div class="topbar-inner">
-        <a class="brand" href="/">OUTFITTED<span>.</span></a>
-        <nav class="nav" aria-label="Primary">
-          <a href="#feed" data-nav="home">Feed</a>
-          <a href="#fitting-room" data-nav="home">Fitting room</a>
-          <a href="#history" data-nav="home">History</a>
-          <a href="#try-on" data-nav="try-on">Try on <span class="beta-tag">Beta</span></a>
-        </nav>
-        <div class="topbar-actions">
-          <div class="account" id="account"></div>
-          <button class="button button-primary" id="open-new-fit">${icons.plus}<span>New fit</span></button>
+    <!-- GLOBAL PERSISTENT HEADER -->
+    <header class="fixed top-0 inset-x-0 z-40 bg-surface/85 backdrop-blur-xl pt-safe shadow-[0_1px_12px_rgba(0,0,0,0.03)] border-b border-surface-container-high/40">
+      <div class="h-16 px-margin flex items-center justify-between">
+        <div class="flex items-center gap-space-xs">
+          <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold text-xs tracking-tighter">
+            OF
+          </div>
+          <span class="font-title-editorial text-title-editorial tracking-tight text-on-surface font-semibold">Outfitted</span>
+          <span class="font-micro-mono text-micro-mono uppercase text-secondary font-bold tracking-widest pl-space-2xs pt-0.5" id="header-tab-indicator">Feed</span>
+        </div>
+        <div class="flex items-center gap-space-xs">
+          <button aria-label="Notifications" class="w-10 h-10 relative flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-high transition-colors" id="btn-notifications">
+            <span class="material-symbols-outlined text-[22px]">notifications</span>
+            <span class="absolute top-2 right-2 w-2 h-2 bg-tertiary-fixed rounded-full shadow-[0_0_8px_rgba(208,240,67,0.8)]"></span>
+          </button>
+          <button aria-label="Profile" class="w-10 h-10 flex items-center justify-center rounded-full hover:opacity-90 transition-opacity" data-nav="profile">
+            <img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-surface-container-lowest" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBdkI5tA3KwmZ4Zpg1UOO242PpvUP6lUoJcfyIaaz4nLFpF69LXtOt6emgVEW-0d6n46G5tOLaU_tpRSPOnLM3VLkXAeOddFzzr8x6C408zwKPLTtwpLWh5_k5P75XqMvQpXCWxMjU92qnWCv4lD3FKFd0vIVXyF3sUCbaDuGPNWs9P0TCrGAVexl8CLqZOFMogl0dLaThBZKVScxpf04hXjbLNAGYtR8r1vna5fCM3GfKKhxL61-g" />
+          </button>
         </div>
       </div>
     </header>
 
-    <main class="page" data-page="home">
-      <section class="today" aria-labelledby="today-title">
-        <h1 id="today-title">${greeting()}</h1>
-        <div class="today-grid">
-          ${liveFitCard()}
-          ${waitingCard()}
-          ${createCard()}
-        </div>
-      </section>
+    <!-- MAIN VIEWS CONTAINER -->
+    <main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface">
+      <div id="view-feed" class="view-panel ${currentTab === "feed" ? "" : "hidden"}">
+        ${renderFeedView(posts)}
+      </div>
 
-      <div class="layout">
-        <section class="feed" id="feed" aria-labelledby="feed-title">
-          <div class="section-head">
-            <h2 id="feed-title">From your circle</h2>
-            <span id="feed-count">${posts.length} new fits</span>
-          </div>
-          <div id="posts-container">
-            ${posts.map(postCard).join("")}
-          </div>
-        </section>
+      <div id="view-fitting-room" class="view-panel ${currentTab === "fitting-room" ? "" : "hidden"}">
+        ${renderFittingRoomView()}
+      </div>
 
-        <aside class="rail">
-          ${fittingRoom()}
-          ${historyPanel()}
-        </aside>
+      <div id="view-chat" class="view-panel ${currentTab === "chat" ? "" : "hidden"}">
+        ${renderChatView()}
+      </div>
+
+      <div id="view-profile" class="view-panel ${currentTab === "profile" ? "" : "hidden"}">
+        ${renderProfileView()}
       </div>
     </main>
 
-    <main class="page" data-page="try-on" hidden>
-      ${tryOnPage()}
-    </main>
-    </div>
+    <!-- MODALS & SHEETS -->
+    ${renderCommentsDrawer()}
+    ${renderCreateFitSheet()}
+    ${renderRebuildModal()}
 
-    ${authDialog()}
-    ${rebuildDialog()}
-    ${newFitDialog()}
-    ${commentsDialog()}
+    <!-- FLOATING BOTTOM NAVIGATION BAR -->
+    <div class="fixed bottom-0 inset-x-0 z-40 pointer-events-none pb-safe">
+      <div class="px-margin pb-space-sm flex justify-center">
+        <nav class="pointer-events-auto w-full max-w-sm h-16 bg-surface-container-lowest/90 backdrop-blur-2xl rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.08)] px-space-xs flex items-center justify-between border border-surface-container-high/60">
+          <button aria-label="Feed" class="nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${currentTab === "feed" ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)]" : "text-on-surface-variant hover:text-on-surface"}" data-nav="feed">
+            <span class="material-symbols-outlined text-[22px]">auto_awesome</span>
+            <span class="font-micro-mono text-[10px] uppercase tracking-wider mt-0.5 font-bold">Feed</span>
+          </button>
+
+          <button aria-label="Fitting Room" class="nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${currentTab === "fitting-room" ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)]" : "text-on-surface-variant hover:text-on-surface"}" data-nav="fitting-room">
+            <span class="material-symbols-outlined text-[22px]">view_in_ar</span>
+            <span class="font-micro-mono text-[10px] uppercase tracking-wider mt-0.5 font-bold">3D Room</span>
+          </button>
+
+          <button aria-label="Messages" class="nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${currentTab === "chat" ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)]" : "text-on-surface-variant hover:text-on-surface"}" data-nav="chat">
+            <div class="relative flex items-center justify-center">
+              <span class="material-symbols-outlined text-[22px]">forum</span>
+              <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-secondary"></span>
+            </div>
+            <span class="font-micro-mono text-[10px] uppercase tracking-wider mt-0.5 font-bold">Chat</span>
+          </button>
+
+          <button aria-label="Profile" class="nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${currentTab === "profile" ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)]" : "text-on-surface-variant hover:text-on-surface"}" data-nav="profile">
+            <span class="material-symbols-outlined text-[22px]">person</span>
+            <span class="font-micro-mono text-[10px] uppercase tracking-wider mt-0.5 font-bold">Profile</span>
+          </button>
+        </nav>
+      </div>
+    </div>
   `;
 
-  connectInteractions();
-  connectLanding();
-  connectTryOn();
-  route();
-  // Default to currentUser so the prototype is immediately interactive without forced landing gate
-  getCurrentUser().then((user) => setUser(user || currentUser));
+  attachEventHandlers();
 }
 
-// Minimal hash routing: #try-on is its own page; every other hash is an anchor on the home page.
-function route() {
-  const page = location.hash === "#try-on" ? "try-on" : "home";
-  document.querySelectorAll("[data-page]").forEach((el) => (el.hidden = el.dataset.page !== page));
-  const current = page === "try-on" ? "#try-on" : location.hash || "#feed";
-  document.querySelectorAll("[data-nav]").forEach((link) => link.classList.toggle("active", link.getAttribute("href") === current));
-  if (page === "try-on") window.scrollTo(0, 0);
-  else if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
-}
-
-window.addEventListener("hashchange", route);
-
-// --- Account (see src/auth.js and scripts/serve.py) ---
-function setUser(user) {
-  const landing = document.querySelector("#landing");
-  const shell = document.querySelector("#app-shell");
-  const firstLoad = shell.hidden && landing.hidden;
-  const wasSignedIn = !shell.hidden;
-  shell.hidden = !user;
-  landing.hidden = Boolean(user);
-  if (!firstLoad && wasSignedIn !== Boolean(user)) {
-    // Signing in or out: drop the other view's anchor and start at the top.
-    window.history.replaceState(null, "", location.pathname); // `history` here is the sample list from data.js
-    route();
-    window.scrollTo(0, 0);
-  }
-
-  const account = document.querySelector("#account");
-  const firstName = user?.name.split(" ")[0];
-  document.querySelector("#today-title").textContent = user ? `${greeting()}, ${firstName}` : greeting();
-
-  if (!user) {
-    account.innerHTML = `<button class="button button-ghost" id="open-auth">Sign in</button>`;
-    document.querySelector("#open-auth").onclick = () => document.querySelector("#auth-dialog").showModal();
-    return;
-  }
-
-  account.innerHTML = `
-    <button class="account-button" id="account-button" aria-haspopup="menu" aria-expanded="false">
-      <span class="avatar-chip"></span><span class="account-name"></span>
-    </button>
-    <div class="account-menu" id="account-menu" role="menu" hidden>
-      <p><strong></strong><small></small></p>
-      <button role="menuitem" id="sign-out">Sign out</button>
-    </div>`;
-  // Names come from users, so they go in as text, never as HTML.
-  account.querySelector(".avatar-chip").textContent = user.name[0].toUpperCase();
-  account.querySelector(".account-name").textContent = firstName;
-  account.querySelector(".account-menu strong").textContent = user.name;
-  account.querySelector(".account-menu small").textContent = user.email;
-
-  const button = document.querySelector("#account-button");
-  const menu = document.querySelector("#account-menu");
-  const toggleMenu = (open) => {
-    menu.hidden = !open;
-    button.setAttribute("aria-expanded", open);
-  };
-  button.onclick = () => toggleMenu(menu.hidden);
-  document.querySelector("#sign-out").onclick = async () => {
-    await signOut().catch(() => {});
-    setUser(null);
-  };
-}
-
-function openAuth(mode) {
-  document.querySelector(`[data-mode="${mode}"]`).click();
-  document.querySelector("#auth-dialog").showModal();
-}
-
-function connectLanding() {
-  document.querySelectorAll("[data-auth-open]").forEach((button) => {
-    button.onclick = () => openAuth(button.dataset.authOpen);
+function switchTab(tabId) {
+  currentTab = tabId;
+  document.querySelectorAll(".view-panel").forEach((panel) => {
+    panel.classList.toggle("hidden", panel.id !== `view-${tabId}`);
   });
-  // "Get started" carries the typed email into the create-account form.
-  document.querySelector("#landing-start").onsubmit = (event) => {
-    event.preventDefault();
-    document.querySelector("#auth-email").value = document.querySelector("#landing-email").value;
-    openAuth("signup");
-    document.querySelector("#auth-name").focus();
+
+  document.querySelectorAll(".nav-tab").forEach((btn) => {
+    const isActive = btn.dataset.nav === tabId;
+    btn.className = `nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${
+      isActive
+        ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)] font-bold"
+        : "text-on-surface-variant hover:text-on-surface"
+    }`;
+  });
+
+  const tabNames = {
+    feed: "Feed",
+    "fitting-room": "Fitting Room",
+    chat: "Chat",
+    profile: "Profile",
   };
+  const indicator = document.querySelector("#header-tab-indicator");
+  if (indicator) indicator.textContent = tabNames[tabId] || "";
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function connectAuth() {
-  const dialog = document.querySelector("#auth-dialog");
-  const form = document.querySelector("#auth-form");
-  const submit = document.querySelector("#auth-submit");
-  const error = document.querySelector("#auth-error");
-  const password = document.querySelector("#auth-password");
-  let mode = "signin";
+function attachEventHandlers() {
+  // Navigation tabs
+  document.querySelectorAll("[data-nav]").forEach((btn) => {
+    btn.onclick = () => switchTab(btn.dataset.nav);
+  });
 
-  const showError = (message) => {
-    error.textContent = message;
-    error.hidden = !message;
-  };
+  // Notifications button toast
+  const btnNotif = document.querySelector("#btn-notifications");
+  if (btnNotif) {
+    btnNotif.onclick = () => showToast("No new notifications");
+  }
 
-  document.querySelector("#close-auth").onclick = () => dialog.close();
-  dialog.onclick = (event) => {
-    if (event.target === dialog) dialog.close();
-  };
-  dialog.onclose = () => showError("");
-
-  // Close the account menu on any click outside it.
-  document.addEventListener("click", (event) => {
-    const menu = document.querySelector("#account-menu");
-    if (menu && !document.querySelector("#account").contains(event.target)) {
-      menu.hidden = true;
-      document.querySelector("#account-button").setAttribute("aria-expanded", false);
+  // Floating New Fit & Profile New Fit buttons
+  const openNewFitSheet = () => {
+    const backdrop = document.querySelector("#create-fit-backdrop");
+    const sheet = document.querySelector("#create-fit-sheet");
+    if (backdrop && sheet) {
+      backdrop.classList.remove("hidden");
+      setTimeout(() => {
+        sheet.classList.remove("translate-y-full");
+      }, 10);
     }
-  });
+  };
 
-  document.querySelectorAll("[data-mode]").forEach((tab) => {
-    tab.onclick = () => {
-      mode = tab.dataset.mode;
-      const signup = mode === "signup";
-      document.querySelectorAll("[data-mode]").forEach((item) => {
-        item.classList.toggle("active", item === tab);
-        item.setAttribute("aria-selected", item === tab);
+  const closeNewFitSheet = () => {
+    const backdrop = document.querySelector("#create-fit-backdrop");
+    const sheet = document.querySelector("#create-fit-sheet");
+    if (sheet) sheet.classList.add("translate-y-full");
+    setTimeout(() => {
+      if (backdrop) backdrop.classList.add("hidden");
+    }, 280);
+  };
+
+  const btnFloatingFit = document.querySelector("#btn-floating-new-fit");
+  if (btnFloatingFit) btnFloatingFit.onclick = openNewFitSheet;
+
+  const btnProfileNewFit = document.querySelector("#btn-profile-new-fit");
+  if (btnProfileNewFit) btnProfileNewFit.onclick = openNewFitSheet;
+
+  const btnCancelCreate = document.querySelector("#btn-cancel-create-fit");
+  if (btnCancelCreate) btnCancelCreate.onclick = closeNewFitSheet;
+
+  const createBackdrop = document.querySelector("#create-fit-backdrop");
+  if (createBackdrop) {
+    createBackdrop.onclick = (e) => {
+      if (e.target === createBackdrop) closeNewFitSheet();
+    };
+  }
+
+  // Create Fit Audience selection
+  document.querySelectorAll(".btn-audience-opt").forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll(".btn-audience-opt").forEach((b) => {
+        b.className =
+          "flex flex-col items-center justify-center p-space-xs rounded-DEFAULT bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-left btn-audience-opt";
       });
-      document.querySelector("#name-row").hidden = !signup;
-      document.querySelector("#auth-name").required = signup;
-      password.autocomplete = signup ? "new-password" : "current-password";
-      document.querySelector("#auth-heading").textContent = signup ? "Create your account" : "Welcome back";
-      submit.textContent = signup ? "Create account" : "Sign in";
-      showError("");
+      btn.className =
+        "group relative flex flex-col items-center justify-center p-space-xs rounded-DEFAULT bg-primary text-on-primary shadow-sm text-left transition-all btn-audience-opt";
     };
   });
 
-  form.onsubmit = async (event) => {
-    event.preventDefault();
-    const label = submit.textContent;
-    submit.disabled = true;
-    submit.textContent = mode === "signup" ? "Creating account…" : "Signing in…";
-    showError("");
-    try {
-      const email = document.querySelector("#auth-email").value;
-      const user =
-        mode === "signup"
-          ? await signUp(document.querySelector("#auth-name").value, email, password.value)
-          : await signIn(email, password.value);
-      form.reset();
-      dialog.close();
-      setUser(user);
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      submit.disabled = false;
-      submit.textContent = label;
-    }
-  };
-}
-
-function connectInteractions() {
-  connectAuth();
-
-  // Likes
-  document.querySelectorAll(".like-button").forEach((button) => {
-    button.onclick = () => {
-      const count = button.querySelector("span");
-      const liked = button.classList.toggle("liked");
-      button.setAttribute("aria-pressed", liked);
-      count.textContent = Number(count.textContent) + (liked ? 1 : -1);
-    };
-  });
-
-  // Polls
-  document.querySelectorAll(".poll").forEach((pollEl) => {
-    const post = posts.find((item) => item.id === pollEl.dataset.post);
-    if (!post) return;
-    pollEl.querySelectorAll("[data-vote]").forEach((button) => {
-      button.onclick = () => {
-        post.votes[button.dataset.vote] += 1;
-        const total = post.votes.yes + post.votes.no;
-        const yesShare = Math.round((post.votes.yes / total) * 100);
-        pollEl.querySelector(".poll-bar span").style.width = `${yesShare}%`;
-        pollEl.querySelector(".poll-result p").innerHTML = `<strong>${yesShare}%</strong> say wear it · ${total} votes`;
-        pollEl.querySelector(".poll-options").hidden = true;
-        pollEl.querySelector(".poll-result").hidden = false;
-        if (post.author === currentUser.name) {
-          const liveBar = document.querySelector("#live-bar");
-          const liveStat = document.querySelector("#live-stat");
-          const liveFoot = document.querySelector("#live-foot");
-          if (liveBar) liveBar.style.width = `${yesShare}%`;
-          if (liveStat) liveStat.innerHTML = `<strong>${yesShare}%</strong> say wear it`;
-          if (liveFoot) liveFoot.textContent = `${total} votes · ${post.commentsList ? post.commentsList.length : post.comments} comments`;
-        }
-      };
-    });
-  });
-
-  // 3D Model viewer camera views & spin
-  const avatar = document.querySelector("#avatar");
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    button.onclick = () => {
-      avatar.cameraOrbit = CAMERA_VIEWS[button.dataset.view];
-      document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("active", item === button));
-    };
-  });
-
-  const spin = document.querySelector("#spin");
-  if (spin) {
-    spin.onclick = () => {
-      const on = !avatar.hasAttribute("auto-rotate");
-      avatar.toggleAttribute("auto-rotate", on);
-      spin.setAttribute("aria-pressed", on);
-      spin.classList.toggle("active", on);
-    };
-  }
-
-  // 3D Rebuild avatar
-  connectRebuild(avatar);
-
-  // New Fit Modal & Form
-  connectNewFit();
-
-  // Comments Dialog
-  connectComments();
-
-  // Share buttons
-  document.querySelectorAll(".share-trigger").forEach((btn) => {
+  // Create Fit Duration selection
+  document.querySelectorAll(".btn-duration-opt").forEach((btn) => {
     btn.onclick = () => {
-      const postId = btn.dataset.sharePost;
-      const url = `${window.location.origin}/#post-${postId}`;
-      navigator.clipboard.writeText(url);
-      showToast("Fit link copied to clipboard!");
-    };
-  });
-}
-
-function connectNewFit() {
-  const dlg = document.querySelector("#new-fit-dialog");
-  const openButtons = [document.querySelector("#open-new-fit"), document.querySelector("#card-open-new-fit")];
-  openButtons.forEach((btn) => {
-    if (btn) btn.onclick = () => dlg.showModal();
-  });
-  dlg.querySelectorAll("[data-close-new-fit]").forEach((btn) => (btn.onclick = () => dlg.close()));
-  dlg.onclick = (e) => { if (e.target === dlg) dlg.close(); };
-
-  const piecesList = document.querySelector("#pieces-inputs-list");
-  document.querySelector("#add-piece-row").onclick = () => {
-    const row = document.createElement("div");
-    row.className = "piece-input-row";
-    row.innerHTML = `
-      <input type="color" class="piece-color-input" value="#${Math.floor(Math.random()*16777215).toString(16)}" title="Swatch color" />
-      <input type="text" class="piece-name-input" required placeholder="Piece name" />
-    `;
-    piecesList.appendChild(row);
-  };
-
-  const form = document.querySelector("#new-fit-form");
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    const title = document.querySelector("#fit-title").value.trim();
-    const caption = document.querySelector("#fit-caption").value.trim();
-    const audience = document.querySelector("#fit-audience").value;
-
-    const pieceRows = piecesList.querySelectorAll(".piece-input-row");
-    const pieces = [];
-    pieceRows.forEach((row) => {
-      const name = row.querySelector(".piece-name-input").value.trim();
-      const color = row.querySelector(".piece-color-input").value;
-      if (name) pieces.push({ name, color });
-    });
-
-    const newPost = {
-      id: `fit-${Date.now()}`,
-      author: currentUser.name,
-      initial: currentUser.initial,
-      audience,
-      time: "now",
-      title,
-      caption,
-      pieces: pieces.length > 0 ? pieces : [{ name: "Core Look", color: "#111111" }],
-      votes: { yes: 1, no: 0 },
-      likes: 1,
-      comments: 0,
-      commentsList: []
-    };
-
-    posts.unshift(newPost);
-    history.unshift({ name: title, status: "Live", date: "Today" });
-
-    dlg.close();
-    form.reset();
-    showToast("New fit published to your circle!");
-    render();
-  };
-}
-
-function connectComments() {
-  const dlg = document.querySelector("#comments-dialog");
-  dlg.querySelectorAll("[data-close-comments]").forEach((btn) => (btn.onclick = () => dlg.close()));
-  dlg.onclick = (e) => { if (e.target === dlg) dlg.close(); };
-
-  document.querySelectorAll(".comment-trigger").forEach((btn) => {
-    btn.onclick = () => {
-      const postId = btn.dataset.commentPost;
-      activePostForComments = posts.find((p) => p.id === postId);
-      if (!activePostForComments) return;
-      openCommentsForPost(activePostForComments);
-      dlg.showModal();
+      document.querySelectorAll(".btn-duration-opt").forEach((b) => {
+        b.className = "px-space-xs py-0.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm btn-duration-opt";
+      });
+      btn.className = "px-space-xs py-0.5 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow-xs font-semibold btn-duration-opt";
     };
   });
 
-  const form = document.querySelector("#comment-add-form");
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    const input = document.querySelector("#comment-input");
-    const text = input.value.trim();
-    if (!text || !activePostForComments) return;
-
-    if (!activePostForComments.commentsList) activePostForComments.commentsList = [];
-    activePostForComments.commentsList.push({
-      id: `c-${Date.now()}`,
-      author: currentUser.name,
-      initial: currentUser.initial,
-      time: "just now",
-      text
-    });
-    activePostForComments.comments = activePostForComments.commentsList.length;
-
-    input.value = "";
-    openCommentsForPost(activePostForComments);
-    updatePostCommentUI(activePostForComments);
-    showToast("Comment posted!");
-  };
-
-  document.querySelectorAll(".inline-comment-form").forEach((inlineForm) => {
-    inlineForm.onsubmit = (e) => {
+  // Submit Fit Dilemma
+  const createFitForm = document.querySelector("#create-fit-form");
+  if (createFitForm) {
+    createFitForm.onsubmit = (e) => {
       e.preventDefault();
-      const postId = inlineForm.dataset.inlinePost;
-      const input = inlineForm.querySelector("input");
-      const text = input.value.trim();
-      const post = posts.find((p) => p.id === postId);
-      if (!text || !post) return;
+      const title = document.querySelector("#fit-title")?.value || "New Fit Dilemma";
+      const prompt = document.querySelector("#dilemma-prompt")?.value || "";
 
-      if (!post.commentsList) post.commentsList = [];
-      post.commentsList.push({
-        id: `c-${Date.now()}`,
-        author: currentUser.name,
-        initial: currentUser.initial,
-        time: "just now",
-        text
+      // Prepend to posts list in data.js
+      posts.unshift({
+        id: `fit-${Date.now()}`,
+        author: currentUser.name || "Sofoniyas",
+        initial: "S",
+        audience: "Close Friends",
+        time: "Just now",
+        title,
+        caption: prompt,
+        pieces: [
+          { name: "Structured Wool Blazer", color: "#4A5568" },
+          { name: "Silk High-Neck Top", color: "#FFFDD0" },
+          { name: "Relaxed Pleated Trouser", color: "#2D3748" },
+        ],
+        votes: { yes: 1, no: 0 },
+        likes: 1,
+        comments: 0,
+        commentsList: [],
       });
-      post.comments = post.commentsList.length;
-      input.value = "";
 
-      updatePostCommentUI(post);
-      showToast("Comment added to discussion!");
+      closeNewFitSheet();
+      showToast("Fit dilemma published to Circle!");
+      switchTab("feed");
+    };
+  }
+
+  // Comments Drawer Open/Close
+  const openCommentsDrawer = (postId = "sophia") => {
+    activePostForComments = postId;
+    const backdrop = document.querySelector("#comments-drawer-backdrop");
+    const sheet = document.querySelector("#comments-drawer-sheet");
+    if (backdrop && sheet) {
+      backdrop.classList.remove("hidden");
+      setTimeout(() => {
+        sheet.classList.remove("translate-y-full");
+      }, 10);
+    }
+  };
+
+  const closeCommentsDrawer = () => {
+    const backdrop = document.querySelector("#comments-drawer-backdrop");
+    const sheet = document.querySelector("#comments-drawer-sheet");
+    if (sheet) sheet.classList.add("translate-y-full");
+    setTimeout(() => {
+      if (backdrop) backdrop.classList.add("hidden");
+    }, 280);
+  };
+
+  document.querySelectorAll(".btn-open-comments").forEach((btn) => {
+    btn.onclick = () => openCommentsDrawer(btn.dataset.postId);
+  });
+
+  const btnCloseComments = document.querySelector("#btn-close-comments-drawer");
+  if (btnCloseComments) btnCloseComments.onclick = closeCommentsDrawer;
+
+  const commentsBackdrop = document.querySelector("#comments-drawer-backdrop");
+  if (commentsBackdrop) {
+    commentsBackdrop.onclick = (e) => {
+      if (e.target === commentsBackdrop) closeCommentsDrawer();
+    };
+  }
+
+  // Critique suggestions inside Comments Drawer
+  document.querySelectorAll(".btn-critique-suggestion").forEach((btn) => {
+    btn.onclick = () => {
+      const input = document.querySelector("#critique-input");
+      if (input) {
+        input.value = btn.innerText.trim() + " ";
+        input.focus();
+      }
     };
   });
-}
 
-function updatePostCommentUI(post) {
-  const postEl = document.querySelector(`#post-${post.id}`);
-  if (!postEl) return;
+  // Submit Critique Form
+  const critiqueForm = document.querySelector("#critique-form");
+  if (critiqueForm) {
+    critiqueForm.onsubmit = (e) => {
+      e.preventDefault();
+      const input = document.querySelector("#critique-input");
+      const text = input?.value.trim();
+      if (!text) return;
 
-  const countEl = postEl.querySelector(".comment-trigger span");
-  if (countEl) countEl.textContent = post.comments;
-
-  const headH4 = postEl.querySelector(".discussion-head h4");
-  if (headH4) headH4.textContent = `Friend Discussion (${post.comments})`;
-
-  const listEl = postEl.querySelector(`#inline-comments-${post.id}`);
-  if (listEl && post.commentsList) {
-    listEl.innerHTML = post.commentsList.slice(-3).map((c) => `
-      <div class="comment-inline-row">
-        <span class="avatar-chip micro">${c.initial}</span>
-        <p><strong>${c.author}</strong> <span>${c.text}</span> <small>${c.time}</small></p>
-      </div>
-    `).join("");
-  }
-}
-
-function openCommentsForPost(post) {
-  document.querySelector("#comments-heading").textContent = `Comments on "${post.title}"`;
-  document.querySelector("#comments-subheading").textContent = `Posted by ${post.author} · ${post.audience}`;
-  const container = document.querySelector("#comments-list-container");
-  const list = post.commentsList || [];
-
-  if (list.length === 0) {
-    container.innerHTML = `<p style="text-align:center; color:var(--muted); padding:20px 0;">No comments yet. Be the first friend to weigh in!</p>`;
-    return;
-  }
-
-  container.innerHTML = list
-    .map(
-      (c) => `
-      <div class="comment-item">
-        <span class="avatar-chip" style="width:30px; height:30px; font-size:0.75rem;">${c.initial}</span>
-        <div class="comment-content">
-          <div class="comment-header">
-            <strong>${c.author}</strong>
-            <small>${c.time}</small>
+      const feed = document.querySelector("#comments-list-feed");
+      if (feed) {
+        const newCard = document.createElement("article");
+        newCard.className = "p-space-sm bg-surface-container-low rounded-DEFAULT flex flex-col gap-space-xs shadow-sm";
+        newCard.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-space-xs">
+              <div class="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-label-md font-bold">You</div>
+              <div class="flex flex-col">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-title-ui text-label-md text-on-surface font-semibold">@you</span>
+                  <span class="bg-tertiary-fixed text-on-tertiary-fixed font-micro-mono text-[9px] px-1.5 py-0.5 rounded-full font-bold">Just now</span>
+                </div>
+                <span class="font-label-sm text-label-sm text-on-surface-variant">Live take</span>
+              </div>
+            </div>
           </div>
-          <p class="comment-text">${c.text}</p>
-        </div>
-      </div>`
-    )
-    .join("");
-  container.scrollTop = container.scrollHeight;
+          <p class="font-body-md text-body-md text-on-surface mt-0.5 leading-relaxed">${text}</p>
+          <footer class="flex items-center justify-between pt-space-2xs mt-space-2xs text-on-surface-variant">
+            <span class="font-label-md text-label-md text-secondary">▲ 1 helpful</span>
+            <span class="font-micro-mono text-micro-mono text-on-surface-variant">Verified</span>
+          </footer>
+        `;
+        feed.prepend(newCard);
+      }
+      input.value = "";
+      showToast("Styling take posted!");
+    };
+  }
+
+  // Quick vote on Today's Radar
+  document.querySelectorAll("[data-quick-vote]").forEach((btn) => {
+    btn.onclick = () => {
+      const parent = btn.closest("#vote-btn-group-a");
+      const choice = btn.dataset.quickVote;
+      if (parent) {
+        parent.querySelectorAll("button").forEach((b) => {
+          b.className = "h-9 px-3 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1 opacity-60";
+        });
+        btn.className = "h-9 px-3 rounded-full bg-secondary text-on-secondary font-label-md text-label-md font-semibold flex items-center justify-center gap-1 active:scale-95 shadow-sm";
+      }
+      const status = document.querySelector("#poll-a-status");
+      const bar = document.querySelector("#poll-a-bar");
+      if (status && bar) {
+        if (choice === "wear") {
+          status.innerText = "76% say wear it (Voted)";
+          bar.style.width = "76%";
+        } else {
+          status.innerText = "Rethink voted (70% say wear it)";
+          bar.style.width = "70%";
+        }
+      }
+      showToast(choice === "wear" ? "Voted 'Wear it'!" : "Voted 'Rethink'!");
+    };
+  });
+
+  // Waiting on you card
+  const btnCastVote = document.querySelector("#btn-cast-vote");
+  if (btnCastVote) {
+    btnCastVote.onclick = () => {
+      const postSophia = document.querySelector("#post-sophia");
+      if (postSophia) postSophia.scrollIntoView({ behavior: "smooth" });
+    };
+  }
+
+  // Feed Post Poll Voting
+  document.querySelectorAll("[data-poll-vote]").forEach((btn) => {
+    btn.onclick = () => {
+      const type = btn.dataset.pollVote;
+      const wearBar = document.querySelector("#poll-wear-bar");
+      const rethinkBar = document.querySelector("#poll-rethink-bar");
+      const wearNum = document.querySelector("#poll-wear-num");
+      const rethinkNum = document.querySelector("#poll-rethink-num");
+      const wearText = document.querySelector("#poll-wear-text");
+
+      if (type === "wear") {
+        if (wearBar) wearBar.style.width = "72%";
+        if (rethinkBar) rethinkBar.style.width = "28%";
+        if (wearNum) wearNum.innerText = "72%";
+        if (rethinkNum) rethinkNum.innerText = "28%";
+        if (wearText) wearText.innerText = "72% majority (Voted)";
+        showToast("Voted: Wear it!");
+      } else {
+        if (wearBar) wearBar.style.width = "64%";
+        if (rethinkBar) rethinkBar.style.width = "36%";
+        if (wearNum) wearNum.innerText = "64%";
+        if (rethinkNum) rethinkNum.innerText = "36%";
+        showToast("Voted: Rethink!");
+      }
+    };
+  });
+
+  // Like Buttons
+  document.querySelectorAll(".btn-toggle-like").forEach((btn) => {
+    btn.onclick = () => {
+      const heart = btn.querySelector(".heart-icon");
+      const count = btn.querySelector(".count-num");
+      const isLiked = heart?.style.fontVariationSettings?.includes("'FILL' 1");
+      if (isLiked) {
+        if (heart) {
+          heart.style.fontVariationSettings = "'FILL' 0";
+          heart.classList.remove("text-error");
+        }
+        if (count) count.innerText = String(Number(count.innerText) - 1);
+      } else {
+        if (heart) {
+          heart.style.fontVariationSettings = "'FILL' 1";
+          heart.classList.add("text-error");
+        }
+        if (count) count.innerText = String(Number(count.innerText) + 1);
+      }
+    };
+  });
+
+  // Bookmark Buttons
+  document.querySelectorAll(".btn-toggle-bookmark").forEach((btn) => {
+    btn.onclick = () => {
+      const icon = btn.querySelector(".bookmark-icon");
+      const isSaved = icon?.style.fontVariationSettings?.includes("'FILL' 1");
+      if (icon) {
+        icon.style.fontVariationSettings = isSaved ? "'FILL' 0" : "'FILL' 1";
+      }
+      showToast(isSaved ? "Removed from Capsule" : "Saved to Capsule");
+    };
+  });
+
+  // Share Buttons
+  document.querySelectorAll(".btn-share-look").forEach((btn) => {
+    btn.onclick = () => {
+      const url = `${window.location.origin}/#post-${btn.dataset.postId || "look"}`;
+      navigator.clipboard?.writeText(url);
+      showToast("Look link copied to clipboard!");
+    };
+  });
+
+  // 3D Fitting Room Camera Controls
+  const avatarImg = document.querySelector("#avatarStageImage");
+  const modelViewer = document.querySelector("#fitting-stage-model");
+
+  document.querySelectorAll(".cam-angle").forEach((btn, idx) => {
+    btn.onclick = () => {
+      document.querySelectorAll(".cam-angle").forEach((b) => {
+        b.className = "cam-angle px-3.5 py-1.5 text-on-surface rounded-full font-label-sm text-label-sm hover:bg-surface-container transition-all duration-200";
+      });
+      btn.className = "cam-angle active-cam px-3.5 py-1.5 bg-primary text-on-primary rounded-full font-label-sm text-label-sm transition-all duration-200";
+
+      const angle = btn.dataset.angle;
+      if (modelViewer && !modelViewer.classList.contains("hidden")) {
+        const orbits = { front: "0deg 82deg auto", side: "90deg 82deg auto", back: "180deg 82deg auto" };
+        modelViewer.cameraOrbit = orbits[angle] || "0deg 82deg auto";
+      }
+      if (avatarImg) {
+        const transforms = ["scale-100 rotate-0", "scale-105 -rotate-1", "scale-105 rotate-1"];
+        avatarImg.className = "w-full h-full object-cover object-center transition-all duration-500 ease-out " + transforms[idx % 3];
+      }
+    };
+  });
+
+  // 360 Spin in Fitting Room
+  const spinBtn = document.querySelector("#spinBtn");
+  const spinBadge = document.querySelector("#spinBadge");
+  if (spinBtn) {
+    spinBtn.onclick = () => {
+      isSpinning = !isSpinning;
+      if (isSpinning) {
+        spinBtn.classList.add("bg-secondary", "text-on-secondary");
+        spinBadge?.classList.remove("hidden");
+        spinBadge?.classList.add("flex");
+        if (modelViewer) modelViewer.setAttribute("auto-rotate", "");
+        if (avatarImg) avatarImg.classList.add("scale-105");
+      } else {
+        spinBtn.classList.remove("bg-secondary", "text-on-secondary");
+        spinBadge?.classList.add("hidden");
+        spinBadge?.classList.remove("flex");
+        if (modelViewer) modelViewer.removeAttribute("auto-rotate");
+        if (avatarImg) avatarImg.classList.remove("scale-105");
+      }
+    };
+  }
+
+  // Toggle 3D Interactive Model vs Photo Render
+  const lightingBtn = document.querySelector("#lightingBtn");
+  if (lightingBtn) {
+    lightingBtn.onclick = () => {
+      is3DModelActive = !is3DModelActive;
+      if (modelViewer && avatarImg) {
+        if (is3DModelActive) {
+          modelViewer.classList.remove("hidden");
+          avatarImg.classList.add("hidden");
+          lightingBtn.classList.add("text-secondary");
+          showToast("Interactive 3D WebGL Avatar Active");
+        } else {
+          modelViewer.classList.add("hidden");
+          avatarImg.classList.remove("hidden");
+          lightingBtn.classList.remove("text-secondary");
+          showToast("Studio Editorial Scene Active");
+        }
+      }
+    };
+  }
+
+  // Zoom Button in Fitting Room
+  const zoomBtn = document.querySelector("#zoomBtn");
+  if (zoomBtn) {
+    zoomBtn.onclick = () => {
+      isZoomed = !isZoomed;
+      if (avatarImg) {
+        avatarImg.style.transform = isZoomed ? "scale(1.2)" : "scale(1)";
+      }
+      zoomBtn.classList.toggle("text-secondary", isZoomed);
+    };
+  }
+
+  // Rebuild Avatar Modal Handlers
+  const btnOpenRebuild = document.querySelector("#btn-open-rebuild-scan");
+  const rebuildBackdrop = document.querySelector("#rebuild-modal-backdrop");
+  const btnCloseRebuild = document.querySelector("#btn-close-rebuild-modal");
+  const rebuildFileInput = document.querySelector("#rebuild-file-input");
+  const rebuildDropzone = document.querySelector("#rebuild-dropzone");
+  const rebuildPreview = document.querySelector("#rebuild-photo-preview");
+  const rebuildPrompt = document.querySelector("#rebuild-dropzone-prompt");
+  const btnStartRebuild = document.querySelector("#btn-start-rebuild-pipeline");
+  const rebuildStagePick = document.querySelector("#rebuild-stage-pick");
+  const rebuildStageRun = document.querySelector("#rebuild-stage-run");
+  const rebuildStageDone = document.querySelector("#rebuild-stage-done");
+
+  if (btnOpenRebuild && rebuildBackdrop) {
+    btnOpenRebuild.onclick = () => {
+      rebuildBackdrop.classList.remove("hidden");
+      if (rebuildStagePick) rebuildStagePick.classList.remove("hidden");
+      if (rebuildStageRun) rebuildStageRun.classList.add("hidden");
+      if (rebuildStageDone) rebuildStageDone.classList.add("hidden");
+    };
+  }
+
+  if (btnCloseRebuild && rebuildBackdrop) {
+    btnCloseRebuild.onclick = () => rebuildBackdrop.classList.add("hidden");
+  }
+
+  if (rebuildFileInput && rebuildPreview && btnStartRebuild) {
+    rebuildFileInput.onchange = () => {
+      const file = rebuildFileInput.files?.[0];
+      if (file) {
+        rebuildPreview.src = URL.createObjectURL(file);
+        rebuildPreview.classList.remove("hidden");
+        if (rebuildPrompt) rebuildPrompt.classList.add("hidden");
+        btnStartRebuild.disabled = false;
+      }
+    };
+  }
+
+  if (btnStartRebuild) {
+    btnStartRebuild.onclick = async () => {
+      if (rebuildStagePick) rebuildStagePick.classList.add("hidden");
+      if (rebuildStageRun) rebuildStageRun.classList.remove("hidden");
+
+      const items = [...document.querySelectorAll("[data-rebuild-step]")];
+      await rebuildAvatar("user-photo", (stepId) => {
+        const index = items.findIndex((item) => item.dataset.rebuildStep === stepId);
+        items.forEach((item, i) => {
+          const icon = item.querySelector(".step-icon span");
+          if (i < index) {
+            item.className = "flex items-center space-x-3 text-secondary py-1 text-label-sm";
+            if (icon) icon.innerText = "check_circle";
+          } else if (i === index) {
+            item.className = "flex items-center space-x-3 text-primary py-1 text-label-sm font-bold";
+            if (icon) icon.innerText = "progress_activity";
+          }
+        });
+      });
+
+      if (rebuildStageRun) rebuildStageRun.classList.add("hidden");
+      if (rebuildStageDone) rebuildStageDone.classList.remove("hidden");
+    };
+  }
+
+  const btnSeeAvatar = document.querySelector("#btn-rebuild-see-avatar");
+  if (btnSeeAvatar && rebuildBackdrop) {
+    btnSeeAvatar.onclick = () => {
+      rebuildBackdrop.classList.add("hidden");
+      switchTab("fitting-room");
+      showToast("Avatar successfully calibrated!");
+    };
+  }
+
+  // Chat Deep-link to 3D Fitting Room
+  const btnOpen3DFit = document.querySelector("#btn-open-fit-in-3d");
+  if (btnOpen3DFit) {
+    btnOpen3DFit.onclick = () => {
+      switchTab("fitting-room");
+      showToast("Opened look in 3D Fitting Room");
+    };
+  }
+
+  // In-chat Voting
+  document.querySelectorAll("[data-chat-vote]").forEach((btn) => {
+    btn.onclick = () => {
+      const voteType = btn.dataset.chatVote;
+      const wearBtn = document.querySelector("#chatVoteWear");
+      const rethinkBtn = document.querySelector("#chatVoteRethink");
+      const wearPct = document.querySelector("#chatWearPercent");
+      const rethinkPct = document.querySelector("#chatRethinkPercent");
+      const barWear = document.querySelector("#chatBarWear");
+      const barRethink = document.querySelector("#chatBarRethink");
+
+      if (voteType === "wear") {
+        if (wearBtn) wearBtn.className = "flex-1 py-3 px-3 rounded-full bg-secondary text-on-secondary font-title-ui text-label-md flex items-center justify-between shadow-sm active:scale-[0.98] transition-transform ring-2 ring-secondary/30";
+        if (rethinkBtn) rethinkBtn.className = "flex-1 py-3 px-3 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-title-ui text-label-md flex items-center justify-between active:scale-[0.98] transition-all";
+        if (wearPct) wearPct.textContent = "74%";
+        if (rethinkPct) rethinkPct.textContent = "26%";
+        if (barWear) barWear.style.width = "74%";
+        if (barRethink) barRethink.style.width = "26%";
+        showToast("Voted in Chat: Wear it (74%)!");
+      } else {
+        if (rethinkBtn) rethinkBtn.className = "flex-1 py-3 px-3 rounded-full bg-primary text-on-primary font-title-ui text-label-md flex items-center justify-between shadow-sm active:scale-[0.98] transition-transform ring-2 ring-primary/30";
+        if (wearBtn) wearBtn.className = "flex-1 py-3 px-3 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-title-ui text-label-md flex items-center justify-between active:scale-[0.98] transition-all";
+        if (wearPct) wearPct.textContent = "61%";
+        if (rethinkPct) rethinkPct.textContent = "39%";
+        if (barWear) barWear.style.width = "61%";
+        if (barRethink) barRethink.style.width = "39%";
+        showToast("Voted in Chat: Rethink (39%)!");
+      }
+    };
+  });
+
+  // Chat Quick Cues
+  document.querySelectorAll(".btn-chat-cue").forEach((btn) => {
+    btn.onclick = () => {
+      const input = document.querySelector("#chatInput");
+      if (input) {
+        input.value = btn.innerText.trim();
+        input.focus();
+      }
+    };
+  });
+
+  // Chat Form Message Send
+  const chatForm = document.querySelector("#chat-form");
+  if (chatForm) {
+    chatForm.onsubmit = (e) => {
+      e.preventDefault();
+      const input = document.querySelector("#chatInput");
+      const text = input?.value.trim();
+      if (!text) return;
+
+      const container = document.querySelector("#chat-messages-container");
+      if (container) {
+        const bubble = document.createElement("div");
+        bubble.className = "flex items-end gap-2 max-w-[82%] self-end animate-fade-in";
+        bubble.innerHTML = `
+          <div class="bg-primary text-on-primary px-4 py-3 rounded-2xl rounded-br-sm shadow-sm text-body-md leading-relaxed">
+            ${text}
+          </div>
+          <span class="material-symbols-outlined text-[15px] text-secondary mb-1">done_all</span>
+        `;
+        container.appendChild(bubble);
+        bubble.scrollIntoView({ behavior: "smooth" });
+      }
+      input.value = "";
+    };
+  }
+
+  // Sign out in Profile
+  const btnSignout = document.querySelector("#btn-profile-signout");
+  if (btnSignout) {
+    btnSignout.onclick = () => {
+      showToast("Signed out of session");
+    };
+  }
 }
 
-function connectRebuild(avatar) {
-  const dialog = document.querySelector("#rebuild-dialog");
-  const input = document.querySelector("#photo-input");
-  const preview = document.querySelector("#photo-preview");
-  const dropzone = document.querySelector("#dropzone");
-  const start = document.querySelector("#start-rebuild");
-  let photo = null;
-  let running = false;
-
-  const showStage = (stage) => {
-    dialog.querySelectorAll("[data-stage]").forEach((el) => (el.hidden = el.dataset.stage !== stage));
-  };
-
-  const choosePhoto = (file) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    photo = file;
-    if (preview.src) URL.revokeObjectURL(preview.src);
-    preview.src = URL.createObjectURL(file);
-    preview.hidden = false;
-    document.querySelector("#dropzone-empty").hidden = true;
-    start.disabled = false;
-  };
-
-  document.querySelector("#open-rebuild").onclick = () => {
-    if (!running) showStage("pick");
-    dialog.showModal();
-  };
-  dialog.querySelectorAll("[data-close]").forEach((button) => (button.onclick = () => dialog.close()));
-  dialog.onclick = (event) => {
-    if (event.target === dialog) dialog.close();
-  };
-
-  input.onchange = () => choosePhoto(input.files[0]);
-  dropzone.ondragover = (event) => {
-    event.preventDefault();
-    dropzone.classList.add("dragging");
-  };
-  dropzone.ondragleave = () => dropzone.classList.remove("dragging");
-  dropzone.ondrop = (event) => {
-    event.preventDefault();
-    dropzone.classList.remove("dragging");
-    choosePhoto(event.dataTransfer.files[0]);
-  };
-
-  start.onclick = async () => {
-    running = true;
-    showStage("run");
-    const items = [...dialog.querySelectorAll("[data-step]")];
-    items.forEach((item) => (item.className = ""));
-
-    const { modelUrl } = await rebuildAvatar(photo, (stepId) => {
-      const index = items.findIndex((item) => item.dataset.step === stepId);
-      items.forEach((item, i) => (item.className = i < index ? "done" : i === index ? "active" : ""));
-    });
-
-    items.forEach((item) => (item.className = "done"));
-    avatar.src = `${modelUrl}?v=${Date.now()}`;
-    document.querySelector("#avatar-status").textContent = "Rebuilt · just now";
-    running = false;
-    showStage("done");
-  };
-}
-
-render();
+// Initial Render
+renderApp();
