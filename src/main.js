@@ -4,6 +4,8 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { currentUser, posts, history } from "./data.js";
 import { rebuildAvatar } from "./pipeline.js";
+import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
+import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
 import { renderFeedView } from "./views/feed.js";
 import { renderFittingRoomView } from "./views/fitting-room.js";
 import { renderChatView } from "./views/chat.js";
@@ -678,11 +680,90 @@ function attachEventHandlers() {
   // Sign out in Profile
   const btnSignout = document.querySelector("#btn-profile-signout");
   if (btnSignout) {
-    btnSignout.onclick = () => {
-      showToast("Signed out of session");
+    btnSignout.onclick = async () => {
+      btnSignout.disabled = true;
+      await logOut();
+      showAuthScreen();
+      showToast("Signed out");
     };
   }
 }
 
-// Initial Render
-renderApp();
+// --- Account (see src/auth.js) ---
+
+function enterApp(user) {
+  Object.assign(currentUser, {
+    name: user.full_name || user.username,
+    username: user.username,
+    initial: (user.full_name || user.username).charAt(0).toUpperCase(),
+  });
+  currentTab = "feed";
+  renderApp();
+}
+
+function showAuthScreen(message = "") {
+  app.innerHTML = renderAuthScreen();
+  setAuthMode("login");
+  if (message) showAuthErrors(message);
+
+  document.querySelectorAll("[data-auth-mode]").forEach((tab) => {
+    tab.onclick = () => setAuthMode(tab.dataset.authMode);
+  });
+
+  const form = document.querySelector("#auth-form");
+  const submit = document.querySelector("#auth-submit");
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const signup = form.dataset.mode === "signup";
+    const values = Object.fromEntries(new FormData(form));
+    const email = values.email.trim();
+    const { password } = values;
+
+    if (!email || !password) {
+      return showAuthErrors("", {
+        ...(!email && { email: "Enter your email." }),
+        ...(!password && { password: "Enter your password." }),
+      });
+    }
+
+    const label = submit.textContent;
+    submit.disabled = true;
+    submit.textContent = signup ? "Creating account…" : "Signing in…";
+    showAuthErrors();
+    try {
+      if (signup) {
+        await signUp({ email, username: values.username.trim(), password, fullName: values.full_name.trim() });
+      }
+      await logIn(email, password);
+      enterApp(await getMe());
+      showToast(signup ? "Welcome to Outfitted!" : "Signed in");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // 409s name the field that's taken; 422s come back as per-field errors.
+        const fields = { ...err.fields };
+        if (err.status === 409) fields[/username/i.test(err.message) ? "username" : "email"] = err.message;
+        showAuthErrors(err.status === 409 ? "" : err.message, fields);
+      } else {
+        console.error(err);
+        showAuthErrors("Something went wrong. Please try again.");
+      }
+      submit.disabled = false;
+      submit.textContent = label;
+    }
+  };
+}
+
+async function start() {
+  setSessionExpiredHandler(() => showAuthScreen("Your session expired. Please sign in again."));
+  try {
+    if (await restoreSession()) {
+      const user = await getMe();
+      if (user) return enterApp(user);
+    }
+    showAuthScreen();
+  } catch (err) {
+    showAuthScreen(err.message);
+  }
+}
+
+start();

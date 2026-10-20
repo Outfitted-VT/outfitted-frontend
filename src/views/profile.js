@@ -1,5 +1,8 @@
 import { currentUser, history } from "../data.js";
 
+const escapeHtml = (s) =>
+  String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
 export function renderProfileView() {
   return `
     <div class="flex flex-col w-full px-margin space-y-space-md pb-36">
@@ -12,10 +15,10 @@ export function renderProfileView() {
             </div>
             <div class="min-w-0">
               <div class="flex items-center space-x-1.5">
-                <h2 class="font-title-ui text-headline-md text-on-surface font-semibold truncate">${currentUser.name || "Sofoniyas"}</h2>
+                <h2 class="font-title-ui text-headline-md text-on-surface font-semibold truncate">${escapeHtml(currentUser.name || "Sofoniyas")}</h2>
                 <span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
               </div>
-              <p class="font-micro-mono text-micro-mono text-on-surface-variant uppercase tracking-wider">@sofoniyas · NYC / Paris</p>
+              <p class="font-micro-mono text-micro-mono text-on-surface-variant uppercase tracking-wider">@${escapeHtml(currentUser.username || "sofoniyas")}</p>
             </div>
           </div>
           <button class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors" id="btn-profile-settings" aria-label="Settings">
