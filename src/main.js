@@ -1,18 +1,18 @@
-import "@google/model-viewer";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
-import { currentUser, posts, history } from "./data.js";
-import { rebuildAvatar } from "./pipeline.js";
+import { currentUser } from "./data.js";
 import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
+import { initCreate, openCreate } from "./create.js";
+import { mountFitList } from "./feed.js";
+import { getProfile, mediaUrl } from "./fits.js";
+import { escapeHtml } from "./format.js";
 import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
 import { renderFeedView } from "./views/feed.js";
-import { renderFittingRoomView } from "./views/fitting-room.js";
 import { renderChatView } from "./views/chat.js";
 import { renderProfileView } from "./views/profile.js";
 import { renderCommentsDrawer } from "./views/comments-drawer.js";
-import { renderCreateFitSheet } from "./views/create-fit-sheet.js";
-import { renderRebuildModal } from "./views/rebuild-modal.js";
+import { renderCreateSheet } from "./views/create-sheet.js";
 
 // Native Capacitor platform initialization
 if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
@@ -29,10 +29,9 @@ const app = document.querySelector("#app");
 
 // Current app state
 let currentTab = "feed";
-let is3DModelActive = false;
-let isZoomed = false;
-let isSpinning = false;
 let activePostForComments = "sophia";
+let feedList;
+let profileList;
 
 function showToast(message) {
   const existing = document.querySelector(".app-toast");
@@ -63,7 +62,11 @@ function renderApp() {
             <span class="absolute top-2 right-2 w-2 h-2 bg-tertiary-fixed rounded-full shadow-[0_0_8px_rgba(208,240,67,0.8)]"></span>
           </button>
           <button aria-label="Profile" class="w-10 h-10 flex items-center justify-center rounded-full hover:opacity-90 transition-opacity" data-nav="profile">
-            <img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-surface-container-lowest" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBdkI5tA3KwmZ4Zpg1UOO242PpvUP6lUoJcfyIaaz4nLFpF69LXtOt6emgVEW-0d6n46G5tOLaU_tpRSPOnLM3VLkXAeOddFzzr8x6C408zwKPLTtwpLWh5_k5P75XqMvQpXCWxMjU92qnWCv4lD3FKFd0vIVXyF3sUCbaDuGPNWs9P0TCrGAVexl8CLqZOFMogl0dLaThBZKVScxpf04hXjbLNAGYtR8r1vna5fCM3GfKKhxL61-g" />
+            ${
+              currentUser.avatarUrl
+                ? `<img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-surface-container-lowest" src="${escapeHtml(mediaUrl(currentUser.avatarUrl))}" />`
+                : `<span class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md font-bold ring-2 ring-surface-container-lowest">${escapeHtml(currentUser.initial)}</span>`
+            }
           </button>
         </div>
       </div>
@@ -72,11 +75,7 @@ function renderApp() {
     <!-- MAIN VIEWS CONTAINER -->
     <main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface">
       <div id="view-feed" class="view-panel ${currentTab === "feed" ? "" : "hidden"}">
-        ${renderFeedView(posts)}
-      </div>
-
-      <div id="view-fitting-room" class="view-panel ${currentTab === "fitting-room" ? "" : "hidden"}">
-        ${renderFittingRoomView()}
+        ${renderFeedView()}
       </div>
 
       <div id="view-chat" class="view-panel ${currentTab === "chat" ? "" : "hidden"}">
@@ -90,8 +89,7 @@ function renderApp() {
 
     <!-- MODALS & SHEETS -->
     ${renderCommentsDrawer()}
-    ${renderCreateFitSheet()}
-    ${renderRebuildModal()}
+    ${renderCreateSheet()}
 
     <!-- FLOATING BOTTOM NAVIGATION BAR -->
     <div class="fixed bottom-0 inset-x-0 z-40 pointer-events-none pb-safe">
@@ -100,11 +98,6 @@ function renderApp() {
           <button aria-label="Feed" class="nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${currentTab === "feed" ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)]" : "text-on-surface-variant hover:text-on-surface"}" data-nav="feed">
             <span class="material-symbols-outlined text-[22px]">auto_awesome</span>
             <span class="font-micro-mono text-[10px] uppercase tracking-wider mt-0.5 font-bold">Feed</span>
-          </button>
-
-          <button aria-label="Fitting Room" class="nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${currentTab === "fitting-room" ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)]" : "text-on-surface-variant hover:text-on-surface"}" data-nav="fitting-room">
-            <span class="material-symbols-outlined text-[22px]">view_in_ar</span>
-            <span class="font-micro-mono text-[10px] uppercase tracking-wider mt-0.5 font-bold">3D Room</span>
           </button>
 
           <button aria-label="Messages" class="nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${currentTab === "chat" ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)]" : "text-on-surface-variant hover:text-on-surface"}" data-nav="chat">
@@ -125,6 +118,68 @@ function renderApp() {
   `;
 
   attachEventHandlers();
+  mountFits();
+}
+
+// Real fits: the explore feed, your own fits on the profile, and the create sheet.
+function mountFits() {
+  feedList = mountFitList({
+    list: document.querySelector("#feed-fits"),
+    status: document.querySelector("#feed-status"),
+    sentinel: document.querySelector("#feed-sentinel"),
+    path: "/fits",
+    empty: emptyState("No fits yet", "Be the first: post what you're wearing, or try an outfit on."),
+    toast: showToast,
+    onChange: () => profileList?.reload(),
+  });
+  profileList = mountFitList({
+    list: document.querySelector("#profile-fits"),
+    status: document.querySelector("#profile-status"),
+    sentinel: document.querySelector("#profile-sentinel"),
+    path: `/users/${encodeURIComponent(currentUser.username)}/fits`,
+    empty: emptyState("You haven't posted yet", "Your fits will show up here."),
+    toast: showToast,
+    onChange: () => {
+      feedList?.reload();
+      loadProfileCounts();
+    },
+  });
+  initCreate({
+    toast: showToast,
+    onPosted: (fit) => {
+      feedList.prepend(fit);
+      profileList.prepend(fit);
+      loadProfileCounts();
+      switchTab("feed");
+    },
+  });
+  loadProfileCounts();
+}
+
+function emptyState(title, text) {
+  return `
+    <div class="flex flex-col items-center text-center gap-1 py-space-lg">
+      <span class="material-symbols-outlined text-[32px] text-secondary">checkroom</span>
+      <span class="font-title-ui text-title-ui text-on-surface font-semibold">${title}</span>
+      <span class="font-body-md text-body-md text-on-surface-variant">${text}</span>
+    </div>`;
+}
+
+async function loadProfileCounts() {
+  try {
+    const profile = await getProfile(currentUser.username);
+    const counts = {
+      "#profile-fit-count": profile.fit_count,
+      "#profile-follower-count": profile.follower_count,
+      "#profile-following-count": profile.following_count,
+    };
+    for (const [id, value] of Object.entries(counts)) {
+      const el = document.querySelector(id);
+      if (el) el.textContent = value;
+    }
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 function switchTab(tabId) {
@@ -144,7 +199,6 @@ function switchTab(tabId) {
 
   const tabNames = {
     feed: "Feed",
-    "fitting-room": "Fitting Room",
     chat: "Chat",
     profile: "Profile",
   };
@@ -166,98 +220,10 @@ function attachEventHandlers() {
     btnNotif.onclick = () => showToast("No new notifications");
   }
 
-  // Floating New Fit & Profile New Fit buttons
-  const openNewFitSheet = () => {
-    const backdrop = document.querySelector("#create-fit-backdrop");
-    const sheet = document.querySelector("#create-fit-sheet");
-    if (backdrop && sheet) {
-      backdrop.classList.remove("hidden");
-      setTimeout(() => {
-        sheet.classList.remove("translate-y-full");
-      }, 10);
-    }
-  };
-
-  const closeNewFitSheet = () => {
-    const backdrop = document.querySelector("#create-fit-backdrop");
-    const sheet = document.querySelector("#create-fit-sheet");
-    if (sheet) sheet.classList.add("translate-y-full");
-    setTimeout(() => {
-      if (backdrop) backdrop.classList.add("hidden");
-    }, 280);
-  };
-
-  const btnFloatingFit = document.querySelector("#btn-floating-new-fit");
-  if (btnFloatingFit) btnFloatingFit.onclick = openNewFitSheet;
-
-  const btnProfileNewFit = document.querySelector("#btn-profile-new-fit");
-  if (btnProfileNewFit) btnProfileNewFit.onclick = openNewFitSheet;
-
-  const btnCancelCreate = document.querySelector("#btn-cancel-create-fit");
-  if (btnCancelCreate) btnCancelCreate.onclick = closeNewFitSheet;
-
-  const createBackdrop = document.querySelector("#create-fit-backdrop");
-  if (createBackdrop) {
-    createBackdrop.onclick = (e) => {
-      if (e.target === createBackdrop) closeNewFitSheet();
-    };
-  }
-
-  // Create Fit Audience selection
-  document.querySelectorAll(".btn-audience-opt").forEach((btn) => {
-    btn.onclick = () => {
-      document.querySelectorAll(".btn-audience-opt").forEach((b) => {
-        b.className =
-          "flex flex-col items-center justify-center p-space-xs rounded-DEFAULT bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-left btn-audience-opt";
-      });
-      btn.className =
-        "group relative flex flex-col items-center justify-center p-space-xs rounded-DEFAULT bg-primary text-on-primary shadow-sm text-left transition-all btn-audience-opt";
-    };
+  // New fit buttons open the create sheet (src/create.js)
+  document.querySelectorAll("#btn-floating-new-fit, #btn-profile-new-fit").forEach((btn) => {
+    btn.onclick = () => openCreate();
   });
-
-  // Create Fit Duration selection
-  document.querySelectorAll(".btn-duration-opt").forEach((btn) => {
-    btn.onclick = () => {
-      document.querySelectorAll(".btn-duration-opt").forEach((b) => {
-        b.className = "px-space-xs py-0.5 rounded-full text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm btn-duration-opt";
-      });
-      btn.className = "px-space-xs py-0.5 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow-xs font-semibold btn-duration-opt";
-    };
-  });
-
-  // Submit Fit Dilemma
-  const createFitForm = document.querySelector("#create-fit-form");
-  if (createFitForm) {
-    createFitForm.onsubmit = (e) => {
-      e.preventDefault();
-      const title = document.querySelector("#fit-title")?.value || "New Fit Dilemma";
-      const prompt = document.querySelector("#dilemma-prompt")?.value || "";
-
-      // Prepend to posts list in data.js
-      posts.unshift({
-        id: `fit-${Date.now()}`,
-        author: currentUser.name || "Sofoniyas",
-        initial: "S",
-        audience: "Close Friends",
-        time: "Just now",
-        title,
-        caption: prompt,
-        pieces: [
-          { name: "Structured Wool Blazer", color: "#4A5568" },
-          { name: "Silk High-Neck Top", color: "#FFFDD0" },
-          { name: "Relaxed Pleated Trouser", color: "#2D3748" },
-        ],
-        votes: { yes: 1, no: 0 },
-        likes: 1,
-        comments: 0,
-        commentsList: [],
-      });
-
-      closeNewFitSheet();
-      showToast("Fit dilemma published to Circle!");
-      switchTab("feed");
-    };
-  }
 
   // Comments Drawer Open/Close
   const openCommentsDrawer = (postId = "sophia") => {
@@ -380,235 +346,6 @@ function attachEventHandlers() {
     };
   }
 
-  // Feed Post Poll Voting
-  document.querySelectorAll("[data-poll-vote]").forEach((btn) => {
-    btn.onclick = () => {
-      const type = btn.dataset.pollVote;
-      const wearBar = document.querySelector("#poll-wear-bar");
-      const rethinkBar = document.querySelector("#poll-rethink-bar");
-      const wearNum = document.querySelector("#poll-wear-num");
-      const rethinkNum = document.querySelector("#poll-rethink-num");
-      const wearText = document.querySelector("#poll-wear-text");
-
-      if (type === "wear") {
-        if (wearBar) wearBar.style.width = "72%";
-        if (rethinkBar) rethinkBar.style.width = "28%";
-        if (wearNum) wearNum.innerText = "72%";
-        if (rethinkNum) rethinkNum.innerText = "28%";
-        if (wearText) wearText.innerText = "72% majority (Voted)";
-        showToast("Voted: Wear it!");
-      } else {
-        if (wearBar) wearBar.style.width = "64%";
-        if (rethinkBar) rethinkBar.style.width = "36%";
-        if (wearNum) wearNum.innerText = "64%";
-        if (rethinkNum) rethinkNum.innerText = "36%";
-        showToast("Voted: Rethink!");
-      }
-    };
-  });
-
-  // Like Buttons
-  document.querySelectorAll(".btn-toggle-like").forEach((btn) => {
-    btn.onclick = () => {
-      const heart = btn.querySelector(".heart-icon");
-      const count = btn.querySelector(".count-num");
-      const isLiked = heart?.style.fontVariationSettings?.includes("'FILL' 1");
-      if (isLiked) {
-        if (heart) {
-          heart.style.fontVariationSettings = "'FILL' 0";
-          heart.classList.remove("text-error");
-        }
-        if (count) count.innerText = String(Number(count.innerText) - 1);
-      } else {
-        if (heart) {
-          heart.style.fontVariationSettings = "'FILL' 1";
-          heart.classList.add("text-error");
-        }
-        if (count) count.innerText = String(Number(count.innerText) + 1);
-      }
-    };
-  });
-
-  // Bookmark Buttons
-  document.querySelectorAll(".btn-toggle-bookmark").forEach((btn) => {
-    btn.onclick = () => {
-      const icon = btn.querySelector(".bookmark-icon");
-      const isSaved = icon?.style.fontVariationSettings?.includes("'FILL' 1");
-      if (icon) {
-        icon.style.fontVariationSettings = isSaved ? "'FILL' 0" : "'FILL' 1";
-      }
-      showToast(isSaved ? "Removed from Capsule" : "Saved to Capsule");
-    };
-  });
-
-  // Share Buttons
-  document.querySelectorAll(".btn-share-look").forEach((btn) => {
-    btn.onclick = () => {
-      const url = `${window.location.origin}/#post-${btn.dataset.postId || "look"}`;
-      navigator.clipboard?.writeText(url);
-      showToast("Look link copied to clipboard!");
-    };
-  });
-
-  // 3D Fitting Room Camera Controls
-  const avatarImg = document.querySelector("#avatarStageImage");
-  const modelViewer = document.querySelector("#fitting-stage-model");
-
-  document.querySelectorAll(".cam-angle").forEach((btn, idx) => {
-    btn.onclick = () => {
-      document.querySelectorAll(".cam-angle").forEach((b) => {
-        b.className = "cam-angle px-3.5 py-1.5 text-on-surface rounded-full font-label-sm text-label-sm hover:bg-surface-container transition-all duration-200";
-      });
-      btn.className = "cam-angle active-cam px-3.5 py-1.5 bg-primary text-on-primary rounded-full font-label-sm text-label-sm transition-all duration-200";
-
-      const angle = btn.dataset.angle;
-      if (modelViewer && !modelViewer.classList.contains("hidden")) {
-        const orbits = { front: "0deg 82deg auto", side: "90deg 82deg auto", back: "180deg 82deg auto" };
-        modelViewer.cameraOrbit = orbits[angle] || "0deg 82deg auto";
-      }
-      if (avatarImg) {
-        const transforms = ["scale-100 rotate-0", "scale-105 -rotate-1", "scale-105 rotate-1"];
-        avatarImg.className = "w-full h-full object-cover object-center transition-all duration-500 ease-out " + transforms[idx % 3];
-      }
-    };
-  });
-
-  // 360 Spin in Fitting Room
-  const spinBtn = document.querySelector("#spinBtn");
-  const spinBadge = document.querySelector("#spinBadge");
-  if (spinBtn) {
-    spinBtn.onclick = () => {
-      isSpinning = !isSpinning;
-      if (isSpinning) {
-        spinBtn.classList.add("bg-secondary", "text-on-secondary");
-        spinBadge?.classList.remove("hidden");
-        spinBadge?.classList.add("flex");
-        if (modelViewer) modelViewer.setAttribute("auto-rotate", "");
-        if (avatarImg) avatarImg.classList.add("scale-105");
-      } else {
-        spinBtn.classList.remove("bg-secondary", "text-on-secondary");
-        spinBadge?.classList.add("hidden");
-        spinBadge?.classList.remove("flex");
-        if (modelViewer) modelViewer.removeAttribute("auto-rotate");
-        if (avatarImg) avatarImg.classList.remove("scale-105");
-      }
-    };
-  }
-
-  // Toggle 3D Interactive Model vs Photo Render
-  const lightingBtn = document.querySelector("#lightingBtn");
-  if (lightingBtn) {
-    lightingBtn.onclick = () => {
-      is3DModelActive = !is3DModelActive;
-      if (modelViewer && avatarImg) {
-        if (is3DModelActive) {
-          modelViewer.classList.remove("hidden");
-          avatarImg.classList.add("hidden");
-          lightingBtn.classList.add("text-secondary");
-          showToast("Interactive 3D WebGL Avatar Active");
-        } else {
-          modelViewer.classList.add("hidden");
-          avatarImg.classList.remove("hidden");
-          lightingBtn.classList.remove("text-secondary");
-          showToast("Studio Editorial Scene Active");
-        }
-      }
-    };
-  }
-
-  // Zoom Button in Fitting Room
-  const zoomBtn = document.querySelector("#zoomBtn");
-  if (zoomBtn) {
-    zoomBtn.onclick = () => {
-      isZoomed = !isZoomed;
-      if (avatarImg) {
-        avatarImg.style.transform = isZoomed ? "scale(1.2)" : "scale(1)";
-      }
-      zoomBtn.classList.toggle("text-secondary", isZoomed);
-    };
-  }
-
-  // Rebuild Avatar Modal Handlers
-  const btnOpenRebuild = document.querySelector("#btn-open-rebuild-scan");
-  const rebuildBackdrop = document.querySelector("#rebuild-modal-backdrop");
-  const btnCloseRebuild = document.querySelector("#btn-close-rebuild-modal");
-  const rebuildFileInput = document.querySelector("#rebuild-file-input");
-  const rebuildDropzone = document.querySelector("#rebuild-dropzone");
-  const rebuildPreview = document.querySelector("#rebuild-photo-preview");
-  const rebuildPrompt = document.querySelector("#rebuild-dropzone-prompt");
-  const btnStartRebuild = document.querySelector("#btn-start-rebuild-pipeline");
-  const rebuildStagePick = document.querySelector("#rebuild-stage-pick");
-  const rebuildStageRun = document.querySelector("#rebuild-stage-run");
-  const rebuildStageDone = document.querySelector("#rebuild-stage-done");
-
-  if (btnOpenRebuild && rebuildBackdrop) {
-    btnOpenRebuild.onclick = () => {
-      rebuildBackdrop.classList.remove("hidden");
-      if (rebuildStagePick) rebuildStagePick.classList.remove("hidden");
-      if (rebuildStageRun) rebuildStageRun.classList.add("hidden");
-      if (rebuildStageDone) rebuildStageDone.classList.add("hidden");
-    };
-  }
-
-  if (btnCloseRebuild && rebuildBackdrop) {
-    btnCloseRebuild.onclick = () => rebuildBackdrop.classList.add("hidden");
-  }
-
-  if (rebuildFileInput && rebuildPreview && btnStartRebuild) {
-    rebuildFileInput.onchange = () => {
-      const file = rebuildFileInput.files?.[0];
-      if (file) {
-        rebuildPreview.src = URL.createObjectURL(file);
-        rebuildPreview.classList.remove("hidden");
-        if (rebuildPrompt) rebuildPrompt.classList.add("hidden");
-        btnStartRebuild.disabled = false;
-      }
-    };
-  }
-
-  if (btnStartRebuild) {
-    btnStartRebuild.onclick = async () => {
-      if (rebuildStagePick) rebuildStagePick.classList.add("hidden");
-      if (rebuildStageRun) rebuildStageRun.classList.remove("hidden");
-
-      const items = [...document.querySelectorAll("[data-rebuild-step]")];
-      await rebuildAvatar("user-photo", (stepId) => {
-        const index = items.findIndex((item) => item.dataset.rebuildStep === stepId);
-        items.forEach((item, i) => {
-          const icon = item.querySelector(".step-icon span");
-          if (i < index) {
-            item.className = "flex items-center space-x-3 text-secondary py-1 text-label-sm";
-            if (icon) icon.innerText = "check_circle";
-          } else if (i === index) {
-            item.className = "flex items-center space-x-3 text-primary py-1 text-label-sm font-bold";
-            if (icon) icon.innerText = "progress_activity";
-          }
-        });
-      });
-
-      if (rebuildStageRun) rebuildStageRun.classList.add("hidden");
-      if (rebuildStageDone) rebuildStageDone.classList.remove("hidden");
-    };
-  }
-
-  const btnSeeAvatar = document.querySelector("#btn-rebuild-see-avatar");
-  if (btnSeeAvatar && rebuildBackdrop) {
-    btnSeeAvatar.onclick = () => {
-      rebuildBackdrop.classList.add("hidden");
-      switchTab("fitting-room");
-      showToast("Avatar successfully calibrated!");
-    };
-  }
-
-  // Chat Deep-link to 3D Fitting Room
-  const btnOpen3DFit = document.querySelector("#btn-open-fit-in-3d");
-  if (btnOpen3DFit) {
-    btnOpen3DFit.onclick = () => {
-      switchTab("fitting-room");
-      showToast("Opened look in 3D Fitting Room");
-    };
-  }
-
   // In-chat Voting
   document.querySelectorAll("[data-chat-vote]").forEach((btn) => {
     btn.onclick = () => {
@@ -696,6 +433,8 @@ function enterApp(user) {
     name: user.full_name || user.username,
     username: user.username,
     initial: (user.full_name || user.username).charAt(0).toUpperCase(),
+    bio: user.bio,
+    avatarUrl: user.avatar?.url || null,
   });
   currentTab = "feed";
   renderApp();

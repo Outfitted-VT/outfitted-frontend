@@ -13,7 +13,7 @@ const TOKEN_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
 const isNative = () => Boolean(window.Capacitor?.isNativePlatform());
 
-function apiBase() {
+export function apiBase() {
   if (window.__API_BASE__) return window.__API_BASE__;
   if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE;
   if (window.Capacitor?.isNativePlatform()) {
@@ -51,7 +51,7 @@ async function send(path, init = {}) {
   }
 }
 
-async function parse(res) {
+export async function parse(res) {
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(res.status, data?.detail);
