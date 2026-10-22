@@ -73,10 +73,25 @@ const json = (method, body) => ({
   body: JSON.stringify(body),
 });
 
-export async function createFit({ imageIds, caption, items }) {
+export async function createFit({ imageIds, caption, items, occasionTags = [], styleTags = [] }) {
   return parse(
-    await apiFetch("/fits", json("POST", { image_ids: imageIds, caption: caption || null, items }))
+    await apiFetch(
+      "/fits",
+      json("POST", {
+        image_ids: imageIds,
+        caption: caption || null,
+        items,
+        occasion_tags: occasionTags,
+        style_tags: styleTags,
+      })
+    )
   );
+}
+
+// Suggested pieces and tags for one of your images: { items, occasion_tags, style_tags }.
+// Items are already in the shape createFit accepts (source "detected", maybe a pin).
+export async function detectPieces(imageId) {
+  return parse(await apiFetch("/detections", json("POST", { image_id: imageId })));
 }
 
 export async function deleteFit(fitId) {

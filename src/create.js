@@ -2,7 +2,7 @@
 
 import { ApiError } from "./auth.js";
 import { currentUser } from "./data.js";
-import { categoryOf, createFit, createTryOn, mediaUrl, uploadImage } from "./fits.js";
+import { categoryOf, createFit, createTryOn, detectPieces, mediaUrl, uploadImage } from "./fits.js";
 import { escapeHtml } from "./format.js";
 import { aiBadge } from "./views/fit-card.js";
 
@@ -26,8 +26,12 @@ function freshState() {
     screen: "menu",
     // Each photo is a local file not uploaded yet ({ file, preview }) or an uploaded image ({ image }).
     photos: [],
+    // Pieces in the shape POST /fits takes, plus `auto` for untouched suggestions.
     items: [],
+    tags: { occasion: [], style: [] },
     category: "top",
+    editing: null, // index of the piece open in the editor, or null when adding
+    detect: { cover: null, run: 0, status: "idle", found: 0 },
     tryon: { person: null, outfit: null, slot: null, result: null, run: 0 },
   };
 }
@@ -71,14 +75,16 @@ export function openCreate(screen = "menu") {
 }
 
 function closeCreate() {
-  state.tryon.run++; // ignore a try-on that finishes after closing
+  // Ignore a try-on or detection that finishes after closing.
+  state.tryon.run++;
+  state.detect.run++;
   $("#create-sheet").classList.add("translate-y-full");
   setTimeout(() => {
     $("#create-backdrop").classList.add("hidden");
     revokePreviews();
     state = freshState();
-    renderPhotos();
-    renderItems();
+    setItemEditorOpen(false);
+    renderCompose();
     $("#compose-caption").value = "";
   }, 280);
 }
@@ -123,6 +129,8 @@ const pickFiles = (input) =>
 function renderCompose() {
   renderPhotos();
   renderItems();
+  renderTags();
+  renderDetectStatus();
   updateCaptionCount();
   showError("#compose-error");
 }
@@ -167,46 +175,183 @@ function renderPhotos() {
       renderPhotos();
     };
   });
+  detectCover();
+}
+
+// --- automatic piece detection on the cover photo ---
+
+// Suggestions are marked `auto` until the user edits them; a new cover replaces only those.
+async function detectCover() {
+  const d = state.detect;
+  const cover = state.photos[0] || null;
+  if (cover === d.cover) return;
+  d.cover = cover;
+  const run = ++d.run;
+  const stale = () => run !== d.run;
+
+  if (!cover) {
+    dropSuggestions();
+    d.status = "idle";
+    renderDetectStatus();
+    return;
+  }
+  d.status = "running";
+  renderDetectStatus();
+  try {
+    // Uploading the cover now also means posting won't upload it again.
+    if (!cover.image) cover.image = await uploadImage(cover.file);
+    if (stale()) return;
+    const result = await detectPieces(cover.image.id);
+    if (stale()) return;
+    dropSuggestions();
+    state.items.push(...result.items.map((item) => ({ ...item, auto: true })));
+    addTags("occasion", result.occasion_tags, true);
+    addTags("style", result.style_tags, true);
+    d.status = "done";
+    d.found = result.items.length;
+  } catch (err) {
+    if (stale()) return;
+    console.error(err);
+    d.status = "failed";
+  }
+  renderItems();
+  renderTags();
+  renderDetectStatus();
+}
+
+function dropSuggestions() {
+  state.items = state.items.filter((item) => !item.auto);
+  for (const kind of ["occasion", "style"]) {
+    state.tags[kind] = state.tags[kind].filter((tag) => !tag.auto);
+  }
+  renderItems();
+  renderTags();
+}
+
+function renderDetectStatus() {
+  const d = state.detect;
+  const messages = {
+    idle: ["photo_camera", "Add a photo and we'll tag the pieces for you."],
+    running: ["progress_activity", "Finding the pieces and similar products…"],
+    done: d.found
+      ? ["auto_awesome", `Found ${d.found} piece${d.found === 1 ? "" : "s"}. Tap one to edit it.`]
+      : ["auto_awesome", "We couldn't spot any pieces. Add them yourself."],
+    failed: ["info", "Couldn't detect the pieces right now. Add them yourself."],
+  };
+  const [icon, text] = messages[d.status];
+  $("#compose-detect").innerHTML = `
+    <span class="material-symbols-outlined text-[16px] ${d.status === "running" ? "animate-spin" : "text-secondary"}">${icon}</span>
+    <span>${text}</span>`;
+}
+
+// --- pieces ---
+
+const hostOf = (url) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+};
+
+// Similar products for a detected piece; the selected one is the piece's shop link.
+function matchStrip(item, i) {
+  const matches = item.matches || [];
+  if (!matches.length) return "";
+  return `
+    <div class="flex flex-col gap-1 pl-space-xs">
+      <span class="font-label-sm text-label-sm text-on-surface-variant font-normal">Shop similar · tap to choose, tap again to remove</span>
+      <div class="flex gap-space-xs overflow-x-auto -mx-margin px-margin pb-1">
+        ${matches
+          .map((match, m) => {
+            const selected = item.url === match.link;
+            return `
+              <button type="button" data-match="${i}:${m}" aria-pressed="${selected}"
+                class="match-card flex-shrink-0 w-36 flex items-center gap-1.5 p-1.5 rounded-DEFAULT text-left border transition-colors">
+                <span class="w-11 h-11 rounded bg-surface-container-high overflow-hidden flex-shrink-0">
+                  ${match.thumbnail ? `<img class="w-full h-full object-cover" alt="" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(match.thumbnail)}" />` : ""}
+                </span>
+                <span class="flex flex-col min-w-0">
+                  <span class="font-label-sm text-label-sm text-on-surface font-semibold truncate">${escapeHtml(match.source || hostOf(match.link))}</span>
+                  <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">${escapeHtml(match.price || match.title)}</span>
+                </span>
+              </button>`;
+          })
+          .join("")}
+      </div>
+    </div>`;
 }
 
 function renderItems() {
   $("#compose-items").innerHTML = state.items
     .map((item, i) => {
       const category = categoryOf(item.category);
-      const detail = [item.brand, item.color].filter(Boolean).map(escapeHtml).join(" · ");
+      const detail = [item.brand, item.color, item.material].filter(Boolean).map(escapeHtml).join(" · ");
+      const link = item.url
+        ? `<span class="inline-flex items-center gap-0.5 text-secondary font-semibold"><span class="material-symbols-outlined text-[13px]">link</span>${escapeHtml(hostOf(item.url))}</span>`
+        : "";
       return `
+       <div class="flex flex-col gap-space-xs">
         <div class="flex items-center gap-space-sm bg-surface-container-low rounded-DEFAULT p-space-xs pr-1">
-          <span class="w-10 h-10 rounded-full bg-surface-container-lowest flex items-center justify-center text-on-surface-variant flex-shrink-0">
-            <span class="material-symbols-outlined text-[20px]">${category.icon}</span>
-          </span>
-          <span class="flex flex-col min-w-0 flex-1">
-            <span class="font-label-md text-label-md text-on-surface font-semibold truncate">${escapeHtml(item.name)}</span>
-            <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">${category.label}${detail ? ` · ${detail}` : ""}</span>
-          </span>
+          <button type="button" data-item-edit="${i}" class="flex items-center gap-space-sm min-w-0 flex-1 text-left" aria-label="Edit ${escapeHtml(item.name)}">
+            <span class="relative w-10 h-10 rounded-full bg-surface-container-lowest flex items-center justify-center text-on-surface-variant flex-shrink-0">
+              <span class="material-symbols-outlined text-[20px]">${category.icon}</span>
+              ${item.auto ? `<span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center" title="Detected automatically"><span class="material-symbols-outlined text-[11px] text-tertiary-fixed" style="font-variation-settings:'FILL' 1">auto_awesome</span></span>` : ""}
+            </span>
+            <span class="flex flex-col min-w-0 flex-1">
+              <span class="font-label-md text-label-md text-on-surface font-semibold truncate first-letter:uppercase">${escapeHtml(item.name)}</span>
+              <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">${category.label}${detail ? ` · ${detail}` : ""}</span>
+              ${link ? `<span class="font-label-sm text-label-sm truncate">${link}</span>` : ""}
+            </span>
+          </button>
           <button type="button" data-item-remove="${i}" aria-label="Remove ${escapeHtml(item.name)}"
             class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
             <span class="material-symbols-outlined text-[18px]">close</span>
           </button>
-        </div>`;
+        </div>
+        ${matchStrip(item, i)}
+       </div>`;
     })
     .join("");
-  $("#compose-item-count").textContent = state.items.length
-    ? `${state.items.length} piece${state.items.length === 1 ? "" : "s"}`
-    : "Tag what you're wearing";
-  document.querySelectorAll("[data-item-remove]").forEach((button) => {
+  document.querySelectorAll("[data-match]").forEach((button) => {
     button.onclick = () => {
-      state.items.splice(Number(button.dataset.itemRemove), 1);
+      const [i, m] = button.dataset.match.split(":").map(Number);
+      const item = state.items[i];
+      const link = item.matches[m].link;
+      item.url = item.url === link ? null : link;
       renderItems();
     };
   });
+  $("#compose-item-count").textContent = state.items.length
+    ? `${state.items.length} piece${state.items.length === 1 ? "" : "s"}`
+    : "";
+  document.querySelectorAll("[data-item-remove]").forEach((button) => {
+    button.onclick = () => {
+      state.items.splice(Number(button.dataset.itemRemove), 1);
+      if (state.editing !== null) setItemEditorOpen(false);
+      renderItems();
+    };
+  });
+  document.querySelectorAll("[data-item-edit]").forEach((button) => {
+    button.onclick = () => setItemEditorOpen(true, Number(button.dataset.itemEdit));
+  });
 }
 
-function setItemEditorOpen(open) {
+// index: the piece to edit, or omit to add a new one.
+function setItemEditorOpen(open, index = null) {
+  state.editing = open ? index : null;
   $("#item-editor").classList.toggle("hidden", !open);
   $("#item-open").classList.toggle("hidden", open);
   if (!open) return;
-  ["#item-name", "#item-brand", "#item-color"].forEach((id) => ($(id).value = ""));
-  selectCategory("top");
+  const item = index === null ? null : state.items[index];
+  $("#item-name").value = item?.name || "";
+  $("#item-brand").value = item?.brand || "";
+  $("#item-color").value = item?.color || "";
+  $("#item-url").value = item?.url || "";
+  $("#item-url-error").classList.add("hidden");
+  $("#item-add").textContent = item ? "Save piece" : "Add piece";
+  selectCategory(item?.category || "top");
+  $("#item-editor").scrollIntoView({ block: "nearest" });
   $("#item-name").focus();
 }
 
@@ -217,24 +362,121 @@ function selectCategory(id) {
   });
 }
 
-function addItem() {
+function saveItem() {
   const name = $("#item-name").value.trim();
   if (!name) {
     $("#item-name").focus();
     return;
   }
-  state.items.push({
+  const url = $("#item-url").value.trim();
+  if (url && !/^https?:\/\/\S+\.\S+/i.test(url)) {
+    $("#item-url-error").classList.remove("hidden");
+    $("#item-url").focus();
+    return;
+  }
+  const fields = {
     category: state.category,
     name,
     brand: $("#item-brand").value.trim() || null,
     color: $("#item-color").value.trim() || null,
-  });
+    url: url || null,
+  };
+  if (state.editing === null) {
+    state.items.push({ ...fields, source: "user" });
+  } else {
+    // Edited suggestions keep source "detected" (that's where they came from) but stop being
+    // `auto`, so a new cover photo won't replace them.
+    const item = state.items[state.editing];
+    state.items[state.editing] = { ...item, ...fields, auto: false };
+  }
   renderItems();
   setItemEditorOpen(false);
 }
 
+// --- tags ---
+
+// tags: [{ value, auto }]; auto ones came from detection and are replaced with the cover.
+function addTags(kind, values, auto = false) {
+  const list = state.tags[kind];
+  for (const raw of values) {
+    const value = raw.trim().replace(/\s+/g, " ").toLowerCase().slice(0, 30);
+    if (value && list.length < 10 && !list.some((tag) => tag.value === value)) list.push({ value, auto });
+  }
+}
+
+function renderTags() {
+  for (const kind of ["occasion", "style"]) {
+    const row = $(`[data-tag-kind="${kind}"]`);
+    row.querySelectorAll(".tag-chip, .tag-add, .tag-input").forEach((el) => el.remove());
+    const chips = state.tags[kind].map(
+      (tag, i) => `
+        <span class="tag-chip inline-flex items-center gap-0.5 h-8 pl-3 pr-1 rounded-full bg-surface-container-low border border-surface-container-high font-label-md text-label-md text-on-surface">
+          ${escapeHtml(tag.value)}
+          <button type="button" data-tag-remove="${kind}:${i}" aria-label="Remove ${escapeHtml(tag.value)}"
+            class="w-6 h-6 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container">
+            <span class="material-symbols-outlined text-[15px]">close</span>
+          </button>
+        </span>`
+    );
+    if (state.tags[kind].length < 10) {
+      chips.push(`
+        <button type="button" class="tag-add inline-flex items-center gap-0.5 h-8 px-3 rounded-full border border-dashed border-outline-variant font-label-md text-label-md text-on-surface-variant" data-tag-add="${kind}">
+          <span class="material-symbols-outlined text-[15px]">add</span>Add
+        </button>`);
+    }
+    row.insertAdjacentHTML("beforeend", chips.join(""));
+  }
+  document.querySelectorAll("[data-tag-remove]").forEach((button) => {
+    button.onclick = () => {
+      const [kind, i] = button.dataset.tagRemove.split(":");
+      state.tags[kind].splice(Number(i), 1);
+      renderTags();
+    };
+  });
+  document.querySelectorAll("[data-tag-add]").forEach((button) => {
+    button.onclick = () => openTagInput(button);
+  });
+}
+
+function openTagInput(button) {
+  const kind = button.dataset.tagAdd;
+  const input = document.createElement("input");
+  input.className =
+    "tag-input h-8 w-32 px-3 rounded-full bg-surface-container-lowest border border-secondary font-label-md text-label-md text-on-surface focus:outline-none";
+  input.maxLength = 30;
+  input.placeholder = kind === "occasion" ? "e.g. brunch" : "e.g. streetwear";
+  button.replaceWith(input);
+  input.focus();
+  let done = false;
+  const finish = (save) => {
+    if (done) return;
+    done = true;
+    if (save) addTags(kind, [input.value]);
+    renderTags();
+  };
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finish(true);
+    } else if (e.key === "Escape") {
+      finish(false);
+    }
+  };
+  input.onblur = () => finish(true);
+}
+
 function updateCaptionCount() {
   $("#compose-caption-count").textContent = `${$("#compose-caption").value.length} / 2200`;
+}
+
+// --- posting ---
+
+function itemsForPost(imageIds) {
+  return state.items.map(({ auto, matches, ...item }) => ({
+    ...item,
+    // A pin must point at one of this fit's photos (the cover may have been removed).
+    pin: item.pin && imageIds.includes(item.pin.image_id) ? item.pin : null,
+  }));
 }
 
 async function submitFit(event) {
@@ -248,10 +490,13 @@ async function submitFit(event) {
     const images = await Promise.all(state.photos.map((p) => p.image || uploadImage(p.file)));
     images.forEach((image, i) => (state.photos[i].image = image)); // don't re-upload on retry
     submit.textContent = "Posting…";
+    const imageIds = images.map((image) => image.id);
     const fit = await createFit({
-      imageIds: images.map((image) => image.id),
+      imageIds,
       caption: $("#compose-caption").value.trim(),
-      items: state.items,
+      items: itemsForPost(imageIds),
+      occasionTags: state.tags.occasion.map((tag) => tag.value),
+      styleTags: state.tags.style.map((tag) => tag.value),
     });
     closeCreate();
     hooks.toast("Fit posted");
@@ -358,8 +603,10 @@ function compare(which) {
 }
 
 function postTryOn() {
+  // The try-on result is already uploaded, so detection starts right away.
   state.photos = [{ image: state.tryon.result.result_image }];
   state.items = [];
+  state.tags = { occasion: [], style: [] };
   show("compose");
 }
 
@@ -388,11 +635,11 @@ export function initCreate({ onPosted, toast }) {
   $("#compose-caption").oninput = updateCaptionCount;
   $("#item-open").onclick = () => setItemEditorOpen(true);
   $("#item-cancel").onclick = () => setItemEditorOpen(false);
-  $("#item-add").onclick = addItem;
+  $("#item-add").onclick = saveItem;
   $("#item-name").onkeydown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      addItem();
+      saveItem();
     }
   };
   document.querySelectorAll("[data-item-category]").forEach((chip) => {

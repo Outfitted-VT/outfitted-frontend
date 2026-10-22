@@ -45,7 +45,7 @@ function items(fit) {
         ${fit.items
           .map((item) => {
             const category = categoryOf(item.category);
-            const detail = [item.brand, item.color].filter(Boolean).map(escapeHtml).join(" · ");
+            const detail = [item.brand, item.color, item.material].filter(Boolean).map(escapeHtml).join(" · ");
             const tag = item.url ? "a" : "div";
             const link = item.url ? `href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer"` : "";
             return `
@@ -54,14 +54,25 @@ function items(fit) {
                   <span class="material-symbols-outlined text-[17px]">${category.icon}</span>
                 </span>
                 <span class="flex flex-col min-w-0">
-                  <span class="font-label-md text-label-md text-on-surface font-semibold truncate">${escapeHtml(item.name)}</span>
+                  <span class="font-label-md text-label-md text-on-surface font-semibold truncate first-letter:uppercase">${escapeHtml(item.name)}</span>
                   <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">${detail || category.label}</span>
                 </span>
-                ${item.url ? `<span class="material-symbols-outlined text-[15px] text-secondary">north_east</span>` : ""}
+                ${item.url ? `<span class="flex-shrink-0 inline-flex items-center gap-0.5 pl-1 font-label-sm text-label-sm text-secondary font-semibold">Shop<span class="material-symbols-outlined text-[14px]">north_east</span></span>` : ""}
               </${tag}>`;
           })
           .join("")}
       </div>
+    </div>`;
+}
+
+function tags(fit) {
+  const all = [...(fit.occasion_tags || []), ...(fit.style_tags || [])];
+  if (!all.length) return "";
+  return `
+    <div class="flex flex-wrap gap-1.5">
+      ${[...new Set(all)]
+        .map((tag) => `<span class="px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">#${escapeHtml(tag)}</span>`)
+        .join("")}
     </div>`;
 }
 
@@ -91,6 +102,8 @@ export function renderFitCard(fit, { mine = false } = {}) {
       <div class="-mx-space-md">${photos(fit)}</div>
 
       ${fit.caption ? `<p class="font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-line">${escapeHtml(fit.caption)}</p>` : ""}
+
+      ${tags(fit)}
 
       ${items(fit)}
 

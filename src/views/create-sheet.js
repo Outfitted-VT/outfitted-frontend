@@ -72,8 +72,9 @@ function composeScreen() {
       <div class="flex flex-col gap-space-xs">
         <div class="flex items-center justify-between">
           ${label("Pieces")}
-          <span class="font-label-sm text-label-sm text-on-surface-variant" id="compose-item-count">Tag what you're wearing</span>
+          <span class="font-label-sm text-label-sm text-on-surface-variant" id="compose-item-count"></span>
         </div>
+        <div class="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant font-normal" id="compose-detect" aria-live="polite"></div>
         <div class="flex flex-col gap-space-xs" id="compose-items"></div>
 
         <div class="flex flex-col gap-space-sm bg-surface-container-low rounded-lg p-space-sm hidden" id="item-editor">
@@ -83,6 +84,8 @@ function composeScreen() {
             <input class="${input} bg-surface-container-lowest" id="item-brand" maxlength="100" placeholder="Brand (optional)" />
             <input class="${input} bg-surface-container-lowest" id="item-color" maxlength="50" placeholder="Color (optional)" />
           </div>
+          <input class="${input} bg-surface-container-lowest" id="item-url" type="url" inputmode="url" maxlength="2048" autocapitalize="none" placeholder="Shop link (optional)" />
+          <p class="hidden font-label-sm text-label-sm text-error font-normal" id="item-url-error">Enter a link that starts with https://</p>
           <div class="flex gap-space-xs">
             <button type="button" id="item-cancel" class="h-10 px-4 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold">Cancel</button>
             <button type="button" id="item-add" class="h-10 flex-1 rounded-full bg-primary text-on-primary font-label-md text-label-md font-semibold">Add piece</button>
@@ -93,6 +96,18 @@ function composeScreen() {
           class="h-11 rounded-DEFAULT border border-dashed border-outline-variant text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-container-low transition-colors">
           <span class="material-symbols-outlined text-[18px]">add</span>Add a piece
         </button>
+      </div>
+
+      <div class="flex flex-col gap-space-xs">
+        ${label("Tags")}
+        <div class="flex flex-col gap-space-xs" id="compose-tags">
+          <div class="flex flex-wrap items-center gap-1.5" data-tag-kind="occasion">
+            <span class="font-label-sm text-label-sm text-on-surface-variant w-16">Occasion</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5" data-tag-kind="style">
+            <span class="font-label-sm text-label-sm text-on-surface-variant w-16">Style</span>
+          </div>
+        </div>
       </div>
 
       <p id="compose-error" role="alert" class="hidden font-label-md text-label-md text-on-error-container bg-error-container rounded-DEFAULT px-space-sm py-space-xs"></p>
