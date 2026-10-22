@@ -18,8 +18,7 @@ export function renderAuthScreen() {
     <div class="min-h-screen flex flex-col bg-surface pt-safe pb-safe">
       <div class="flex-1 flex flex-col justify-center w-full max-w-sm mx-auto px-margin py-space-2xl">
         <div class="flex items-center gap-space-xs mb-space-xl">
-          <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold text-sm tracking-tighter">OF</div>
-          <span class="font-title-editorial text-title-editorial tracking-tight text-on-surface font-semibold">Outfitted</span>
+          <span class="wordmark wordmark-lg" role="img" aria-label="Outfitted">OUTFITTED<span class="wordmark-dot">.</span></span>
         </div>
 
         <h1 class="font-display-hero-mobile text-display-hero-mobile text-on-surface" id="auth-heading">Welcome back</h1>

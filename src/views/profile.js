@@ -19,7 +19,7 @@ const divider = `<div class="w-[1px] h-8 bg-surface-container-highest"></div>`;
 
 export function renderProfileView() {
   return `
-    <div class="flex flex-col w-full px-margin space-y-space-md pb-36">
+    <div class="flex flex-col w-full px-margin space-y-space-md pb-8">
       <!-- Profile Header Card -->
       <section class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col space-y-space-sm mt-space-xs">
         <div class="flex items-center space-x-space-sm">

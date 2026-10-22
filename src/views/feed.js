@@ -113,7 +113,7 @@ export function renderFeedView() {
       </section>
 
       <!-- MAIN FEED: REAL FITS (loaded by src/feed.js) -->
-      <section class="px-margin flex flex-col gap-space-lg mt-space-xs pb-36" aria-label="Fits">
+      <section class="px-margin flex flex-col gap-space-lg mt-space-xs pb-8" aria-label="Fits">
         <div class="flex items-baseline justify-between">
           <span class="font-micro-mono text-micro-mono uppercase tracking-widest text-on-surface-variant font-semibold">Latest fits</span>
         </div>
@@ -121,14 +121,6 @@ export function renderFeedView() {
         <div class="py-space-md flex justify-center" id="feed-status"></div>
         <div id="feed-sentinel" aria-hidden="true"></div>
       </section>
-
-      <!-- FLOATING CTA: NEW FIT -->
-      <div class="fixed bottom-24 inset-x-0 z-40 pointer-events-none flex justify-center px-margin">
-        <button class="pointer-events-auto h-12 px-5 rounded-full bg-primary text-on-primary font-title-ui text-title-ui flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-95 transition-transform duration-150" id="btn-floating-new-fit">
-          <span class="material-symbols-outlined text-[20px] text-tertiary-fixed">add_circle</span>
-          <span>New fit</span>
-        </button>
-      </div>
     </div>
   `;
 }

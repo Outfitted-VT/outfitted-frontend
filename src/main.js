@@ -49,12 +49,9 @@ function renderApp() {
     <!-- GLOBAL PERSISTENT HEADER -->
     <header class="fixed top-0 inset-x-0 z-40 bg-surface/85 backdrop-blur-xl pt-safe shadow-[0_1px_12px_rgba(0,0,0,0.03)] border-b border-surface-container-high/40">
       <div class="h-16 px-margin flex items-center justify-between">
-        <div class="flex items-center gap-space-xs">
-          <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold text-xs tracking-tighter">
-            OF
-          </div>
-          <span class="font-title-editorial text-title-editorial tracking-tight text-on-surface font-semibold">Outfitted</span>
-          <span class="font-micro-mono text-micro-mono uppercase text-secondary font-bold tracking-widest pl-space-2xs pt-0.5" id="header-tab-indicator">Feed</span>
+        <div class="flex items-baseline gap-space-xs">
+          <button type="button" class="wordmark" data-nav="feed" aria-label="Outfitted home">OUTFITTED<span class="wordmark-dot">.</span></button>
+          <span class="font-micro-mono text-micro-mono uppercase text-secondary font-bold tracking-widest pl-space-2xs" id="header-tab-indicator">Feed</span>
         </div>
         <div class="flex items-center gap-space-xs">
           <button aria-label="Notifications" class="w-10 h-10 relative flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-high transition-colors" id="btn-notifications">
@@ -93,8 +90,8 @@ function renderApp() {
 
     <!-- FLOATING BOTTOM NAVIGATION BAR -->
     <div class="fixed bottom-0 inset-x-0 z-40 pointer-events-none pb-safe">
-      <div class="px-margin pb-space-sm flex justify-center">
-        <nav class="pointer-events-auto w-full max-w-sm h-16 bg-surface-container-lowest/90 backdrop-blur-2xl rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.08)] px-space-xs flex items-center justify-between border border-surface-container-high/60">
+      <div class="px-margin pb-space-sm flex items-center justify-center gap-space-xs">
+        <nav class="pointer-events-auto flex-1 max-w-[19rem] h-16 bg-surface-container-lowest/90 backdrop-blur-2xl rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.08)] px-space-xs flex items-center justify-between border border-surface-container-high/60">
           <button aria-label="Feed" class="nav-tab group relative flex-1 h-12 flex flex-col items-center justify-center rounded-full transition-all duration-200 ${currentTab === "feed" ? "text-on-surface bg-surface-container-highest shadow-[0_2px_12px_rgba(0,0,0,0.06)]" : "text-on-surface-variant hover:text-on-surface"}" data-nav="feed">
             <span class="material-symbols-outlined text-[22px]">auto_awesome</span>
             <span class="font-micro-mono text-[10px] uppercase tracking-wider mt-0.5 font-bold">Feed</span>
@@ -113,6 +110,12 @@ function renderApp() {
             <span class="font-micro-mono text-[10px] uppercase tracking-wider mt-0.5 font-bold">Profile</span>
           </button>
         </nav>
+
+        <!-- New fit: docked beside the tabs, opens the create sheet (not a tab) -->
+        <button type="button" aria-label="New fit" id="btn-nav-new-fit"
+          class="pointer-events-auto flex-shrink-0 w-16 h-16 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-[0_12px_32px_rgba(0,0,0,0.22)] active:scale-90 transition-transform">
+          <span class="material-symbols-outlined text-[30px] text-tertiary-fixed">add</span>
+        </button>
       </div>
     </div>
   `;
@@ -221,7 +224,7 @@ function attachEventHandlers() {
   }
 
   // New fit buttons open the create sheet (src/create.js)
-  document.querySelectorAll("#btn-floating-new-fit, #btn-profile-new-fit").forEach((btn) => {
+  document.querySelectorAll("#btn-nav-new-fit, #btn-profile-new-fit").forEach((btn) => {
     btn.onclick = () => openCreate();
   });
 
