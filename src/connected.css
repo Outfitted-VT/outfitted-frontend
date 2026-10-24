@@ -1,0 +1,145 @@
+/* Styles for the screens connected to the backend: sign-in, create sheet (post + try-on),
+   fit cards, profile. Kept separate from styles.css so a restyle there can't drop them. */
+
+/* Tailwind runs without its base reset (it would restyle the redesign), but its border
+   utilities need the reset's border-style. styles.css has no class names containing "border",
+   so this only reaches Tailwind markup. Tailwind's own rules load later and set the widths. */
+[class*="border"] {
+  border-width: 0;
+  border-style: solid;
+  border-color: #e5e7eb;
+}
+
+/* Also from the reset: without max-width, a large photo's natural size (e.g. 1536px) props the
+   page wider than the phone. Only Tailwind-styled images (w-full / w-N) are affected. */
+img[class*="w-"] {
+  max-width: 100%;
+}
+
+/* The page grid lets the main column grow to its widest content; a fit card's photo carousel
+   then stretched the whole page. Let the column shrink to the screen instead. */
+#main-content-region {
+  min-width: 0;
+}
+
+/* Piece chips that link to a shop are styled as chips, not as the page's text links. */
+[data-fit-id] a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---------- Fits, create sheet & try-on ---------- */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  background: rgb(17 17 17 / 0.72);
+  color: #fff;
+  font: 600 11px/14px "Inter", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.ai-badge .material-symbols-outlined {
+  color: #d0f043;
+  font-variation-settings: "FILL" 1;
+}
+
+.fit-slides {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.fit-slide {
+  position: relative;
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  max-height: 70vh;
+  background: #eeeeeb;
+}
+.fit-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #c4c7c7;
+  transition: width 0.2s, background 0.2s;
+}
+.fit-dot.active {
+  width: 16px;
+  background: #1a1c1b;
+}
+
+.item-chip {
+  background: #f4f4f1;
+  color: #444748;
+}
+.item-chip[aria-pressed="true"] {
+  background: #000;
+  color: #fff;
+}
+.compare-tab {
+  color: #444748;
+}
+.compare-tab[aria-selected="true"] {
+  background: #fff;
+  color: #1a1c1b;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+.tryon-slot {
+  aspect-ratio: 3 / 4;
+}
+
+/* A soft light sweeping over the photo while the try-on generates. */
+.tryon-generating img {
+  filter: saturate(0.6) brightness(1.03);
+}
+.tryon-scan {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgb(208 240 67 / 0.0) 35%, rgb(208 240 67 / 0.45) 50%, rgb(61 88 255 / 0.25) 55%, transparent 70%);
+  background-size: 100% 220%;
+  animation: tryonScan 2.4s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+@keyframes tryonScan {
+  from { background-position: 0 120%; }
+  to { background-position: 0 -120%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tryon-scan { animation: none; background: rgb(208 240 67 / 0.15); }
+}
+
+.match-card {
+  background: #f4f4f1;
+  /* Set here: the global button reset (border: 0) wins over Tailwind's border class. */
+  border: 1.5px solid transparent;
+}
+.match-card[aria-pressed="true"] {
+  background: #fff;
+  border-color: #000;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+/* ---------- Wordmark: OUTFITTED. ---------- */
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  width: max-content;
+  color: #111113;
+  font-family: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 900;
+  font-size: 1.15rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+.wordmark-dot {
+  color: #173de6;
+}
+.wordmark-lg {
+  font-size: 2rem;
+}

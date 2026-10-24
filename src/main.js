@@ -3,16 +3,35 @@ import { icons } from "./icons.js";
 import { renderStylistAssistant, connectStylistAssistant } from "./assistant.js";
 import { renderMessagesView, connectMessages } from "./messages.js";
 import { renderWardrobePage, connectWardrobe } from "./wardrobe.js";
-import { renderLab3D, connectLab3D } from "./lab3d.js";
 import { renderFriendsView, connectFriends } from "./friends.js";
 import { renderVirtualDressingRoomModal, connectVirtualDressingRoom, openVirtualDressingRoom } from "./tryon-modal.js";
 import { renderShareModal, connectShareModal, openShareModalForPost } from "./share-modal.js";
 import { renderBrandingDialog, connectBrandingDialog } from "./branding-dialog.js";
-import { getCurrentUser, signIn, signOut, signUp } from "./auth.js";
+import { Capacitor } from "@capacitor/core";
+import { StatusBar, Style } from "@capacitor/status-bar";
+import { SplashScreen } from "@capacitor/splash-screen";
+import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
+import { initCreate, openCreate } from "./create.js";
+import { mountFitList } from "./feed.js";
+import { getProfile } from "./fits.js";
+import { escapeHtml } from "./format.js";
+import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
+import { renderProfileView } from "./views/profile.js";
+import { renderCreateSheet } from "./views/create-sheet.js";
+import { openStealSwap } from "./steal-swap.js";
+import { openDormCloset } from "./dorm-closet.js";
+import { openStyleFriend } from "./style-friend.js";
+
+// Native (iOS/Android) status bar and splash screen.
+if (Capacitor.isNativePlatform()) {
+  StatusBar.setStyle({ style: Style.Light }).catch(() => {});
+  StatusBar.setBackgroundColor({ color: "#f9f9f6" }).catch(() => {});
+  SplashScreen.hide().catch(() => {});
+}
 
 const app = document.querySelector("#app");
 
-let activeTab = "feed"; // 'feed' | 'wardrobe' | 'friends' | 'messages' | 'assistant' | 'lab3d'
+let activeTab = "feed"; // 'feed' | 'wardrobe' | 'friends' | 'messages' | 'assistant' | 'profile'
 let activePostForComments = null;
 
 function showToast(message) {
@@ -30,10 +49,9 @@ function renderTopBar() {
   return `
     <header class="main-topbar">
       <div class="topbar-container">
-        <a class="topbar-brand" href="#feed" data-nav="feed">
-          <img src="./assets/branding/logo_star.png" alt="Outfitted" class="brand-logo-img" id="brand-header-icon" />
+        <a class="topbar-brand" href="#feed" data-nav="feed" aria-label="Outfitted home">
           <div class="brand-text-wrap">
-            <span class="brand-name">outfitted<span class="asterisk-coral">*</span></span>
+            <span class="wordmark">OUTFITTED<span class="wordmark-dot">.</span></span>
             <span class="brand-tagline">GOOD FITS. BETTER FRIENDS.</span>
           </div>
         </a>
@@ -54,9 +72,9 @@ function renderTopBar() {
             </button>
             <span class="notif-dot"></span>
           </div>
-          <div class="user-badge-hi" id="account-badge" title="Account profile">
-            HI
-          </div>
+          <button type="button" class="user-badge-hi" id="account-badge" data-nav="profile" title="Your profile" aria-label="Your profile">
+            ${escapeHtml(currentUser.initial || "HI")}
+          </button>
         </div>
       </div>
     </header>
@@ -89,9 +107,9 @@ function renderSidebar() {
           ${icons.wand}
           <span>✦ Stylist AI</span>
         </a>
-        <a href="#lab3d" class="nav-item ${activeTab === "lab3d" ? "active" : ""}" data-nav="lab3d">
-          ${icons.cube}
-          <span>3D Lab</span>
+        <a href="#profile" class="nav-item ${activeTab === "profile" ? "active" : ""}" data-nav="profile">
+          ${icons.users}
+          <span>Profile</span>
         </a>
       </nav>
 
@@ -134,11 +152,6 @@ function renderPostCard(post) {
       <div class="post-media-stage">
         <img src="${post.image}" alt="${post.title}" class="post-img-main" />
         <span class="fit-file-badge">${post.fileTag || "THE FIT FILES / 01"}</span>
-        ${post.pieces.some((p) => p.model) ? `
-          <button class="media-3d-toggle-btn btn-view-3d-model" data-post-id="${post.id}">
-            ${icons.cube} 3D View
-          </button>
-        ` : ""}
       </div>
 
       <div class="post-card-body">
@@ -236,6 +249,17 @@ function renderMainFeed() {
           </button>
         </div>
       </section>
+
+      <!-- Real fits from the backend (loaded by src/feed.js) -->
+      <section class="feed-section-header" aria-label="Fits from your circle">
+        <p class="eyebrow" style="color:var(--brand-coral);">LIVE FROM YOUR CIRCLE</p>
+        <div class="feed-header-top">
+          <h2 class="feed-title-big">Latest fits ↘</h2>
+        </div>
+      </section>
+      <div class="flex flex-col gap-space-lg" id="feed-fits"></div>
+      <div class="py-space-md flex justify-center" id="feed-status"></div>
+      <div id="feed-sentinel" aria-hidden="true"></div>
 
       <!-- Feed Section Header -->
       <div class="feed-section-header">
@@ -488,7 +512,9 @@ function render() {
               ? renderMessagesView()
               : activeTab === "assistant"
               ? renderStylistAssistant()
-              : renderLab3D()
+              : activeTab === "profile"
+              ? renderProfileView()
+              : renderMainFeed()
           }
         </main>
 
@@ -496,6 +522,10 @@ function render() {
       </div>
 
       ${renderMobileBottomNav()}
+      ${renderCreateSheet()}
+      <div id="steal-swap-modal-root" class="hidden"></div>
+      <div id="dorm-closet-modal-root" class="hidden"></div>
+      <div id="style-friend-modal-root" class="hidden"></div>
       ${renderPostYourFitModal()}
       ${renderVirtualDressingRoomModal()}
       ${renderShareModal()}
@@ -506,6 +536,7 @@ function render() {
   `;
 
   bindEvents();
+  connectBackend();
 }
 
 function bindEvents() {
@@ -533,8 +564,6 @@ function bindEvents() {
       (outfit) => openVirtualDressingRoom(outfit),
       (outfit) => openShareModalForPost(outfit)
     );
-  } else if (activeTab === "lab3d") {
-    connectLab3D();
   } else if (activeTab === "friends") {
     connectFriends((friendName) => {
       activeTab = "messages";
@@ -575,23 +604,15 @@ function bindEvents() {
 
   connectBrandingDialog();
 
-  // Header and sidebar modal triggers
-  const openPostModal = () => {
-    const dialog = document.querySelector("#post-fit-modal");
-    if (dialog) dialog.showModal();
-  };
-
-  const btnSidebarCreate = document.querySelector("#btn-open-create-fit");
-  if (btnSidebarCreate) btnSidebarCreate.onclick = openPostModal;
-
-  const btnHeroPost = document.querySelector("#btn-hero-post-fit");
-  if (btnHeroPost) btnHeroPost.onclick = openPostModal;
-
-  const btnMobileCreate = document.querySelector("#btn-mobile-create-fit");
-  if (btnMobileCreate) btnMobileCreate.onclick = openPostModal;
+  // Create a fit (sidebar, hero, mobile "New", profile): the create sheet, which posts to the
+  // backend with piece detection and shop links. "Try it on" goes straight to the real try-on.
+  ["#btn-open-create-fit", "#btn-hero-post-fit", "#btn-mobile-create-fit", "#btn-profile-new-fit"].forEach((id) => {
+    const btn = document.querySelector(id);
+    if (btn) btn.onclick = () => openCreate();
+  });
 
   const btnHeroTryOn = document.querySelector("#btn-hero-try-on");
-  if (btnHeroTryOn) btnHeroTryOn.onclick = () => openVirtualDressingRoom();
+  if (btnHeroTryOn) btnHeroTryOn.onclick = () => openCreate("tryon");
 
   const btnBrandingSuite = document.querySelector("#open-branding-suite");
   if (btnBrandingSuite) {
@@ -648,7 +669,7 @@ function bindEvents() {
     linkTryOnFirst.onclick = (e) => {
       e.preventDefault();
       postModal?.close();
-      openVirtualDressingRoom();
+      openCreate("tryon");
     };
   }
 
@@ -867,4 +888,188 @@ function openPostFitModalWithData(data) {
   dialog.showModal();
 }
 
-render();
+/* ---------- Backend: real fits, profile, and the create sheet ---------- */
+
+function emptyState(title, text) {
+  return `
+    <div class="flex flex-col items-center text-center gap-1 py-space-lg">
+      <span class="material-symbols-outlined text-[32px] text-secondary">checkroom</span>
+      <span class="font-title-ui text-title-ui text-on-surface font-semibold">${title}</span>
+      <span class="font-body-md text-body-md text-on-surface-variant">${text}</span>
+    </div>`;
+}
+
+async function loadProfileCounts() {
+  try {
+    const profile = await getProfile(currentUser.username);
+    const counts = {
+      "#profile-fit-count": profile.fit_count,
+      "#profile-follower-count": profile.follower_count,
+      "#profile-following-count": profile.following_count,
+    };
+    for (const [id, value] of Object.entries(counts)) {
+      const el = document.querySelector(id);
+      if (el) el.textContent = value;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// Called after every render(): mounts whichever backend-connected parts are on screen.
+function connectBackend() {
+  const feedList = document.querySelector("#feed-fits");
+  if (feedList) {
+    mountFitList({
+      list: feedList,
+      status: document.querySelector("#feed-status"),
+      sentinel: document.querySelector("#feed-sentinel"),
+      path: "/fits",
+      empty: emptyState("No fits yet", "Be the first: post what you're wearing, or try an outfit on."),
+      toast: showToast,
+    });
+  }
+
+  const profileList = document.querySelector("#profile-fits");
+  if (profileList) {
+    mountFitList({
+      list: profileList,
+      status: document.querySelector("#profile-status"),
+      sentinel: document.querySelector("#profile-sentinel"),
+      path: `/users/${encodeURIComponent(currentUser.username)}/fits`,
+      empty: emptyState("You haven't posted yet", "Your fits will show up here."),
+      toast: showToast,
+      onChange: loadProfileCounts,
+    });
+    loadProfileCounts();
+  }
+
+  initCreate({
+    toast: showToast,
+    onPosted: () => {
+      activeTab = "feed";
+      render();
+    },
+  });
+
+  const btnSignout = document.querySelector("#btn-profile-signout");
+  if (btnSignout) {
+    btnSignout.onclick = async () => {
+      btnSignout.disabled = true;
+      await logOut();
+      showAuthScreen();
+      showToast("Signed out");
+    };
+  }
+}
+
+// Steal & Swap, Dorm Closets, and Style a Friend (also inside cards that load later).
+document.addEventListener("click", (e) => {
+  const swapBtn = e.target.closest("[data-steal-swap-fit]");
+  if (swapBtn) {
+    e.preventDefault();
+    openStealSwap(swapBtn.dataset.stealSwapFit || "weekend-denim", showToast);
+    return;
+  }
+  if (e.target.closest("[data-open-dorm-closet]")) {
+    e.preventDefault();
+    openDormCloset("formal-2026", showToast);
+    return;
+  }
+  if (e.target.closest("[data-open-style-friend]")) {
+    e.preventDefault();
+    openStyleFriend(null, showToast);
+  }
+});
+
+/* ---------- Account (see src/auth.js) ---------- */
+
+function enterApp(user) {
+  const name = user.full_name || user.username;
+  Object.assign(currentUser, {
+    name,
+    username: user.username,
+    handle: `@${user.username}`,
+    initial: name.charAt(0).toUpperCase(),
+    bio: user.bio || "",
+    avatarUrl: user.avatar?.url || null,
+  });
+  activeTab = "feed";
+  render();
+}
+
+function showAuthScreen(message = "") {
+  app.innerHTML = renderAuthScreen();
+  setAuthMode("login");
+  if (message) showAuthErrors(message);
+
+  document.querySelectorAll("[data-auth-mode]").forEach((tab) => {
+    tab.onclick = () => setAuthMode(tab.dataset.authMode);
+  });
+
+  // Demo mode: explore the app without an account (backend features fall back to samples).
+  const btnDemo = document.querySelector("#btn-auth-demo");
+  if (btnDemo) {
+    btnDemo.onclick = () => {
+      enterApp({ username: "sofoniyas", full_name: "Sofoniyas Alemayehu", bio: "Building Outfitted · CS @ Virginia Tech" });
+      showToast("Welcome to Outfitted Demo Mode!");
+    };
+  }
+
+  const form = document.querySelector("#auth-form");
+  const submit = document.querySelector("#auth-submit");
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const signup = form.dataset.mode === "signup";
+    const values = Object.fromEntries(new FormData(form));
+    const email = values.email.trim();
+    const { password } = values;
+
+    if (!email || !password) {
+      return showAuthErrors("", {
+        ...(!email && { email: "Enter your email." }),
+        ...(!password && { password: "Enter your password." }),
+      });
+    }
+
+    const label = submit.textContent;
+    submit.disabled = true;
+    submit.textContent = signup ? "Creating account…" : "Signing in…";
+    showAuthErrors();
+    try {
+      if (signup) {
+        await signUp({ email, username: values.username.trim(), password, fullName: values.full_name.trim() });
+      }
+      await logIn(email, password);
+      enterApp(await getMe());
+      showToast(signup ? "Welcome to Outfitted!" : "Signed in");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // 409s name the field that's taken; 422s come back as per-field errors.
+        const fields = { ...err.fields };
+        if (err.status === 409) fields[/username/i.test(err.message) ? "username" : "email"] = err.message;
+        showAuthErrors(err.status === 409 ? "" : err.message, fields);
+      } else {
+        console.error(err);
+        showAuthErrors("Something went wrong. Please try again.");
+      }
+      submit.disabled = false;
+      submit.textContent = label;
+    }
+  };
+}
+
+async function start() {
+  setSessionExpiredHandler(() => showAuthScreen("Your session expired. Please sign in again."));
+  try {
+    if (await restoreSession()) {
+      const user = await getMe();
+      if (user) return enterApp(user);
+    }
+    showAuthScreen();
+  } catch (err) {
+    showAuthScreen(err.message);
+  }
+}
+
+start();
