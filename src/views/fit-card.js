@@ -107,12 +107,16 @@ export function renderFitCard(fit, { mine = false } = {}) {
 
       ${items(fit)}
 
-      <footer class="flex items-center gap-space-md pt-space-2xs border-t border-surface-container-high">
+      <footer class="flex items-center justify-between pt-space-2xs border-t border-surface-container-high">
         <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors pt-space-xs" data-fit-like aria-pressed="${fit.liked_by_me}">
           <span class="material-symbols-outlined text-[22px] ${fit.liked_by_me ? "text-error" : ""}" style="${filled(fit.liked_by_me)}">favorite</span>
           <span class="font-label-md text-label-md font-semibold" data-like-count>${fit.like_count}</span>
         </button>
-        <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors pt-space-xs ml-auto" data-fit-save aria-pressed="${fit.saved_by_me}">
+        <button type="button" class="flex items-center gap-1 text-secondary bg-secondary-fixed/50 hover:bg-secondary hover:text-on-secondary px-3 py-1 rounded-full transition-all pt-space-xs font-label-md text-label-md font-semibold active:scale-95 shadow-sm" data-steal-swap-fit="${escapeHtml(fit.id)}">
+          <span class="material-symbols-outlined text-[17px]">compare</span>
+          <span>Steal & Swap</span>
+        </button>
+        <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors pt-space-xs" data-fit-save aria-pressed="${fit.saved_by_me}">
           <span class="material-symbols-outlined text-[22px]" style="${filled(fit.saved_by_me)}">bookmark</span>
           <span class="font-label-md text-label-md">${fit.saved_by_me ? "Saved" : "Save"}</span>
         </button>

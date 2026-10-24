@@ -55,6 +55,35 @@ export function renderProfileView() {
         </div>
       </section>
 
+      <!-- Collaborative Fashion Hub -->
+      <section class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[20px] text-secondary">handshake</span>
+            <span class="font-title-ui text-label-md font-semibold text-on-surface">Peer Fashion Studio</span>
+          </div>
+          <span class="font-micro-mono text-[9px] uppercase px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-bold">New</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button type="button" class="p-3 rounded-xl bg-surface-container-low hover:bg-surface-container border border-surface-container-high flex flex-col gap-1.5 text-left transition-all active:scale-95" data-open-dorm-closet>
+            <span class="material-symbols-outlined text-[22px] text-primary">groups</span>
+            <span class="font-title-ui text-label-md font-semibold text-on-surface">Dorm Closets</span>
+            <span class="font-label-sm text-[11px] text-on-surface-variant">Coordinate event boards & borrow pieces</span>
+          </button>
+          <button type="button" class="p-3 rounded-xl bg-surface-container-low hover:bg-surface-container border border-surface-container-high flex flex-col gap-1.5 text-left transition-all active:scale-95" data-open-style-friend>
+            <span class="material-symbols-outlined text-[22px] text-secondary">styler</span>
+            <span class="font-title-ui text-label-md font-semibold text-on-surface">Style a Friend</span>
+            <span class="font-label-sm text-[11px] text-on-surface-variant">Dress your friend's avatar</span>
+          </button>
+        </div>
+
+        <button type="button" class="w-full h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-2 transition-all active:scale-95" data-steal-swap-fit="weekend-denim">
+          <span class="material-symbols-outlined text-[17px] text-secondary">compare</span>
+          <span>Steal & Swap Body Comparison Demo</span>
+        </button>
+      </section>
+
       <!-- Your fits (loaded by src/feed.js) -->
       <section class="flex flex-col space-y-space-xs">
         <div class="flex items-center justify-between px-1">

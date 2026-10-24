@@ -63,8 +63,14 @@ export function renderFeedView() {
               </div>
             </div>
 
+            <!-- Steal & Swap Fast Action -->
+            <button class="w-full mt-space-2xs mb-1 h-8 rounded-full bg-secondary-fixed/60 hover:bg-secondary hover:text-on-secondary text-secondary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95" data-steal-swap-fit="office-evening">
+              <span class="material-symbols-outlined text-[16px]">compare</span>
+              <span>Steal & Swap on Me</span>
+            </button>
+
             <!-- Quick Vote Actions -->
-            <div class="grid grid-cols-2 gap-2 mt-space-sm" id="vote-btn-group-a">
+            <div class="grid grid-cols-2 gap-2 mt-1" id="vote-btn-group-a">
               <button class="h-9 px-3 rounded-full bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1 active:scale-95 transition-all" data-quick-vote="wear">
                 <span class="material-symbols-outlined text-[16px]">check</span>
                 Wear it
@@ -102,13 +108,48 @@ export function renderFeedView() {
                 </p>
               </div>
             </div>
-            <div class="pt-space-2xs">
+            <div class="pt-space-2xs flex flex-col gap-1.5">
               <button class="w-full h-9 rounded-full bg-secondary text-on-secondary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm" id="btn-cast-vote">
                 <span>Cast Vote</span>
                 <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
               </button>
+              <button type="button" class="w-full h-8 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-container-high transition-all" data-open-style-friend>
+                <span class="material-symbols-outlined text-[16px] text-secondary">styler</span>
+                <span>Style Maya's Look</span>
+              </button>
             </div>
           </article>
+        </div>
+      </section>
+
+      <!-- DORM CLOSET & GROUP LOOKBOOKS SECTION -->
+      <section class="px-margin pt-space-xs pb-space-xs">
+        <div class="p-space-md rounded-2xl bg-gradient-to-r from-surface-container-low via-surface-container-lowest to-surface-container-low border border-surface-container-high shadow-sm flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+                <span class="material-symbols-outlined text-[19px] text-tertiary-fixed">dry_cleaning</span>
+              </span>
+              <div>
+                <span class="font-micro-mono text-[9px] uppercase tracking-wider text-secondary font-bold">Collaborative Closets</span>
+                <h3 class="font-title-ui text-title-ui font-semibold text-on-surface">Dorm Closets & Lookbooks</h3>
+              </div>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-micro-mono text-[9px] font-bold uppercase shadow-sm">Active Boards</span>
+          </div>
+          <p class="font-body-md text-label-md text-on-surface-variant leading-snug">
+            Planning for <strong>Alpha Phi Formal</strong> or <strong>VT Game Day</strong>? Harmonize palettes, prevent accidental duplicate looks, and request to borrow clothes.
+          </p>
+          <div class="flex items-center gap-2 pt-1">
+            <button type="button" class="flex-1 h-10 rounded-full bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all" data-open-dorm-closet>
+              <span class="material-symbols-outlined text-[18px] text-tertiary-fixed">groups</span>
+              <span>Open Event Boards</span>
+            </button>
+            <button type="button" class="h-10 px-4 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-container-high active:scale-95 transition-all" data-open-style-friend>
+              <span class="material-symbols-outlined text-[18px] text-secondary">styler</span>
+              <span>Style a Friend</span>
+            </button>
+          </div>
         </div>
       </section>
 

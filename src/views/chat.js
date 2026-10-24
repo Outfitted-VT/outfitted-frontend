@@ -19,10 +19,11 @@ export function renderChatView() {
           </div>
         </div>
         <div class="flex items-center gap-space-xs flex-shrink-0">
-          <button aria-label="Start Voice Fit Call" class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors" id="btn-chat-call">
-            <span class="material-symbols-outlined text-[19px]">call</span>
+          <button type="button" aria-label="Style Camille" class="h-8 px-2.5 rounded-full bg-secondary text-on-secondary font-micro-mono text-[10px] uppercase font-bold flex items-center gap-1 active:scale-95 transition-all shadow-sm" data-open-style-friend>
+            <span class="material-symbols-outlined text-[13px]">styler</span>
+            <span>Style Her</span>
           </button>
-          <button aria-label="Shared Lookbook Archive" class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors" id="btn-chat-archive">
+          <button aria-label="Shared Lookbook Archive" class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors" id="btn-chat-archive" data-open-dorm-closet>
             <span class="material-symbols-outlined text-[19px]">folder_special</span>
           </button>
         </div>
@@ -124,14 +125,21 @@ export function renderChatView() {
               </div>
             </div>
 
-            <!-- 3D Room Deep-link -->
-            <button class="flex items-center justify-between pt-2 px-1 text-on-surface group w-full text-left" id="btn-open-fit-in-3d">
-              <span class="font-label-md text-secondary group-hover:underline flex items-center gap-1 font-semibold">
-                Tap to open in 3D Fitting Room
-                <span class="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-1">arrow_forward</span>
-              </span>
-              <span class="material-symbols-outlined text-outline-variant text-[18px]">open_in_new</span>
-            </button>
+            <!-- Steal & Swap + 3D Room Actions -->
+            <div class="pt-2 flex flex-col gap-2">
+              <button type="button" class="w-full h-10 rounded-full bg-secondary text-on-secondary font-title-ui text-label-md font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95" data-steal-swap-fit="office-evening">
+                <span class="material-symbols-outlined text-[18px]">compare</span>
+                <span>Steal & Swap (Compare on You)</span>
+              </button>
+              
+              <button class="flex items-center justify-between px-1 text-on-surface group w-full text-left" id="btn-open-fit-in-3d">
+                <span class="font-label-md text-secondary group-hover:underline flex items-center gap-1 font-semibold">
+                  Tap to open in 3D Fitting Room
+                  <span class="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-1">arrow_forward</span>
+                </span>
+                <span class="material-symbols-outlined text-outline-variant text-[18px]">open_in_new</span>
+              </button>
+            </div>
           </div>
         </div>
 

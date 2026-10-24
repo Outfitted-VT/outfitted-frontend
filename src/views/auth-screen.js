@@ -48,6 +48,16 @@ export function renderAuthScreen() {
           <button type="submit" id="auth-submit" class="h-12 rounded-full bg-primary text-on-primary font-title-ui text-label-md font-semibold flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all disabled:opacity-60">
             Sign in
           </button>
+
+          <div class="relative flex items-center justify-center my-1">
+            <div class="w-full border-t border-surface-container-high"></div>
+            <span class="bg-surface px-3 font-micro-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Or</span>
+          </div>
+
+          <button type="button" id="btn-auth-demo" class="h-12 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-title-ui text-label-md font-semibold flex items-center justify-center gap-2 border border-surface-container-high shadow-sm active:scale-[0.98] transition-all">
+            <span class="material-symbols-outlined text-[18px] text-secondary">explore</span>
+            <span>Explore Demo Mode</span>
+          </button>
         </form>
       </div>
     </div>`;

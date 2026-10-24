@@ -13,6 +13,9 @@ import { renderChatView } from "./views/chat.js";
 import { renderProfileView } from "./views/profile.js";
 import { renderCommentsDrawer } from "./views/comments-drawer.js";
 import { renderCreateSheet } from "./views/create-sheet.js";
+import { openStealSwap } from "./steal-swap.js";
+import { openDormCloset } from "./dorm-closet.js";
+import { openStyleFriend } from "./style-friend.js";
 
 // Native Capacitor platform initialization
 if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
@@ -87,6 +90,9 @@ function renderApp() {
     <!-- MODALS & SHEETS -->
     ${renderCommentsDrawer()}
     ${renderCreateSheet()}
+    <div id="steal-swap-modal-root" class="hidden"></div>
+    <div id="dorm-closet-modal-root" class="hidden"></div>
+    <div id="style-friend-modal-root" class="hidden"></div>
 
     <!-- FLOATING BOTTOM NAVIGATION BAR -->
     <div class="fixed bottom-0 inset-x-0 z-40 pointer-events-none pb-safe">
@@ -427,6 +433,44 @@ function attachEventHandlers() {
       showToast("Signed out");
     };
   }
+
+  // Steal & Swap, Dorm Closet, and Style Friend Event Triggers
+  document.querySelectorAll("[data-steal-swap-fit]").forEach((btn) => {
+    btn.onclick = () => openStealSwap(btn.dataset.stealSwapFit || "weekend-denim", showToast);
+  });
+
+  document.querySelectorAll("[data-open-dorm-closet]").forEach((btn) => {
+    btn.onclick = () => openDormCloset("formal-2026", showToast);
+  });
+
+  document.querySelectorAll("[data-open-style-friend]").forEach((btn) => {
+    btn.onclick = () => openStyleFriend(null, showToast);
+  });
+
+  // Global delegation for dynamically inserted items (e.g. from feed cards)
+  if (!window.__outfitted_delegated) {
+    window.__outfitted_delegated = true;
+    document.addEventListener("click", (e) => {
+      const swapBtn = e.target.closest("[data-steal-swap-fit]");
+      if (swapBtn) {
+        e.preventDefault();
+        openStealSwap(swapBtn.dataset.stealSwapFit || "weekend-denim", showToast);
+        return;
+      }
+      const closetBtn = e.target.closest("[data-open-dorm-closet]");
+      if (closetBtn) {
+        e.preventDefault();
+        openDormCloset("formal-2026", showToast);
+        return;
+      }
+      const styleBtn = e.target.closest("[data-open-style-friend]");
+      if (styleBtn) {
+        e.preventDefault();
+        openStyleFriend(null, showToast);
+        return;
+      }
+    });
+  }
 }
 
 // --- Account (see src/auth.js) ---
@@ -451,6 +495,19 @@ function showAuthScreen(message = "") {
   document.querySelectorAll("[data-auth-mode]").forEach((tab) => {
     tab.onclick = () => setAuthMode(tab.dataset.authMode);
   });
+
+  const btnDemo = document.querySelector("#btn-auth-demo");
+  if (btnDemo) {
+    btnDemo.onclick = () => {
+      enterApp({
+        username: "sofoniyas",
+        full_name: "Sofoniyas Alemayehu",
+        bio: "Building Outfitted · CS @ Virginia Tech",
+        avatar: null,
+      });
+      showToast("Welcome to Outfitted Demo Mode!");
+    };
+  }
 
   const form = document.querySelector("#auth-form");
   const submit = document.querySelector("#auth-submit");
