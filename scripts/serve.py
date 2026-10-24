@@ -20,7 +20,11 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from auth_store import SESSION_TTL, AuthError, AuthStore
+import mimetypes
+mimetypes.add_type("model/gltf-binary", ".glb")
+mimetypes.add_type("image/webp", ".webp")
 
 ROOT = Path(__file__).resolve().parent.parent
 STORE = AuthStore(os.environ.get("OUTFITTED_DB") or ROOT / "data" / "users.json")
@@ -28,7 +32,7 @@ COOKIE = "outfitted_session"
 MAX_BODY = 10_000
 # Only the site itself is served; data/, scripts/, .git etc. are never exposed.
 PUBLIC_PREFIXES = ("/src/", "/assets/")
-PUBLIC_FILES = ("/", "/index.html", "/favicon.ico")
+PUBLIC_FILES = ("/", "/index.html", "/favicon.ico", "/anny_default.glb")
 
 # Sign-in throttle: at most 10 failed attempts per email+IP in 10 minutes.
 FAILED = defaultdict(deque)
