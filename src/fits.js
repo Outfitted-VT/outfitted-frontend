@@ -73,7 +73,15 @@ const json = (method, body) => ({
   body: JSON.stringify(body),
 });
 
-export async function createFit({ imageIds, caption, items, occasionTags = [], styleTags = [] }) {
+export async function createFit({
+  imageIds,
+  caption,
+  items,
+  occasionTags = [],
+  styleTags = [],
+  privacyTier = "public",
+  allowFriendTryOn = true,
+}) {
   return parse(
     await apiFetch(
       "/fits",
@@ -83,6 +91,8 @@ export async function createFit({ imageIds, caption, items, occasionTags = [], s
         items,
         occasion_tags: occasionTags,
         style_tags: styleTags,
+        privacy_tier: privacyTier,
+        allow_friend_try_on: allowFriendTryOn,
       })
     )
   );
@@ -121,6 +131,115 @@ export async function createTryOn(personImageId, outfitImageId) {
     await apiFetch(
       "/tryons",
       json("POST", { person_image_id: personImageId, outfit_image_id: outfitImageId })
+    )
+  );
+}
+
+
+// --- Privacy, Sizing & Impact Intelligence Endpoints ---
+
+export async function updateFitPrivacy(fitId, { privacyTier, allowFriendTryOn } = {}) {
+  const body = {};
+  if (privacyTier !== undefined) body.privacy_tier = privacyTier;
+  if (allowFriendTryOn !== undefined) body.allow_friend_try_on = allowFriendTryOn;
+  return parse(await apiFetch(`/fits/${fitId}/privacy`, json("PATCH", body)));
+}
+
+export async function getPrivacySettings() {
+  return parse(await apiFetch("/users/me/privacy"));
+}
+
+export async function updatePrivacySettings({
+  avatarMode,
+  mannequinTone,
+  hideFacialFeatures,
+  defaultClosetPrivacy,
+} = {}) {
+  const body = {};
+  if (avatarMode !== undefined) body.avatar_mode = avatarMode;
+  if (mannequinTone !== undefined) body.mannequin_tone = mannequinTone;
+  if (hideFacialFeatures !== undefined) body.hide_facial_features = hideFacialFeatures;
+  if (defaultClosetPrivacy !== undefined) body.default_closet_privacy = defaultClosetPrivacy;
+  return parse(await apiFetch("/users/me/privacy", json("PATCH", body)));
+}
+
+export async function getTrueSizePassport() {
+  return parse(await apiFetch("/sizing/passport"));
+}
+
+export async function addReferenceGarment({
+  brand,
+  category,
+  itemName,
+  size,
+  fitFeeling = "perfect",
+  isFavorite = true,
+}) {
+  return parse(
+    await apiFetch(
+      "/sizing/passport",
+      json("POST", {
+        brand,
+        category,
+        item_name: itemName,
+        size,
+        fit_feeling: fitFeeling,
+        is_favorite: isFavorite,
+      })
+    )
+  );
+}
+
+export async function removeReferenceGarment(garmentId) {
+  return parse(await apiFetch(`/sizing/passport/${garmentId}`, { method: "DELETE" }));
+}
+
+export async function translateSize({
+  targetBrand,
+  category,
+  targetItemFitPref = "standard",
+  targetItemName = null,
+  productUrl = null,
+}) {
+  return parse(
+    await apiFetch(
+      "/sizing/translate",
+      json("POST", {
+        target_brand: targetBrand,
+        category,
+        target_item_fit_pref: targetItemFitPref,
+        target_item_name: targetItemName,
+        product_url: productUrl,
+      })
+    )
+  );
+}
+
+export async function getImpactSummary() {
+  return parse(await apiFetch("/impact"));
+}
+
+export async function recordImpactEvent({
+  itemName,
+  brand = null,
+  category = null,
+  estimatedPrice = 65.0,
+  actionType = "size_corrected",
+  fitId = null,
+  notes = null,
+}) {
+  return parse(
+    await apiFetch(
+      "/impact/record",
+      json("POST", {
+        item_name: itemName,
+        brand,
+        category,
+        estimated_price: estimatedPrice,
+        action_type: actionType,
+        fit_id: fitId,
+        notes,
+      })
     )
   );
 }
