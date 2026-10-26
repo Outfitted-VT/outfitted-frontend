@@ -13,17 +13,123 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"
     />
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+
+    <!-- Tailwind + Material Symbols for the screens wired to the backend (sign-in, create sheet,
+         fit cards, profile). Preflight is off so the redesign's own styles.css isn't reset. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        corePlugins: { preflight: false },
+        theme: {
+          extend: {
+            colors: {
+              "primary-fixed": "#e5e2e1",
+              "tertiary-container": "#181e00",
+              "surface-variant": "#e2e3e0",
+              "surface": "#f9f9f6",
+              "surface-container": "#eeeeeb",
+              "on-background": "#1a1c1b",
+              "surface-container-high": "#e8e8e5",
+              "on-secondary-container": "#f0efff",
+              "on-error-container": "#93000a",
+              "surface-bright": "#f9f9f6",
+              "secondary-fixed-dim": "#bbc3ff",
+              "inverse-surface": "#2f312f",
+              "on-secondary": "#ffffff",
+              "on-surface-variant": "#444748",
+              "surface-container-highest": "#e2e3e0",
+              "on-surface": "#1a1c1b",
+              "inverse-on-surface": "#f1f1ee",
+              "on-primary-container": "#858383",
+              "primary-container": "#1c1b1b",
+              "surface-tint": "#5f5e5e",
+              "surface-container-lowest": "#ffffff",
+              "background": "#f9f9f6",
+              "surface-dim": "#dadad7",
+              "on-tertiary-fixed-variant": "#3f4c00",
+              "on-secondary-fixed": "#000e5f",
+              "outline": "#747878",
+              "error-container": "#ffdad6",
+              "error": "#ba1a1a",
+              "on-primary-fixed": "#1c1b1b",
+              "on-primary": "#ffffff",
+              "on-tertiary-container": "#768d00",
+              "primary": "#000000",
+              "tertiary-fixed-dim": "#b4d324",
+              "on-tertiary-fixed": "#181e00",
+              "outline-variant": "#c4c7c7",
+              "inverse-primary": "#c8c6c5",
+              "on-primary-fixed-variant": "#474646",
+              "tertiary": "#000000",
+              "secondary": "#183ae7",
+              "tertiary-fixed": "#d0f043",
+              "on-error": "#ffffff",
+              "secondary-container": "#3d58ff",
+              "secondary-fixed": "#dfe0ff",
+              "on-secondary-fixed-variant": "#002ad1",
+              "on-tertiary": "#ffffff",
+              "primary-fixed-dim": "#c8c6c5",
+              "surface-container-low": "#f4f4f1"
+            },
+            borderRadius: {
+              DEFAULT: "1rem",
+              lg: "2rem",
+              xl: "3rem",
+              full: "9999px"
+            },
+            spacing: {
+              "space-xs": "0.5rem",
+              "margin": "1rem",
+              "gutter": "0.75rem",
+              "space-md": "1rem",
+              "space-sm": "0.75rem",
+              "margin-desktop": "2rem",
+              "space-xl": "2rem",
+              "gutter-desktop": "1.25rem",
+              "space-lg": "1.5rem",
+              "space-2xs": "0.25rem",
+              "space-2xl": "3rem"
+            },
+            fontFamily: {
+              "body-lg": ["Inter", "sans-serif"],
+              "label-sm": ["Inter", "sans-serif"],
+              "body-md": ["Inter", "sans-serif"],
+              "headline-md": ["Playfair Display", "serif"],
+              "label-md": ["Inter", "sans-serif"],
+              "display-hero": ["Playfair Display", "serif"],
+              "headline-lg": ["Playfair Display", "serif"],
+              "micro-mono": ["Inter", "monospace"],
+              "title-ui": ["Inter", "sans-serif"],
+              "title-editorial": ["Playfair Display", "serif"],
+              "display-hero-mobile": ["Playfair Display", "serif"]
+            },
+            fontSize: {
+              "body-lg": ["16px", { lineHeight: "24px", letterSpacing: "-0.005em", fontWeight: "400" }],
+              "label-sm": ["11px", { lineHeight: "14px", letterSpacing: "0.04em", fontWeight: "600" }],
+              "body-md": ["14px", { lineHeight: "20px", letterSpacing: "0em", fontWeight: "400" }],
+              "headline-md": ["24px", { lineHeight: "30px", letterSpacing: "0em", fontWeight: "500" }],
+              "label-md": ["13px", { lineHeight: "16px", letterSpacing: "0.01em", fontWeight: "500" }],
+              "display-hero": ["44px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "400" }],
+              "headline-lg": ["30px", { lineHeight: "36px", letterSpacing: "-0.01em", fontWeight: "600" }],
+              "micro-mono": ["10px", { lineHeight: "12px", letterSpacing: "0.08em", fontWeight: "700" }],
+              "title-ui": ["17px", { lineHeight: "22px", letterSpacing: "-0.01em", fontWeight: "600" }],
+              "title-editorial": ["20px", { lineHeight: "26px", letterSpacing: "0.01em", fontWeight: "400" }],
+              "display-hero-mobile": ["34px", { lineHeight: "38px", letterSpacing: "-0.015em", fontWeight: "400" }]
+            }
+          }
         }
-      }
+      };
     </script>
+    <style>
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+      .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    </style>
     <link rel="stylesheet" href="./src/styles.css" />
+    <link rel="stylesheet" href="./src/connected.css" />
     <link rel="icon" href="./assets/branding/logo_star.png" type="image/png" />
-    <script type="module" src="https://unpkg.com/@google/model-viewer@4/dist/model-viewer.min.js"></script>
   </head>
   <body>
     <div id="app"></div>
