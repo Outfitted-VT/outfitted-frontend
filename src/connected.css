@@ -143,3 +143,48 @@ img[class*="w-"] {
 .wordmark-lg {
   font-size: 2rem;
 }
+
+/* ---------- Create sheet on wide screens ----------
+   Phones keep the bottom sheet. From tablet width up it becomes a centered dialog that fades
+   and lifts in; src/create.js still toggles .translate-y-full for the hidden state. */
+@media (min-width: 768px) {
+  #create-backdrop:not(.hidden) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  #create-sheet {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-width: 640px;
+    max-height: calc(100vh - 48px);
+    border-radius: 24px;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+  }
+  #create-sheet.translate-y-full {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  #create-sheet .create-handle {
+    display: none;
+  }
+  #create-sheet .create-handle + div {
+    padding-top: 8px;
+  }
+  /* The two choices sit side by side. Only while shown: a display here would beat .hidden. */
+  #create-sheet [data-screen="menu"]:not(.hidden) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  /* Squarer photo tiles, so the try-on screen fits a laptop screen without scrolling. */
+  #create-sheet .tryon-slot {
+    aspect-ratio: 1 / 1;
+  }
+  /* A tall portrait result would push the buttons out of view. */
+  #tryon-result-frame img {
+    max-height: 60vh;
+    object-fit: contain;
+  }
+}
