@@ -17,6 +17,20 @@ const stat = (id, label) => `
 
 const divider = `<div class="w-[1px] h-8 bg-surface-container-highest"></div>`;
 
+// A Peer Fashion Studio tile. Both tiles share this markup so their icon, title, and text line up.
+// Padding is on the inner wrapper: styles.css resets button padding to 0.
+const studioTile = (icon, title, text, attr) => `
+  <button type="button" ${attr}
+    class="h-full w-full rounded bg-surface-container-low hover:bg-surface-container border border-surface-container-high text-left transition-colors active:scale-[0.98]">
+    <span class="h-full flex flex-col items-start gap-1.5 p-space-sm">
+      <span class="w-9 h-9 rounded-full bg-surface-container-lowest border border-surface-container-high flex items-center justify-center text-secondary flex-shrink-0">
+        <span class="material-symbols-outlined text-[20px]">${icon}</span>
+      </span>
+      <span class="font-title-ui text-label-md font-semibold text-on-surface leading-tight mt-0.5">${title}</span>
+      <span class="font-body-md text-[12px] leading-snug text-on-surface-variant line-clamp-2">${text}</span>
+    </span>
+  </button>`;
+
 export function renderProfileView() {
   return `
     <div class="flex flex-col w-full px-margin space-y-space-md pb-8">
@@ -35,7 +49,7 @@ export function renderProfileView() {
         ${currentUser.bio ? `<p class="font-body-md text-body-md text-on-surface leading-snug">${escapeHtml(currentUser.bio)}</p>` : ""}
 
         <!-- Social Metrics Strip (filled in by main.js) -->
-        <div class="flex items-center justify-around py-space-xs bg-surface-container-low rounded-DEFAULT text-center">
+        <div class="flex items-center justify-around py-space-xs bg-surface-container-low rounded text-center">
           ${stat("profile-fit-count", "Fits")}
           ${divider}
           ${stat("profile-follower-count", "Followers")}
@@ -65,17 +79,9 @@ export function renderProfileView() {
           <span class="font-micro-mono text-[9px] uppercase px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-bold">New</span>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <button type="button" class="p-3 rounded-xl bg-surface-container-low hover:bg-surface-container border border-surface-container-high flex flex-col gap-1.5 text-left transition-all active:scale-95" data-open-dorm-closet>
-            <span class="material-symbols-outlined text-[22px] text-primary">groups</span>
-            <span class="font-title-ui text-label-md font-semibold text-on-surface">Dorm Closets</span>
-            <span class="font-label-sm text-[11px] text-on-surface-variant">Coordinate event boards & borrow pieces</span>
-          </button>
-          <button type="button" class="p-3 rounded-xl bg-surface-container-low hover:bg-surface-container border border-surface-container-high flex flex-col gap-1.5 text-left transition-all active:scale-95" data-open-style-friend>
-            <span class="material-symbols-outlined text-[22px] text-secondary">styler</span>
-            <span class="font-title-ui text-label-md font-semibold text-on-surface">Style a Friend</span>
-            <span class="font-label-sm text-[11px] text-on-surface-variant">Dress your friend's avatar</span>
-          </button>
+        <div class="grid grid-cols-2 gap-space-xs pt-1">
+          ${studioTile("groups", "Dorm Closets", "Plan event looks & borrow pieces", "data-open-dorm-closet")}
+          ${studioTile("styler", "Style a Friend", "Dress your friend's avatar", "data-open-style-friend")}
         </div>
 
         <button type="button" class="w-full h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-2 transition-all active:scale-95" data-steal-swap-fit="weekend-denim">
