@@ -65,6 +65,10 @@ function forgetPerson() {
 
 // --- sheet -----------------------------------------------------------------------------
 
+function closeOnEscape(e) {
+  if (e.key === "Escape" && !$("#create-backdrop").classList.contains("hidden")) closeCreate();
+}
+
 export function openCreate(screen = "menu") {
   state = freshState();
   const sheet = $("#create-sheet");
@@ -459,6 +463,7 @@ function openTagInput(button) {
       e.preventDefault();
       finish(true);
     } else if (e.key === "Escape") {
+      e.stopPropagation(); // close the tag input, not the whole sheet
       finish(false);
     }
   };
@@ -623,6 +628,8 @@ export function initCreate({ onPosted, toast }) {
   $("#create-backdrop").onclick = (e) => {
     if (e.target.id === "create-backdrop") closeCreate();
   };
+  // Same function each time, so re-rendering the page does not stack listeners.
+  document.addEventListener("keydown", closeOnEscape);
   $("#create-back").onclick = () => {
     const back = SCREENS[state.screen].back;
     if (back) show(back);

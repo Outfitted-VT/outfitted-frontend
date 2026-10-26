@@ -6,7 +6,7 @@ const label = (text) =>
   `<span class="font-micro-mono text-micro-mono uppercase tracking-widest text-on-surface-variant font-semibold">${text}</span>`;
 
 const input =
-  "w-full h-11 px-space-sm rounded-DEFAULT bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary transition-all placeholder:text-on-surface-variant/60";
+  "w-full h-11 px-space-sm rounded bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary transition-all placeholder:text-on-surface-variant/60";
 
 const primaryButton =
   "h-12 w-full rounded-full bg-primary text-on-primary font-title-ui text-label-md font-semibold flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all disabled:opacity-40 disabled:active:scale-100";
@@ -17,7 +17,7 @@ const secondaryButton =
 function menuScreen() {
   const option = (action, icon, title, text, accent) => `
     <button type="button" data-create-go="${action}"
-      class="w-full text-left rounded-lg p-space-md flex items-center gap-space-md active:scale-[0.98] transition-transform ${accent}">
+      class="w-full text-left rounded-lg p-space-md flex items-center gap-space-md md:flex-col md:items-start md:gap-space-sm md:min-h-[220px] active:scale-[0.98] transition-transform ${accent}">
       <span class="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 bg-surface-container-lowest/15">
         <span class="material-symbols-outlined text-[28px]">${icon}</span>
       </span>
@@ -25,7 +25,7 @@ function menuScreen() {
         <span class="font-title-ui text-title-ui font-semibold">${title}</span>
         <span class="font-body-md text-body-md opacity-80">${text}</span>
       </span>
-      <span class="material-symbols-outlined ml-auto opacity-70">arrow_forward</span>
+      <span class="material-symbols-outlined ml-auto md:mt-auto opacity-70">arrow_forward</span>
     </button>`;
   return `
     <section data-screen="menu" class="flex flex-col gap-space-sm px-margin pb-space-xl">
@@ -93,7 +93,7 @@ function composeScreen() {
         </div>
 
         <button type="button" id="item-open"
-          class="h-11 rounded-DEFAULT border border-dashed border-outline-variant text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-container-low transition-colors">
+          class="h-11 rounded border border-dashed border-outline-variant text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-container-low transition-colors">
           <span class="material-symbols-outlined text-[18px]">add</span>Add a piece
         </button>
       </div>
@@ -110,7 +110,7 @@ function composeScreen() {
         </div>
       </div>
 
-      <p id="compose-error" role="alert" class="hidden font-label-md text-label-md text-on-error-container bg-error-container rounded-DEFAULT px-space-sm py-space-xs"></p>
+      <p id="compose-error" role="alert" class="hidden font-label-md text-label-md text-on-error-container bg-error-container rounded px-space-sm py-space-xs"></p>
 
       <button type="submit" id="compose-submit" class="${primaryButton}" disabled>Post fit</button>
     </form>`;
@@ -148,7 +148,7 @@ function tryonScreen() {
         <span class="material-symbols-outlined text-[16px]">info</span>
         Only use photos of yourself. The result is AI-generated and is labeled as an AI try-on if you post it.
       </p>
-      <p id="tryon-error" role="alert" class="hidden font-label-md text-label-md text-on-error-container bg-error-container rounded-DEFAULT px-space-sm py-space-xs"></p>
+      <p id="tryon-error" role="alert" class="hidden font-label-md text-label-md text-on-error-container bg-error-container rounded px-space-sm py-space-xs"></p>
       <button type="button" id="tryon-start" class="${primaryButton}" disabled>
         <span class="material-symbols-outlined text-[20px] text-tertiary-fixed">auto_awesome</span>Try it on
       </button>
@@ -201,7 +201,7 @@ export function renderCreateSheet() {
       <div class="create-sheet fixed inset-x-0 bottom-0 max-h-[94vh] bg-surface-container-lowest rounded-t-xl shadow-2xl overflow-y-auto translate-y-full transition-transform duration-300"
         id="create-sheet" role="dialog" aria-modal="true" aria-labelledby="create-title">
         <div class="sticky top-0 z-10 bg-surface-container-lowest/95 backdrop-blur pt-space-xs pb-space-sm px-margin">
-          <div class="w-12 h-1.5 bg-surface-container-highest rounded-full mx-auto mb-space-sm"></div>
+          <div class="create-handle w-12 h-1.5 bg-surface-container-highest rounded-full mx-auto mb-space-sm"></div>
           <div class="flex items-center justify-between gap-space-xs">
             <button type="button" id="create-back" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors invisible" aria-label="Back">
               <span class="material-symbols-outlined">arrow_back</span>
