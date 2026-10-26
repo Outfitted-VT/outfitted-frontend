@@ -34,6 +34,13 @@ const app = document.querySelector("#app");
 let activeTab = "feed"; // 'feed' | 'wardrobe' | 'friends' | 'messages' | 'assistant' | 'profile'
 let activePostForComments = null;
 
+// Wide screens: the sidebar is either full or collapsed to an icon rail. Remembered per browser.
+const SIDEBAR_KEY = "outfitted.sidebarCollapsed";
+let sidebarCollapsed = false;
+try {
+  sidebarCollapsed = localStorage.getItem(SIDEBAR_KEY) === "1";
+} catch {}
+
 function showToast(message) {
   const existing = document.querySelector(".toast-notice");
   if (existing) existing.remove();
@@ -89,37 +96,42 @@ function renderTopBar() {
 function renderSidebar() {
   return `
     <aside class="app-sidebar">
+      <button type="button" class="sidebar-toggle" id="btn-sidebar-toggle"
+        aria-expanded="${!sidebarCollapsed}" aria-label="${sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}">
+        <span class="material-symbols-outlined" aria-hidden="true">${sidebarCollapsed ? "left_panel_open" : "left_panel_close"}</span>
+      </button>
+
       <nav class="sidebar-nav-list" aria-label="Main Navigation">
-        <a href="#feed" class="nav-item ${activeTab === "feed" ? "active" : ""}" data-nav="feed">
+        <a href="#feed" class="nav-item ${activeTab === "feed" ? "active" : ""}" data-nav="feed" title="Feed">
           ${icons.feed}
-          <span>Feed</span>
+          <span class="sidebar-label">Feed</span>
         </a>
-        <a href="#wardrobe" class="nav-item ${activeTab === "wardrobe" ? "active" : ""}" data-nav="wardrobe">
+        <a href="#wardrobe" class="nav-item ${activeTab === "wardrobe" ? "active" : ""}" data-nav="wardrobe" title="My fits">
           ${icons.hanger}
-          <span>My fits</span>
+          <span class="sidebar-label">My fits</span>
         </a>
-        <a href="#friends" class="nav-item ${activeTab === "friends" ? "active" : ""}" data-nav="friends">
+        <a href="#friends" class="nav-item ${activeTab === "friends" ? "active" : ""}" data-nav="friends" title="Friends">
           ${icons.users}
-          <span>Friends</span>
+          <span class="sidebar-label">Friends</span>
         </a>
-        <a href="#messages" class="nav-item ${activeTab === "messages" ? "active" : ""}" data-nav="messages">
+        <a href="#messages" class="nav-item ${activeTab === "messages" ? "active" : ""}" data-nav="messages" title="Messages">
           ${icons.message}
-          <span>Messages</span>
+          <span class="sidebar-label">Messages</span>
           <span class="nav-badge">2</span>
         </a>
-        <a href="#assistant" class="nav-item ${activeTab === "assistant" ? "active" : ""}" data-nav="assistant">
+        <a href="#assistant" class="nav-item ${activeTab === "assistant" ? "active" : ""}" data-nav="assistant" title="Stylist AI">
           ${icons.wand}
-          <span>✦ Stylist AI</span>
+          <span class="sidebar-label">✦ Stylist AI</span>
         </a>
-        <a href="#profile" class="nav-item ${activeTab === "profile" ? "active" : ""}" data-nav="profile">
+        <a href="#profile" class="nav-item ${activeTab === "profile" ? "active" : ""}" data-nav="profile" title="Profile">
           ${icons.users}
-          <span>Profile</span>
+          <span class="sidebar-label">Profile</span>
         </a>
       </nav>
 
-      <button class="btn-sidebar-create" id="btn-open-create-fit">
-        <span>+ Create a fit</span>
-        <span>${icons.arrowRight}</span>
+      <button class="btn-sidebar-create" id="btn-open-create-fit" title="Create a fit">
+        <span>+<span class="sidebar-label"> Create a fit</span></span>
+        <span class="sidebar-create-arrow">${icons.arrowRight}</span>
       </button>
 
       <div class="sidebar-bottom-card">
@@ -640,7 +652,7 @@ function renderMobileBottomNav() {
 /* ---------- Main Render Loop ---------- */
 function render() {
   app.innerHTML = `
-    <div id="app-shell">
+    <div id="app-shell" class="${sidebarCollapsed ? "sidebar-collapsed" : ""}">
       ${renderTopBar()}
 
       <div class="app-body-container">
@@ -701,6 +713,24 @@ function bindEvents() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
   });
+
+  // Collapse / expand the wide-screen sidebar. Only the shell class changes, so the open page
+  // keeps its state.
+  const sidebarToggle = document.querySelector("#btn-sidebar-toggle");
+  if (sidebarToggle) {
+    sidebarToggle.onclick = () => {
+      sidebarCollapsed = !sidebarCollapsed;
+      document.querySelector("#app-shell").classList.toggle("sidebar-collapsed", sidebarCollapsed);
+      sidebarToggle.setAttribute("aria-expanded", String(!sidebarCollapsed));
+      sidebarToggle.setAttribute("aria-label", sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar");
+      sidebarToggle.querySelector(".material-symbols-outlined").textContent = sidebarCollapsed
+        ? "left_panel_open"
+        : "left_panel_close";
+      try {
+        localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed ? "1" : "0");
+      } catch {}
+    };
+  }
 
   // Connect submodules if active
   if (activeTab === "assistant") {
