@@ -2555,6 +2555,14 @@ textarea.field-input {
   gap: 28px;
 }
 
+/* Friends has no right rail; on wide screens use that column too, instead of leaving it empty
+   (two cards per row, and the title doesn't wrap beside the search box). */
+@media (min-width: 1181px) {
+  #main-content-region:has(> .friends-page) {
+    grid-column: 2 / -1;
+  }
+}
+
 .friends-hero {
   background: var(--surface);
   border: 1px solid var(--line);

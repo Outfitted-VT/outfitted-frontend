@@ -13,7 +13,7 @@ export function renderFriendsView() {
         <div class="friends-hero-search">
           <div class="wardrobe-search">
             <span class="search-icon">${icons.search}</span>
-            <input type="text" id="friend-page-search" placeholder="Find people by handle or aesthetic..." />
+            <input type="text" id="friend-page-search" placeholder="Search by name or style" />
           </div>
         </div>
       </div>
