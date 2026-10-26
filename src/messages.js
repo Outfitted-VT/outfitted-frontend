@@ -44,6 +44,9 @@ export function renderMessagesView() {
         <!-- Active Conversation Viewport -->
         <main class="chat-viewport" id="active-chat-viewport">
           <header class="chat-header">
+            <button class="icon-button btn-chat-back" id="btn-chat-back" aria-label="Back to threads">
+              ${icons.arrowLeft}
+            </button>
             <div class="chat-header-info">
               <img src="${activeThread.avatar}" alt="${activeThread.title}" class="chat-avatar-lg" id="chat-header-avatar" />
               <div>
@@ -153,6 +156,14 @@ export function connectMessages() {
 
   renderMessagesForThread(currentThreadId);
 
+  const layout = container.querySelector(".messages-layout");
+  const btnBack = container.querySelector("#btn-chat-back");
+  if (btnBack && layout) {
+    btnBack.onclick = () => {
+      layout.classList.remove("chat-active");
+    };
+  }
+
   // Thread switching
   container.querySelectorAll(".thread-item").forEach((item) => {
     item.onclick = () => {
@@ -160,6 +171,9 @@ export function connectMessages() {
       item.classList.add("active");
       currentThreadId = item.dataset.threadId;
       renderMessagesForThread(currentThreadId);
+      if (layout) {
+        layout.classList.add("chat-active");
+      }
     };
   });
 

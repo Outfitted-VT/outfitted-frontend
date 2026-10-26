@@ -44,6 +44,10 @@ function renderTopBar() {
         </div>
 
         <div class="topbar-actions">
+          <button class="topbar-ai-pill" data-nav="assistant" title="Stylist AI">
+            ${icons.wand}
+            <span>✦ Stylist AI</span>
+          </button>
           <button class="brand-suite-btn" id="open-branding-suite" title="App Icons & Splash Screen">
             <span class="asterisk-coral">✱</span>
             <span>Brand Marks</span>
@@ -54,9 +58,9 @@ function renderTopBar() {
             </button>
             <span class="notif-dot"></span>
           </div>
-          <div class="user-badge-hi" id="account-badge" title="Account profile">
-            HI
-          </div>
+          <button class="user-badge-hi" id="account-badge" aria-label="Account & Studio Menu" title="Account profile & studio menu">
+            ${currentUser.initial || "HI"}
+          </button>
         </div>
       </div>
     </header>
@@ -104,10 +108,10 @@ function renderSidebar() {
         <span class="mustard-sparkle">✱</span>
         <div class="mustard-title">Your style, your circle.</div>
         <p class="mustard-desc">Looks worth sharing. Opinions worth hearing.</p>
-        <a href="#account" class="mustard-link" id="link-sidebar-auth">
+        <button type="button" class="mustard-link" id="link-sidebar-auth">
           <span>Join Outfitted</span>
           <span>${icons.arrowRight}</span>
-        </a>
+        </button>
       </div>
     </aside>
   `;
@@ -439,6 +443,145 @@ function renderNotificationsDrawer() {
   `;
 }
 
+/* ---------- Account Profile & Studio Drawer ---------- */
+function renderAccountDrawer() {
+  return `
+    <dialog class="sheet sheet-account" id="account-sheet-dialog" aria-labelledby="account-sheet-title">
+      <div class="sheet-card account-card">
+        <div class="sheet-drag-handle"></div>
+        <button type="button" class="icon-button close" id="close-account-sheet" aria-label="Close">${icons.close}</button>
+        
+        <div class="account-profile-header">
+          <span class="avatar-chip lg" style="background:#0f3728; color:#fff;">${currentUser.initial || "HI"}</span>
+          <div class="account-profile-info">
+            <h3 id="account-sheet-title">${currentUser.name}</h3>
+            <p class="account-handle">${currentUser.handle} · <span class="account-tier-badge">Stylist Circle</span></p>
+          </div>
+        </div>
+
+        <div class="account-nav-grid">
+          <button class="account-nav-tile" data-nav="friends">
+            <span class="tile-icon" style="background:#ebf7f0; color:#0f3728;">${icons.users}</span>
+            <div class="tile-text">
+              <strong>Friends & Followers</strong>
+              <small>Taste you trust · ${friendsList.length} people</small>
+            </div>
+            <span class="tile-arrow">${icons.arrowRight}</span>
+          </button>
+
+          <button class="account-nav-tile" data-nav="lab3d">
+            <span class="tile-icon" style="background:#fef8e2; color:#b07800;">${icons.cube}</span>
+            <div class="tile-text">
+              <strong>3D Parametric Lab</strong>
+              <small>Morph Anny avatar & SAM body mesh</small>
+            </div>
+            <span class="tile-arrow">${icons.arrowRight}</span>
+          </button>
+
+          <button class="account-nav-tile" data-nav="assistant">
+            <span class="tile-icon" style="background:#ebf7f0; color:#0f3728;">${icons.wand}</span>
+            <div class="tile-text">
+              <strong>Stylist AI Assistant</strong>
+              <small>Chat, outfit generator, screenshot search</small>
+            </div>
+            <span class="tile-arrow">${icons.arrowRight}</span>
+          </button>
+
+          <button class="account-nav-tile" id="account-open-branding">
+            <span class="tile-icon" style="background:#fcedea; color:#e26250;">${icons.sparkleIcon}</span>
+            <div class="tile-text">
+              <strong>Brand Suite & Splash</strong>
+              <small>Marks, Didot startup sequence</small>
+            </div>
+            <span class="tile-arrow">${icons.arrowRight}</span>
+          </button>
+        </div>
+
+        <div class="account-sheet-footer" style="display:flex; flex-direction:column; gap:8px;">
+          <button class="button button-primary button-block" id="btn-open-signin">
+            <span>Sign In / Create Account</span>
+          </button>
+          <button class="button button-outline button-block" id="btn-signout-demo">
+            <span>Sign Out (${currentUser.handle})</span>
+          </button>
+        </div>
+      </div>
+    </dialog>
+  `;
+}
+
+/* ---------- Sign In / Sign Up Sheet Dialog ---------- */
+function renderAuthDialog() {
+  return `
+    <dialog class="sheet sheet-auth" id="auth-sheet-dialog" aria-labelledby="auth-modal-title">
+      <div class="sheet-card auth-card">
+        <div class="sheet-drag-handle"></div>
+        <button type="button" class="icon-button close" id="close-auth-sheet" aria-label="Close">${icons.close}</button>
+
+        <div>
+          <p class="eyebrow" style="color:var(--brand-coral);">ACCOUNT ACCESS <span class="asterisk-coral">✱</span></p>
+          <h2 id="auth-modal-title" style="font-family:var(--font-display); font-size:1.85rem; font-weight:800;">Welcome to Outfitted</h2>
+          <p class="sheet-lede" id="auth-modal-lede">Sign in to your style profile or join the circle.</p>
+        </div>
+
+        <div class="auth-tabs-row" role="tablist">
+          <button type="button" class="auth-tab-btn active" id="tab-auth-login" data-mode="login">Sign In</button>
+          <button type="button" class="auth-tab-btn" id="tab-auth-signup" data-mode="signup">Create Account</button>
+        </div>
+
+        <form class="auth-form-body" id="auth-sheet-form">
+          <div id="auth-signup-fields" hidden>
+            <label class="field-label">
+              Full Name
+              <input type="text" id="auth-input-name" class="field-input" placeholder="e.g. Jane Doe" />
+            </label>
+            <label class="field-label" style="margin-top:12px;">
+              Username
+              <input type="text" id="auth-input-username" class="field-input" placeholder="e.g. janedoe" autocapitalize="none" />
+            </label>
+          </div>
+
+          <label class="field-label" style="margin-top:12px;">
+            Email or Username
+            <input type="text" id="auth-input-email" class="field-input" required placeholder="you@example.com" autocapitalize="none" />
+          </label>
+
+          <label class="field-label" style="margin-top:12px;">
+            Password
+            <input type="password" id="auth-input-password" class="field-input" required placeholder="••••••••" autocomplete="current-password" />
+          </label>
+
+          <div class="auth-status-banner" id="auth-status-banner" hidden></div>
+
+          <button type="submit" class="button button-primary button-block" id="btn-auth-submit" style="height:46px; margin-top:16px;">
+            <span>Sign In</span>
+            <span>${icons.arrowRight}</span>
+          </button>
+        </form>
+
+        <div class="auth-divider">
+          <span>OR SWITCH PROFILE</span>
+        </div>
+
+        <div class="quick-profiles-list">
+          <button type="button" class="quick-profile-chip" data-profile="sofoniyas">
+            <span class="avatar-chip micro" style="background:#0f3728; color:#fff;">S</span>
+            <span>Sofoniyas (@sofoniyas) — Default</span>
+          </button>
+          <button type="button" class="quick-profile-chip" data-profile="maya">
+            <span class="avatar-chip micro" style="background:#275038; color:#fff;">MC</span>
+            <span>Maya Chen (@mayamakesfits)</span>
+          </button>
+          <button type="button" class="quick-profile-chip" data-profile="jordan">
+            <span class="avatar-chip micro" style="background:#c85f47; color:#fff;">JL</span>
+            <span>Jordan Lee (@jordy.jpg)</span>
+          </button>
+        </div>
+      </div>
+    </dialog>
+  `;
+}
+
 /* ---------- Mobile Bottom Navigation Bar (Image 6) ---------- */
 function renderMobileBottomNav() {
   return `
@@ -451,16 +594,19 @@ function renderMobileBottomNav() {
         ${icons.hanger}
         <span>My fits</span>
       </button>
-      <button class="mobile-nav-btn btn-mobile-new" id="btn-mobile-create-fit">
+      <button class="mobile-nav-btn btn-mobile-new" id="btn-mobile-create-fit" aria-label="Post a new fit">
         <span class="plus-badge">${icons.plus}</span>
-        <span>New</span>
+        <span>Post</span>
       </button>
-      <button class="mobile-nav-btn ${activeTab === "friends" ? "active" : ""}" data-nav="friends">
-        ${icons.users}
-        <span>Friends</span>
+      <button class="mobile-nav-btn ${activeTab === "assistant" ? "active" : ""}" data-nav="assistant">
+        ${icons.wand}
+        <span>Stylist AI</span>
       </button>
       <button class="mobile-nav-btn ${activeTab === "messages" ? "active" : ""}" data-nav="messages">
-        ${icons.message}
+        <div class="mobile-nav-icon-wrap">
+          ${icons.message}
+          <span class="mobile-unread-dot">2</span>
+        </div>
         <span>Messages</span>
       </button>
     </nav>
@@ -502,6 +648,8 @@ function render() {
       ${renderBrandingDialog()}
       ${renderCommentsDialog()}
       ${renderNotificationsDrawer()}
+      ${renderAccountDrawer()}
+      ${renderAuthDialog()}
     </div>
   `;
 
@@ -509,10 +657,13 @@ function render() {
 }
 
 function bindEvents() {
+  const accountSheet = document.querySelector("#account-sheet-dialog");
+
   // Navigation tabs
   document.querySelectorAll("[data-nav]").forEach((el) => {
     el.onclick = (e) => {
       e.preventDefault();
+      accountSheet?.close();
       const target = el.dataset.nav;
       activeTab = target;
       render();
@@ -598,6 +749,170 @@ function bindEvents() {
     btnBrandingSuite.onclick = () => {
       const dialog = document.querySelector("#branding-dialog");
       if (dialog) dialog.showModal();
+    };
+  }
+
+  // Account profile drawer triggers
+  const btnAccountBadge = document.querySelector("#account-badge");
+  const closeAccount = document.querySelector("#close-account-sheet");
+  const authDialog = document.querySelector("#auth-sheet-dialog");
+  const closeAuth = document.querySelector("#close-auth-sheet");
+  const openAuthBtn = document.querySelector("#btn-open-signin");
+  const linkSidebarAuth = document.querySelector("#link-sidebar-auth");
+
+  const openAuth = (mode = "login") => {
+    accountSheet?.close();
+    setAuthSheetMode(mode);
+    authDialog?.showModal();
+  };
+
+  if (btnAccountBadge && accountSheet) {
+    btnAccountBadge.onclick = () => accountSheet.showModal();
+  }
+  if (closeAccount && accountSheet) {
+    closeAccount.onclick = () => accountSheet.close();
+  }
+  if (openAuthBtn) openAuthBtn.onclick = () => openAuth("login");
+  if (linkSidebarAuth) {
+    linkSidebarAuth.onclick = (e) => {
+      e.preventDefault();
+      openAuth("signup");
+    };
+  }
+  if (closeAuth) closeAuth.onclick = () => authDialog?.close();
+
+  function setAuthSheetMode(mode) {
+    const isSignup = mode === "signup";
+    const tabLogin = document.querySelector("#tab-auth-login");
+    const tabSignup = document.querySelector("#tab-auth-signup");
+    const signupFields = document.querySelector("#auth-signup-fields");
+    const title = document.querySelector("#auth-modal-title");
+    const submitBtn = document.querySelector("#btn-auth-submit");
+    const form = document.querySelector("#auth-sheet-form");
+    const banner = document.querySelector("#auth-status-banner");
+
+    if (banner) banner.hidden = true;
+    if (form) form.dataset.mode = mode;
+    if (tabLogin) tabLogin.classList.toggle("active", !isSignup);
+    if (tabSignup) tabSignup.classList.toggle("active", isSignup);
+    if (signupFields) signupFields.hidden = !isSignup;
+    if (title) title.textContent = isSignup ? "Create your account" : "Welcome back";
+    if (submitBtn) {
+      submitBtn.querySelector("span").textContent = isSignup ? "Create Account" : "Sign In";
+    }
+  }
+
+  document.querySelector("#tab-auth-login")?.addEventListener("click", () => setAuthSheetMode("login"));
+  document.querySelector("#tab-auth-signup")?.addEventListener("click", () => setAuthSheetMode("signup"));
+
+  // Quick profile switches
+  document.querySelectorAll(".quick-profile-chip").forEach((chip) => {
+    chip.onclick = () => {
+      const p = chip.dataset.profile;
+      if (p === "maya") {
+        currentUser.name = "Maya Chen";
+        currentUser.handle = "@mayamakesfits";
+        currentUser.initial = "M";
+        currentUser.bio = "Stylist & architecture student. Always oversized denim.";
+      } else if (p === "jordan") {
+        currentUser.name = "Jordan Lee";
+        currentUser.handle = "@jordy.jpg";
+        currentUser.initial = "J";
+        currentUser.bio = "Cardigans, coffee roasts, and quiet tailoring.";
+      } else {
+        currentUser.name = "Sofoniyas";
+        currentUser.handle = "@sofoniyas";
+        currentUser.initial = "S";
+        currentUser.bio = "Curating textures, tailoring & everyday ease. Brooklyn, NY.";
+      }
+      authDialog?.close();
+      render();
+      showToast(`Switched profile to ${currentUser.name}!`);
+    };
+  });
+
+  // Auth form submission
+  const authForm = document.querySelector("#auth-sheet-form");
+  if (authForm) {
+    authForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const isSignup = authForm.dataset.mode === "signup";
+      const email = document.querySelector("#auth-input-email")?.value.trim();
+      const password = document.querySelector("#auth-input-password")?.value;
+      const username = document.querySelector("#auth-input-username")?.value.trim() || (email ? email.split("@")[0] : "user");
+      const fullName = document.querySelector("#auth-input-name")?.value.trim() || username;
+      const banner = document.querySelector("#auth-status-banner");
+      const submitBtn = document.querySelector("#btn-auth-submit");
+
+      if (!email || !password) return;
+
+      submitBtn.disabled = true;
+      submitBtn.querySelector("span").textContent = isSignup ? "Connecting…" : "Signing in…";
+      if (banner) banner.hidden = true;
+
+      try {
+        if (isSignup) {
+          await signUp({ email, username, password, fullName });
+        }
+        await signIn(email, password);
+        const me = await getCurrentUser();
+        if (me) {
+          currentUser.name = me.full_name || me.username;
+          currentUser.handle = `@${me.username}`;
+          currentUser.initial = (currentUser.name || "U")[0].toUpperCase();
+        } else {
+          currentUser.name = fullName;
+          currentUser.handle = `@${username}`;
+          currentUser.initial = (fullName || "U")[0].toUpperCase();
+        }
+        authDialog?.close();
+        render();
+        showToast(isSignup ? "Account created successfully!" : "Signed in to Outfitted!");
+      } catch (err) {
+        console.warn("Auth request could not reach backend:", err);
+        if (banner) {
+          banner.hidden = false;
+          banner.innerHTML = `
+            <div style="font-size:0.84rem; color:var(--brand-coral); margin-bottom:8px; line-height:1.4;">
+              <strong>Backend server offline:</strong> ${err.message || "Cannot reach server at port 8000."}
+            </div>
+            <button type="button" class="button button-outline button-block" id="btn-fallback-local-login" style="height:38px; font-size:0.82rem;">
+              Continue in Offline/Demo Mode as "${fullName}"
+            </button>
+          `;
+          const fallbackBtn = banner.querySelector("#btn-fallback-local-login");
+          if (fallbackBtn) {
+            fallbackBtn.onclick = () => {
+              currentUser.name = fullName;
+              currentUser.handle = `@${username.toLowerCase().replace(/\s+/g, "")}`;
+              currentUser.initial = (fullName || "U")[0].toUpperCase();
+              authDialog?.close();
+              render();
+              showToast(`Signed in locally as ${currentUser.name}!`);
+            };
+          }
+        }
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.querySelector("span").textContent = isSignup ? "Create Account" : "Sign In";
+      }
+    };
+  }
+
+  const accountOpenBranding = document.querySelector("#account-open-branding");
+  if (accountOpenBranding) {
+    accountOpenBranding.onclick = () => {
+      accountSheet?.close();
+      document.querySelector("#branding-dialog")?.showModal();
+    };
+  }
+  const btnSignOut = document.querySelector("#btn-signout-demo");
+  if (btnSignOut) {
+    btnSignOut.onclick = async () => {
+      accountSheet?.close();
+      await signOut().catch(() => {});
+      openAuth("login");
+      showToast("Signed out. Sign in or pick a profile below.");
     };
   }
 
