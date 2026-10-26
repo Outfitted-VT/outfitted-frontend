@@ -212,9 +212,16 @@ export function connectVirtualDressingRoom(onPublishedFit) {
       if (isDragging) updateSlider(e.clientX);
     });
 
-    sliderContainer.ontouchmove = (e) => {
-      if (e.touches[0]) updateSlider(e.touches[0].clientX);
-    };
+    sliderContainer.addEventListener("touchstart", (e) => {
+      if (e.touches && e.touches[0]) updateSlider(e.touches[0].clientX);
+    }, { passive: true });
+
+    sliderContainer.addEventListener("touchmove", (e) => {
+      if (e.touches && e.touches[0]) {
+        updateSlider(e.touches[0].clientX);
+        if (e.cancelable) e.preventDefault();
+      }
+    }, { passive: false });
   }
 
   if (publishBtn) {

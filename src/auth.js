@@ -173,3 +173,7 @@ export async function getMe() {
   if (res.status === 401) return null;
   return parse(res);
 }
+
+export const signIn = logIn;
+export const signOut = logOut;
+export const getCurrentUser = getMe;
