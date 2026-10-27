@@ -130,7 +130,7 @@ function tryonScreen() {
       </span>
       <span class="slot-filled hidden absolute bottom-2 inset-x-2 justify-between items-center">
         <span class="px-2 py-1 rounded-full bg-black/55 text-white font-label-sm text-label-sm backdrop-blur" data-slot-label>${title}</span>
-        <span class="px-2 py-1 rounded-full bg-white/85 text-on-surface font-label-sm text-label-sm">Change</span>
+        <span class="px-2 py-1 rounded-full bg-white/85 text-[#1a1c1b] font-label-sm text-label-sm">Change</span>
       </span>
     </button>`;
 

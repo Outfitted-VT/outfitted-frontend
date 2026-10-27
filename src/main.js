@@ -21,13 +21,20 @@ import { renderCreateSheet } from "./views/create-sheet.js";
 import { openStealSwap } from "./steal-swap.js";
 import { openDormCloset } from "./dorm-closet.js";
 import { openStyleFriend } from "./style-friend.js";
+import { applyTheme, getThemePreference, isDarkTheme, onThemeChange, setThemePreference } from "./theme.js";
 
-// Native (iOS/Android) status bar and splash screen.
+// Native (iOS/Android) status bar and splash screen. The status bar follows the theme.
 if (Capacitor.isNativePlatform()) {
-  StatusBar.setStyle({ style: Style.Light }).catch(() => {});
-  StatusBar.setBackgroundColor({ color: "#f9f9f6" }).catch(() => {});
+  const syncStatusBar = (dark) => {
+    // Style.Dark is light text for a dark background; Style.Light is the opposite.
+    StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: dark ? "#121413" : "#f9f9f6" }).catch(() => {});
+  };
+  syncStatusBar(isDarkTheme());
+  onThemeChange(syncStatusBar);
   SplashScreen.hide().catch(() => {});
 }
+applyTheme();
 
 const app = document.querySelector("#app");
 
@@ -533,6 +540,25 @@ function renderAccountDrawer() {
           </button>
         </div>
 
+        <div class="account-appearance">
+          <span class="account-appearance-label" id="appearance-label">Appearance</span>
+          <div class="grid grid-cols-3 p-1 rounded-full bg-surface-container" role="radiogroup" aria-labelledby="appearance-label">
+            ${[
+              ["light", "light_mode", "Light"],
+              ["dark", "dark_mode", "Dark"],
+              ["system", "contrast", "System"],
+            ]
+              .map(
+                ([value, icon, label]) => `
+              <button type="button" role="radio" data-theme-option="${value}" aria-checked="false"
+                class="compare-tab h-9 rounded-full font-label-md text-label-md font-semibold flex items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-[16px]">${icon}</span>${label}
+              </button>`
+              )
+              .join("")}
+          </div>
+        </div>
+
         <div class="account-sheet-footer" style="display:flex; flex-direction:column; gap:8px;">
           <button class="button button-primary button-block" id="btn-open-signin">
             <span>Switch account</span>
@@ -823,6 +849,22 @@ function bindEvents() {
   if (closeAccount && accountSheet) {
     closeAccount.onclick = () => accountSheet.close();
   }
+
+  // Appearance: light / dark / follow the system.
+  const themeOptions = document.querySelectorAll("[data-theme-option]");
+  const markTheme = () => {
+    const preference = getThemePreference();
+    themeOptions.forEach((option) => {
+      option.setAttribute("aria-checked", String(option.dataset.themeOption === preference));
+    });
+  };
+  themeOptions.forEach((option) => {
+    option.onclick = () => {
+      setThemePreference(option.dataset.themeOption);
+      markTheme();
+    };
+  });
+  markTheme();
   if (openAuthBtn) openAuthBtn.onclick = () => openAuth("login");
   if (linkSidebarAuth) {
     linkSidebarAuth.onclick = (e) => {

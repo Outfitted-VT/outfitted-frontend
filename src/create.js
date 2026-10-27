@@ -150,7 +150,7 @@ function renderPhotos() {
           class="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/55 text-white flex items-center justify-center backdrop-blur">
           <span class="material-symbols-outlined text-[16px]">close</span>
         </button>
-        ${i === 0 ? `<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-white/85 text-on-surface font-micro-mono text-[9px] uppercase font-bold">Cover</span>` : ""}
+        ${i === 0 ? `<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-white/85 text-[#1a1c1b] font-micro-mono text-[9px] uppercase font-bold">Cover</span>` : ""}
       </div>`;
   });
   if (state.photos.length < MAX_PHOTOS) {
