@@ -116,10 +116,52 @@ function composeScreen() {
     </form>`;
 }
 
+// Where each piece's button sits on the body figure, as % of its width (x) and height (y).
+const PIECE_SPOTS = [
+  { slot: "head", title: "Hat", x: 50, y: 8 },
+  { slot: "top", title: "Top", x: 50, y: 27 },
+  { slot: "outerwear", title: "Jacket", x: 16, y: 30 },
+  { slot: "one_piece", title: "Dress", x: 50, y: 46 },
+  { slot: "accessory", title: "Bag", x: 84, y: 50 },
+  { slot: "bottom", title: "Bottoms", x: 50, y: 66 },
+  { slot: "feet", title: "Shoes", x: 50, y: 92 },
+];
+
+// A simple mannequin the piece buttons sit on. viewBox is 1:2, matching the figure's box.
+const BODY_FIGURE = `
+  <svg viewBox="0 0 100 200" class="absolute inset-0 w-full h-full text-surface-container-high" aria-hidden="true">
+    <g fill="currentColor" stroke="currentColor" stroke-linecap="round">
+      <circle cx="50" cy="16" r="11" stroke="none" />
+      <rect x="46" y="25" width="8" height="8" stroke="none" />
+      <rect x="34" y="31" width="32" height="58" rx="12" stroke="none" />
+      <line x1="37" y1="38" x2="21" y2="100" stroke-width="9" />
+      <line x1="63" y1="38" x2="79" y2="100" stroke-width="9" />
+      <line x1="44" y1="84" x2="41" y2="186" stroke-width="12" />
+      <line x1="56" y1="84" x2="59" y2="186" stroke-width="12" />
+    </g>
+  </svg>`;
+
+// A piece button placed on the body figure. Filled buttons show the photo and a remove button.
+function pieceTile({ slot, title, x, y }) {
+  return `
+    <div class="absolute -translate-x-1/2 -translate-y-1/2" style="left: ${x}%; top: ${y}%" data-piece="${slot}">
+      <button type="button" data-piece-slot="${slot}" aria-label="Add ${title.toLowerCase()} photo"
+        class="piece-tile relative w-11 h-11 sm:w-12 sm:h-12 rounded overflow-hidden bg-surface-container-lowest border border-dashed border-outline-variant shadow-sm flex flex-col items-center justify-center active:scale-[0.96] transition-transform disabled:opacity-35 disabled:active:scale-100">
+        <img class="absolute inset-0 w-full h-full object-cover hidden" alt="" data-piece-preview />
+        <span class="material-symbols-outlined text-[16px] text-secondary leading-none" data-piece-icon>add</span>
+        <span class="font-label-sm text-[9px] leading-tight text-on-surface-variant" data-piece-title>${title}</span>
+      </button>
+      <button type="button" data-piece-remove="${slot}" aria-label="Remove ${title.toLowerCase()}"
+        class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-on-surface text-surface flex items-center justify-center shadow-sm">
+        <span class="material-symbols-outlined text-[14px]">close</span>
+      </button>
+    </div>`;
+}
+
 function tryonScreen() {
   const slot = (name, icon, title, hint) => `
     <button type="button" data-tryon-slot="${name}"
-      class="tryon-slot relative rounded-lg overflow-hidden bg-surface-container-low border border-dashed border-outline-variant flex flex-col items-center justify-center gap-1 text-center p-space-sm active:scale-[0.98] transition-transform">
+      class="tryon-slot relative w-full rounded-lg overflow-hidden bg-surface-container-low border border-dashed border-outline-variant flex flex-col items-center justify-center gap-1 text-center p-space-sm active:scale-[0.98] transition-transform">
       <img class="absolute inset-0 w-full h-full object-cover hidden" alt="" data-slot-preview />
       <span class="slot-empty flex flex-col items-center gap-1">
         <span class="w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center shadow-sm">
@@ -136,13 +178,24 @@ function tryonScreen() {
 
   return `
     <section data-screen="tryon" class="hidden flex flex-col gap-space-md px-margin pb-space-xl">
-      <p class="font-body-md text-body-md text-on-surface-variant">
-        Pick a photo of you and a photo of the outfit. We'll put the outfit on you.
-      </p>
-      <div class="grid grid-cols-2 gap-space-sm">
-        ${slot("person", "person", "You", "Clear, well-lit, ideally full-body")}
-        ${slot("outfit", "apparel", "The outfit", "On its own, or worn by someone")}
+      <div class="grid grid-cols-2 p-1 rounded-full bg-surface-container" role="tablist" aria-label="What to try on">
+        <button type="button" role="tab" data-tryon-mode="outfit" aria-selected="true" class="compare-tab h-9 rounded-full font-label-md text-label-md font-semibold">Entire fit</button>
+        <button type="button" role="tab" data-tryon-mode="pieces" aria-selected="false" class="compare-tab h-9 rounded-full font-label-md text-label-md font-semibold">Pieces</button>
       </div>
+      <p class="font-body-md text-body-md text-on-surface-variant" id="tryon-intro"></p>
+      <div class="grid grid-cols-2 gap-space-sm items-start" id="tryon-slots">
+        ${slot("person", "person", "You", "Clear, well-lit, ideally full-body")}
+        <div data-tryon-panel="outfit">
+          ${slot("outfit", "apparel", "The outfit", "On its own, or worn by someone")}
+        </div>
+        <div data-tryon-panel="pieces" class="hidden">
+          <div class="relative w-full max-w-[200px] mx-auto aspect-[1/2]">
+            ${BODY_FIGURE}
+            ${PIECE_SPOTS.map(pieceTile).join("")}
+          </div>
+        </div>
+      </div>
+      <p class="hidden flex items-start gap-1.5 font-label-sm text-label-sm text-on-surface-variant font-normal" id="tryon-pieces-note"></p>
       <input type="file" accept="image/*" class="hidden" id="tryon-file" />
       <p class="flex items-start gap-1.5 font-label-sm text-label-sm text-on-surface-variant font-normal">
         <span class="material-symbols-outlined text-[16px]">info</span>

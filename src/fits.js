@@ -126,13 +126,13 @@ export async function getProfile(username) {
   return parse(await apiFetch(`/users/${encodeURIComponent(username)}`));
 }
 
-export async function createTryOn(personImageId, outfitImageId) {
-  return parse(
-    await apiFetch(
-      "/tryons",
-      json("POST", { person_image_id: personImageId, outfit_image_id: outfitImageId })
-    )
-  );
+// Pass either `outfitImageId` (one photo of a whole outfit) or `pieces`
+// ([{ slot, imageId }], slot being "head", "top", "outerwear", "one_piece", "bottom", "feet", or "accessory").
+export async function createTryOn(personImageId, { outfitImageId, pieces }) {
+  const body = { person_image_id: personImageId };
+  if (pieces) body.pieces = pieces.map(({ slot, imageId }) => ({ slot, image_id: imageId }));
+  else body.outfit_image_id = outfitImageId;
+  return parse(await apiFetch("/tryons", json("POST", body)));
 }
 
 

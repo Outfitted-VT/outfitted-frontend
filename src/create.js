@@ -9,6 +9,15 @@ import { aiBadge } from "./views/fit-card.js";
 const MAX_PHOTOS = 10;
 const TRYON_STEPS = ["Uploading your photos…", "Reading the outfit…", "Dressing you…", "Finishing the details…"];
 
+const TRYON_INTRO = {
+  outfit: "Pick a photo of you and a photo of the outfit. We'll put the outfit on you.",
+  pieces: "Mix pieces from different photos. Add only what you want to change; the rest of your look stays as it is.",
+};
+// Piece slots head to toe, matching the backend. A dress (one_piece) replaces the top and
+// bottom, so it can't be combined with them.
+const PIECE_SLOTS = ["head", "top", "outerwear", "one_piece", "bottom", "feet", "accessory"];
+const CONFLICTS = { one_piece: ["top", "bottom"], top: ["one_piece"], bottom: ["one_piece"] };
+
 const SCREENS = {
   menu: { kicker: "Create", title: "What are we doing?" },
   compose: { kicker: "New fit", title: "Post a fit", back: "menu" },
@@ -32,7 +41,8 @@ function freshState() {
     category: "top",
     editing: null, // index of the piece open in the editor, or null when adding
     detect: { cover: null, run: 0, status: "idle", found: 0 },
-    tryon: { person: null, outfit: null, slot: null, result: null, run: 0 },
+    // mode is "outfit" (one photo of a whole fit) or "pieces" (a photo per slot in `pieces`).
+    tryon: { mode: "outfit", person: null, outfit: null, pieces: {}, result: null, run: 0 },
   };
 }
 
@@ -94,7 +104,8 @@ function closeCreate() {
 }
 
 function revokePreviews() {
-  const local = [...state.photos, state.tryon.person, state.tryon.outfit].filter((p) => p?.file);
+  const t = state.tryon;
+  const local = [...state.photos, t.person, t.outfit, ...Object.values(t.pieces)].filter((p) => p?.file);
   local.forEach((p) => URL.revokeObjectURL(p.preview));
 }
 
@@ -517,9 +528,21 @@ async function submitFit(event) {
 
 // --- try-on ----------------------------------------------------------------------------
 
+const blockedBy = (slot) => (CONFLICTS[slot] || []).filter((other) => state.tryon.pieces[other]);
+
 function renderTryOn() {
   const t = state.tryon;
   if (!t.person) t.person = rememberedPerson();
+
+  document.querySelectorAll("[data-tryon-mode]").forEach((tab) => {
+    tab.setAttribute("aria-selected", String(tab.dataset.tryonMode === t.mode));
+  });
+  document.querySelectorAll("[data-tryon-panel]").forEach((panel) => {
+    panel.classList.toggle("hidden", panel.dataset.tryonPanel !== t.mode);
+  });
+  $("#tryon-intro").textContent = TRYON_INTRO[t.mode];
+  renderPieces();
+
   for (const slot of ["person", "outfit"]) {
     const photo = t[slot];
     const el = $(`[data-tryon-slot="${slot}"]`);
@@ -534,7 +557,46 @@ function renderTryOn() {
       el.querySelector("[data-slot-label]").textContent = photo?.remembered ? "Your last photo" : "You";
     }
   }
-  $("#tryon-start").disabled = !(t.person && t.outfit);
+  const ready = t.mode === "outfit" ? Boolean(t.outfit) : Object.keys(t.pieces).length > 0;
+  $("#tryon-start").disabled = !(t.person && ready);
+}
+
+function renderPieces() {
+  const pieces = state.tryon.pieces;
+  for (const slot of PIECE_SLOTS) {
+    const piece = pieces[slot];
+    const tile = $(`[data-piece-slot="${slot}"]`);
+    const preview = tile.querySelector("[data-piece-preview]");
+    preview.classList.toggle("hidden", !piece);
+    if (piece) preview.src = piece.preview;
+    tile.querySelector("[data-piece-icon]").classList.toggle("hidden", Boolean(piece));
+    tile.querySelector("[data-piece-title]").classList.toggle("hidden", Boolean(piece));
+    tile.classList.toggle("border-dashed", !piece);
+    $(`[data-piece-remove="${slot}"]`).classList.toggle("hidden", !piece);
+
+    const blocked = blockedBy(slot);
+    tile.disabled = !piece && blocked.length > 0;
+    tile.title = tile.disabled ? (slot === "one_piece" ? "Remove the top and bottom to add a dress" : "A dress replaces this") : "";
+  }
+
+  const note = $("#tryon-pieces-note");
+  const message =
+    state.tryon.mode !== "pieces"
+      ? ""
+      : pieces.one_piece
+        ? "A dress replaces the top and bottom, so those are turned off."
+        : pieces.top || pieces.bottom
+          ? "To try a dress, remove the top and bottom first."
+          : "";
+  note.innerHTML = message ? `<span class="material-symbols-outlined text-[16px]">info</span>${message}` : "";
+  note.classList.toggle("hidden", !message);
+  note.classList.toggle("flex", Boolean(message));
+}
+
+function setTryOnMode(mode) {
+  state.tryon.mode = mode;
+  showError("#tryon-error");
+  renderTryOn();
 }
 
 async function pickTryOnPhoto(slot) {
@@ -546,6 +608,26 @@ async function pickTryOnPhoto(slot) {
   showError("#tryon-error");
   renderTryOn();
 }
+
+async function pickPiece(slot) {
+  const [file] = await pickFiles($("#tryon-file"));
+  if (!file) return;
+  removePiece(slot, { render: false });
+  state.tryon.pieces[slot] = { file, preview: URL.createObjectURL(file) };
+  showError("#tryon-error");
+  renderTryOn();
+}
+
+function removePiece(slot, { render = true } = {}) {
+  const piece = state.tryon.pieces[slot];
+  if (piece?.file) URL.revokeObjectURL(piece.preview);
+  delete state.tryon.pieces[slot];
+  if (render) renderTryOn();
+}
+
+// The chosen pieces head to toe, as [slot, piece] pairs.
+const chosenPieces = () =>
+  PIECE_SLOTS.filter((slot) => state.tryon.pieces[slot]).map((slot) => [slot, state.tryon.pieces[slot]]);
 
 async function runTryOn() {
   const t = state.tryon;
@@ -568,15 +650,28 @@ async function runTryOn() {
       t.person.image = await uploadImage(t.person.file);
       rememberPerson(t.person.image);
     }
-    if (!t.outfit.image) t.outfit.image = await uploadImage(t.outfit.file);
+    let clothing;
+    if (t.mode === "outfit") {
+      if (!t.outfit.image) t.outfit.image = await uploadImage(t.outfit.file);
+      clothing = { outfitImageId: t.outfit.image.id };
+    } else {
+      const pieces = chosenPieces();
+      await Promise.all(
+        pieces.map(async ([, piece]) => {
+          if (!piece.image) piece.image = await uploadImage(piece.file);
+        })
+      );
+      clothing = { pieces: pieces.map(([slot, piece]) => ({ slot, imageId: piece.image.id })) };
+    }
     if (stale()) return;
-    t.result = await createTryOn(t.person.image.id, t.outfit.image.id);
+    t.result = await createTryOn(t.person.image.id, clothing);
     if (stale()) return;
     showResult();
   } catch (err) {
     if (stale()) return;
     console.error(err);
-    if (err instanceof ApiError && err.status === 400 && t.person.remembered) {
+    // Uploads above are fresh, so "Image not found" means the remembered person photo.
+    if (err instanceof ApiError && err.message === "Image not found" && t.person.remembered) {
       // The remembered photo was deleted; ask for a new one.
       forgetPerson();
       t.person = null;
@@ -658,9 +753,21 @@ export function initCreate({ onPosted, toast }) {
   });
   $("#tryon-start").onclick = runTryOn;
   $("#tryon-again").onclick = runTryOn;
+  document.querySelectorAll("[data-tryon-mode]").forEach((tab) => {
+    tab.onclick = () => setTryOnMode(tab.dataset.tryonMode);
+  });
+  document.querySelectorAll("[data-piece-slot]").forEach((tile) => {
+    tile.onclick = () => pickPiece(tile.dataset.pieceSlot);
+  });
+  document.querySelectorAll("[data-piece-remove]").forEach((button) => {
+    button.onclick = () => removePiece(button.dataset.pieceRemove);
+  });
   $("#tryon-new").onclick = () => {
-    if (state.tryon.outfit?.file) URL.revokeObjectURL(state.tryon.outfit.preview);
-    state.tryon.outfit = null;
+    // Keep the photo of you and the mode; start over on the clothes.
+    const t = state.tryon;
+    if (t.outfit?.file) URL.revokeObjectURL(t.outfit.preview);
+    t.outfit = null;
+    Object.keys(t.pieces).forEach((slot) => removePiece(slot, { render: false }));
     show("tryon");
   };
   $("#tryon-post").onclick = postTryOn;
