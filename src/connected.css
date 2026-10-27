@@ -7,7 +7,7 @@
 [class*="border"] {
   border-width: 0;
   border-style: solid;
-  border-color: #e5e7eb;
+  border-color: rgb(var(--tw-surface-container-high));
 }
 
 /* Also from the reset: without max-width, a large photo's natural size (e.g. 1536px) props the
@@ -58,34 +58,35 @@ img[class*="w-"] {
   flex: 0 0 100%;
   scroll-snap-align: center;
   max-height: 70vh;
-  background: #eeeeeb;
+  background: rgb(var(--tw-surface-container));
 }
 .fit-dot {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: #c4c7c7;
+  background: rgb(var(--tw-outline-variant));
   transition: width 0.2s, background 0.2s;
 }
 .fit-dot.active {
   width: 16px;
-  background: #1a1c1b;
+  background: rgb(var(--tw-on-surface));
 }
 
 .item-chip {
-  background: #f4f4f1;
-  color: #444748;
+  background: rgb(var(--tw-surface-container-low));
+  color: rgb(var(--tw-on-surface-variant));
 }
 .item-chip[aria-pressed="true"] {
-  background: #000;
-  color: #fff;
+  background: rgb(var(--tw-primary));
+  color: rgb(var(--tw-on-primary));
 }
 .compare-tab {
-  color: #444748;
+  color: rgb(var(--tw-on-surface-variant));
 }
-.compare-tab[aria-selected="true"] {
-  background: #fff;
-  color: #1a1c1b;
+.compare-tab[aria-selected="true"],
+.compare-tab[aria-checked="true"] {
+  background: rgb(var(--tw-surface-container-lowest));
+  color: rgb(var(--tw-on-surface));
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
 }
 
@@ -114,13 +115,13 @@ img[class*="w-"] {
 }
 
 .match-card {
-  background: #f4f4f1;
+  background: rgb(var(--tw-surface-container-low));
   /* Set here: the global button reset (border: 0) wins over Tailwind's border class. */
   border: 1.5px solid transparent;
 }
 .match-card[aria-pressed="true"] {
-  background: #fff;
-  border-color: #000;
+  background: rgb(var(--tw-surface-container-lowest));
+  border-color: rgb(var(--tw-primary));
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
 }
 
@@ -129,7 +130,7 @@ img[class*="w-"] {
   display: inline-flex;
   align-items: baseline;
   width: max-content;
-  color: #111113;
+  color: rgb(var(--tw-on-surface));
   font-family: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: 900;
   font-size: 1.15rem;
@@ -138,7 +139,7 @@ img[class*="w-"] {
   text-decoration: none;
 }
 .wordmark-dot {
-  color: #173de6;
+  color: rgb(var(--tw-secondary));
 }
 .wordmark-lg {
   font-size: 2rem;
@@ -187,4 +188,50 @@ img[class*="w-"] {
     max-height: 60vh;
     object-fit: contain;
   }
+}
+
+/* Confirmation modal (src/confirm-dialog.js). */
+.confirm-dialog {
+  border: 0; /* browsers give <dialog> a default border */
+}
+.confirm-dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(4px);
+}
+.confirm-dialog[open] {
+  animation: confirmIn 160ms ease-out;
+}
+.confirm-dialog[open]::backdrop {
+  animation: confirmFade 160ms ease-out;
+}
+@keyframes confirmIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+@keyframes confirmFade {
+  from { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog[open],
+  .confirm-dialog[open]::backdrop { animation: none; }
+}
+
+/* ---------- Dark mode tweaks (theme set by src/theme.js) ---------- */
+/* In light mode the selected tab is white on a grey track; in dark mode lift it instead of
+   using the card colour, which would look sunken. */
+:root[data-theme="dark"] .compare-tab[aria-selected="true"],
+:root[data-theme="dark"] .compare-tab[aria-checked="true"],
+:root[data-theme="dark"] .auth-tab[aria-selected="true"],
+:root[data-theme="dark"] .match-card[aria-pressed="true"] {
+  background: rgb(var(--tw-surface-container-highest));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+/* Photo placeholders for the 3D try-on stage and product shots. */
+:root[data-theme="dark"] .product-photo {
+  background: linear-gradient(180deg, #2a2c2b, #222423);
+}
+:root[data-theme="dark"] .product-silhouette,
+:root[data-theme="dark"] .tryon-stage {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 42%, #343635 0%, transparent 70%),
+    linear-gradient(180deg, #2a2c2b, #1f2120);
 }

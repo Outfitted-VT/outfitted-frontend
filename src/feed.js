@@ -1,5 +1,6 @@
 // A paginated list of fits (feed or profile) with likes, saves, and deleting your own fits.
 
+import { confirmDialog } from "./confirm-dialog.js";
 import { currentUser } from "./data.js";
 import { deleteFit, listFits, setLiked, setSaved } from "./fits.js";
 import { renderFitCard } from "./views/fit-card.js";
@@ -137,9 +138,16 @@ export function mountFitList({ list, status, sentinel, path, empty, toast, onCha
   }
 
   async function remove(fit) {
-    if (!confirm("Delete this fit? Its photos will be deleted too.")) return;
     try {
-      await deleteFit(fit.id);
+      const deleted = await confirmDialog({
+        title: "Delete this fit?",
+        message: "Its photos will be deleted too. This can't be undone.",
+        confirmLabel: "Delete",
+        busyLabel: "Deleting…",
+        danger: true,
+        onConfirm: () => deleteFit(fit.id),
+      });
+      if (!deleted) return;
       fits.delete(fit.id);
       list.querySelector(`[data-fit-id="${fit.id}"]`)?.remove();
       if (!fits.size) status.innerHTML = empty;

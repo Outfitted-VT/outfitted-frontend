@@ -18,6 +18,8 @@
   --brand-green: #0f3728;
   --brand-green-hover: #174d39;
   --brand-green-light: #245541;
+  /* For green text; in dark mode it's lighter than --brand-green (a background colour). */
+  --brand-green-text: #0f3728;
   --brand-sage: #b8dfc8;
   --brand-sage-hover: #a5d3b7;
   --brand-sage-subtle: #ebf7f0;
@@ -52,6 +54,34 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+}
+
+/* Dark theme (data-theme="dark" on <html>, set by src/theme.js). */
+:root[data-theme="dark"] {
+  --bg: #0f1210;
+  --surface: #171b19;
+  --surface-sunk: #1d2220;
+  --ink: #edf0ee;
+  --ink-soft: #d0d6d2;
+  --muted: #9ba59f;
+  --muted-light: #737c76;
+  --line: #272d2a;
+  --line-strong: #37403b;
+
+  /* Green stays dark enough behind white text; green text gets its own lighter shade. */
+  --brand-green: #1d5a42;
+  --brand-green-hover: #236b4f;
+  --brand-green-light: #2a7a5a;
+  --brand-green-text: #8fd3b0;
+  --brand-sage: #234a38;
+  --brand-sage-hover: #2b5a44;
+  --brand-sage-subtle: #172820;
+  --brand-mustard: #4a3f1c;
+  --brand-mustard-subtle: #2a2516;
+
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 4px 20px -6px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 12px 36px -8px rgba(0, 0, 0, 0.6);
 }
 
 /* ---------- Global Reset & Base ---------- */
@@ -160,7 +190,7 @@ img {
 
 .button-dark {
   background: var(--ink);
-  color: #ffffff;
+  color: var(--bg);
 }
 
 .button-dark:hover {
@@ -318,7 +348,7 @@ img {
   font-size: 0.78rem;
   font-weight: 700;
   background: var(--brand-sage);
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   border: 1px solid var(--brand-green-light);
   cursor: pointer;
   white-space: nowrap;
@@ -436,7 +466,7 @@ img {
 
 .nav-item.active {
   background: var(--brand-sage);
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   font-weight: 700;
 }
 
@@ -891,7 +921,7 @@ img {
 .reaction-sticker-btn.active {
   background: var(--brand-sage);
   border-color: var(--brand-green);
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   font-weight: 800;
 }
 
@@ -940,7 +970,7 @@ img {
 }
 
 .btn-try-look-cta:hover {
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   transform: translateX(2px);
 }
 
@@ -976,7 +1006,7 @@ img {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  color: var(--brand-green);
+  color: var(--brand-green-text);
 }
 
 .fitcheck-title {
@@ -985,7 +1015,7 @@ img {
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.02em;
-  color: var(--brand-green);
+  color: var(--brand-green-text);
 }
 
 .fitcheck-body {
@@ -1163,8 +1193,8 @@ dialog.sheet::backdrop {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #ffffff;
-  color: var(--brand-green);
+  background: var(--surface);
+  color: var(--brand-green-text);
   display: grid;
   place-items: center;
   box-shadow: var(--shadow-subtle);
@@ -1179,7 +1209,7 @@ dialog.sheet::backdrop {
 .sublink-virtual-tryon {
   font-size: 0.84rem;
   font-weight: 700;
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -1328,7 +1358,7 @@ textarea.field-input {
   height: 36px;
   border-radius: 50%;
   background: #ffffff;
-  color: var(--ink);
+  color: #101512;
   box-shadow: var(--shadow-float);
   display: grid;
   place-items: center;
@@ -1362,7 +1392,7 @@ textarea.field-input {
 
 .score-badge {
   background: var(--brand-sage);
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   font-size: 0.75rem;
   font-weight: 800;
   padding: 4px 10px;
@@ -1422,7 +1452,7 @@ textarea.field-input {
   inset: 0;
   display: grid;
   place-items: center;
-  color: var(--brand-green);
+  color: var(--brand-green-text);
 }
 
 .diffusion-bar {
@@ -1621,7 +1651,7 @@ textarea.field-input {
   height: 34px;
   border-radius: 50%;
   background: var(--ink);
-  color: #fff;
+  color: var(--bg);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -1905,7 +1935,7 @@ textarea.field-input {
   display: inline-block;
   font-size: 0.68rem;
   font-weight: 800;
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   background: var(--brand-sage);
   padding: 2px 8px;
   border-radius: 4px;
@@ -2247,7 +2277,7 @@ textarea.field-input {
   font-size: 0.72rem;
   font-weight: 800;
   margin-bottom: 4px;
-  color: var(--brand-green);
+  color: var(--brand-green-text);
 }
 
 .msg-time {
@@ -2261,7 +2291,7 @@ textarea.field-input {
   margin-top: 8px;
   border-radius: var(--radius-s);
   overflow: hidden;
-  background: #ffffff;
+  background: var(--surface);
   color: var(--ink);
   border: 1px solid var(--line);
 }
@@ -2807,7 +2837,7 @@ textarea.field-input {
 
 .account-tier-badge {
   background: var(--brand-sage);
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   font-size: 0.72rem;
   font-weight: 800;
   padding: 2px 8px;
@@ -2874,6 +2904,21 @@ textarea.field-input {
 .tile-arrow {
   color: var(--muted);
   flex-shrink: 0;
+}
+
+.account-appearance {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.account-appearance-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .account-sheet-footer {
@@ -3029,7 +3074,7 @@ textarea.field-input {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: #fbfaf6;
+  background: var(--bg);
   display: grid;
   place-items: center;
 }
@@ -3145,12 +3190,12 @@ textarea.field-input {
 }
 
 .mobile-nav-btn.active {
-  color: var(--brand-green);
+  color: var(--brand-green-text);
   font-weight: 800;
 }
 
 .mobile-nav-btn.btn-mobile-new {
-  color: var(--brand-green);
+  color: var(--brand-green-text);
 }
 
 .mobile-nav-btn.btn-mobile-new span.plus-badge {
@@ -3813,4 +3858,15 @@ textarea.field-input {
     align-items: stretch;
     text-align: center;
   }
+}
+
+/* Dark theme: translucent bars that use a fixed light colour above. */
+:root[data-theme="dark"] .main-topbar {
+  background: rgba(15, 18, 16, 0.92);
+}
+:root[data-theme="dark"] .mobile-bottom-nav {
+  background: rgba(15, 18, 16, 0.96);
+}
+:root[data-theme="dark"] .mustard-desc {
+  color: var(--ink-soft);
 }
