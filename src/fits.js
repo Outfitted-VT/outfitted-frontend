@@ -150,13 +150,9 @@ export async function getPrivacySettings() {
 }
 
 export async function updatePrivacySettings({
-  mannequinTone,
-  hideFacialFeatures,
   defaultClosetPrivacy,
 } = {}) {
   const body = {};
-  if (mannequinTone !== undefined) body.mannequin_tone = mannequinTone;
-  if (hideFacialFeatures !== undefined) body.hide_facial_features = hideFacialFeatures;
   if (defaultClosetPrivacy !== undefined) body.default_closet_privacy = defaultClosetPrivacy;
   return parse(await apiFetch("/users/me/privacy", json("PATCH", body)));
 }
