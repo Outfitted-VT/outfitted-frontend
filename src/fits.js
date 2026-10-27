@@ -150,13 +150,11 @@ export async function getPrivacySettings() {
 }
 
 export async function updatePrivacySettings({
-  avatarMode,
   mannequinTone,
   hideFacialFeatures,
   defaultClosetPrivacy,
 } = {}) {
   const body = {};
-  if (avatarMode !== undefined) body.avatar_mode = avatarMode;
   if (mannequinTone !== undefined) body.mannequin_tone = mannequinTone;
   if (hideFacialFeatures !== undefined) body.hide_facial_features = hideFacialFeatures;
   if (defaultClosetPrivacy !== undefined) body.default_closet_privacy = defaultClosetPrivacy;
