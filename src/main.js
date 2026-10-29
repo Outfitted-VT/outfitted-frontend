@@ -13,7 +13,7 @@ import { SplashScreen } from "@capacitor/splash-screen";
 import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
 import { initCreate, openCreate } from "./create.js";
 import { mountFitList } from "./feed.js";
-import { getProfile } from "./fits.js";
+import { getProfile, uploadImage, updateProfile, mediaUrl } from "./fits.js";
 import { escapeHtml } from "./format.js";
 import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
 import { renderProfileView } from "./views/profile.js";
@@ -90,8 +90,8 @@ function renderTopBar() {
             </button>
             <span class="notif-dot"></span>
           </div>
-          <button type="button" class="user-badge-hi" id="account-badge" aria-label="Account & Studio Menu" title="Account profile & studio menu">
-            ${escapeHtml(currentUser.initial || "HI")}
+          <button type="button" class="user-badge-hi overflow-hidden p-0" id="account-badge" aria-label="Account & Studio Menu" title="Account profile & studio menu">
+            ${currentUser.avatarUrl ? `<img src="${escapeHtml(mediaUrl(currentUser.avatarUrl))}" alt="" class="w-full h-full object-cover rounded-full" />` : escapeHtml(currentUser.initial || "HI")}
           </button>
         </div>
       </div>
@@ -495,7 +495,7 @@ function renderAccountDrawer() {
         <button type="button" class="icon-button close" id="close-account-sheet" aria-label="Close">${icons.close}</button>
         
         <div class="account-profile-header">
-          <span class="avatar-chip lg" style="background:#0f3728; color:#fff;">${escapeHtml(currentUser.initial || "HI")}</span>
+          <span class="avatar-chip lg overflow-hidden" style="background:#0f3728; color:#fff;">${currentUser.avatarUrl ? `<img src="${escapeHtml(mediaUrl(currentUser.avatarUrl))}" alt="" class="w-full h-full object-cover rounded-full" />` : escapeHtml(currentUser.initial || "HI")}</span>
           <div class="account-profile-info">
             <h3 id="account-sheet-title">${escapeHtml(currentUser.name)}</h3>
             <p class="account-handle">${escapeHtml(currentUser.handle)} · <span class="account-tier-badge">Stylist Circle</span></p>
@@ -772,10 +772,13 @@ function bindEvents() {
       (outfit) => openShareModalForPost(outfit)
     );
   } else if (activeTab === "friends") {
-    connectFriends((friendName) => {
-      activeTab = "messages";
-      render();
-    });
+    connectFriends(
+      (friendName) => {
+        activeTab = "messages";
+        render();
+      },
+      { toast: showToast, onFollowChanged: loadProfileCounts }
+    );
   }
 
   // Connect common dialogs
@@ -1341,6 +1344,33 @@ function connectBackend() {
       showToast("Signed out");
     };
   }
+
+  const btnAvatar = document.querySelector("#btn-profile-avatar");
+  const inputAvatar = document.querySelector("#profile-avatar-input");
+  if (btnAvatar && inputAvatar) {
+    btnAvatar.onclick = () => inputAvatar.click();
+    inputAvatar.onchange = async () => {
+      const file = inputAvatar.files?.[0];
+      if (!file) return;
+      showToast("Uploading profile photo...");
+      try {
+        const uploaded = await uploadImage(file);
+        await updateProfile({ avatarImageId: uploaded.id });
+        currentUser.avatarUrl = uploaded.url;
+        showToast("Profile photo updated!");
+        render();
+      } catch (err) {
+        showToast(err.message || "Failed to update profile photo.");
+      }
+    };
+  }
+
+  document.querySelectorAll("[data-nav-tab]").forEach((btn) => {
+    btn.onclick = () => {
+      activeTab = btn.dataset.navTab;
+      render();
+    };
+  });
 }
 
 // Steal & Swap, Dorm Closets, and Style a Friend (also inside cards that load later).

@@ -1,5 +1,64 @@
 import { icons } from "./icons.js";
-import { friendsList } from "./data.js";
+import { searchUsers, followUser, unfollowUser, mediaUrl } from "./fits.js";
+import { escapeHtml } from "./format.js";
+
+function renderUserCard(user) {
+  const name = user.full_name || user.username;
+  const initial = (name || "U").charAt(0).toUpperCase();
+  const isFollowing = Boolean(user.is_following);
+  const bio = user.bio || "Fashion enthusiast on Outfitted.";
+
+  return `
+    <div class="friend-profile-card" data-username="${escapeHtml(user.username)}">
+      <div class="friend-card-top">
+        <span class="avatar-chip lg overflow-hidden" style="background:#0f3728; color:#fff;">
+          ${
+            user.avatar?.url
+              ? `<img src="${escapeHtml(mediaUrl(user.avatar.url))}" alt="${escapeHtml(name)}" class="w-full h-full object-cover rounded-full" />`
+              : escapeHtml(initial)
+          }
+        </span>
+        <div class="friend-card-names">
+          <h3>${escapeHtml(name)}</h3>
+          <small>@${escapeHtml(user.username)}</small>
+        </div>
+        <button class="button ${isFollowing ? "button-outline" : "button-primary"} button-sm btn-toggle-follow"
+          data-username="${escapeHtml(user.username)}"
+          data-following="${isFollowing ? "true" : "false"}">
+          ${isFollowing ? "Following" : "+ Follow"}
+        </button>
+      </div>
+
+      <p class="friend-card-bio">${escapeHtml(bio)}</p>
+
+      <div class="friend-card-stats">
+        <div><small>Stylist Score</small><strong>96%</strong></div>
+        <div><small>Status</small><strong>Active</strong></div>
+        <div><small>Community</small><strong>Member</strong></div>
+      </div>
+
+      <div class="friend-card-actions">
+        <button class="button button-dark button-block btn-open-dm" data-friend-name="${escapeHtml(name)}">
+          ${icons.message}<span>Send Message / Fit Check</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Loading, empty, and error states share one full-width message block. `action` is optional
+// button markup (e.g. Try again).
+function renderStatus(title, text, action = "") {
+  return `
+    <div class="friend-empty-state" role="status" style="grid-column: 1 / -1; text-align: center; padding: 48px 24px;">
+      <p style="font-size: 1.1rem; font-weight: 600; color: var(--ink);">${escapeHtml(title)}</p>
+      <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">${escapeHtml(text)}</p>
+      ${action ? `<div style="margin-top: 16px; display: flex; justify-content: center;">${action}</div>` : ""}
+    </div>
+  `;
+}
+
+const loadingState = () => renderStatus("Loading people…", "Finding people on Outfitted.");
 
 export function renderFriendsView() {
   return `
@@ -13,83 +72,112 @@ export function renderFriendsView() {
         <div class="friends-hero-search">
           <div class="wardrobe-search">
             <span class="search-icon">${icons.search}</span>
-            <input type="text" id="friend-page-search" placeholder="Search by name or style" />
+            <input type="text" id="friend-page-search" placeholder="Search friends by name or username..." autocomplete="off" />
           </div>
         </div>
       </div>
 
       <div class="friends-grid" id="friends-grid-box">
-        ${friendsList
-          .map(
-            (friend) => `
-            <div class="friend-profile-card" data-friend-id="${friend.id}">
-              <div class="friend-card-top">
-                <span class="avatar-chip lg" style="background:${friend.color}; color:#fff;">${friend.initial}</span>
-                <div class="friend-card-names">
-                  <h3>${friend.name}</h3>
-                  <small>${friend.handle}</small>
-                </div>
-                <button class="button ${friend.following ? "button-outline" : "button-primary"} button-sm btn-toggle-follow" data-friend-id="${friend.id}">
-                  ${friend.following ? "Following" : "+ Follow"}
-                </button>
-              </div>
-
-              <p class="friend-card-bio">${friend.bio}</p>
-
-              <div class="friend-card-stats">
-                <div><small>Fits Shared</small><strong>${friend.fitsCount}</strong></div>
-                <div><small>Status</small><strong>${friend.status}</strong></div>
-                <div><small>Opinion Score</small><strong>96%</strong></div>
-              </div>
-
-              <div class="friend-card-actions">
-                <button class="button button-dark button-block btn-open-dm" data-friend-id="${friend.id}" data-friend-name="${friend.name}">
-                  ${icons.message}<span>Send Message / Fit Check</span>
-                </button>
-              </div>
-            </div>
-          `
-          )
-          .join("")}
+        ${loadingState()}
       </div>
     </div>
   `;
 }
 
-export function connectFriends(onOpenMessageThread) {
+export function connectFriends(onOpenMessageThread, options = {}) {
   const container = document.querySelector("#friends-page");
   if (!container) return;
 
-  // Follow / Unfollow toggle
-  container.querySelectorAll(".btn-toggle-follow").forEach((btn) => {
-    btn.onclick = () => {
-      const id = btn.dataset.friendId;
-      const friend = friendsList.find((f) => f.id === id);
-      if (friend) {
-        friend.following = !friend.following;
-        btn.textContent = friend.following ? "Following" : "+ Follow";
-        btn.className = `button ${friend.following ? "button-outline" : "button-primary"} button-sm btn-toggle-follow`;
-      }
-    };
-  });
-
-  // Open DM
-  container.querySelectorAll(".btn-open-dm").forEach((btn) => {
-    btn.onclick = () => {
-      const name = btn.dataset.friendName;
-      if (onOpenMessageThread) onOpenMessageThread(name);
-    };
-  });
-
-  // Search filter
+  const grid = container.querySelector("#friends-grid-box");
   const searchInput = container.querySelector("#friend-page-search");
+
+  function setFollowButton(btn, following) {
+    btn.dataset.following = following ? "true" : "false";
+    btn.textContent = following ? "Following" : "+ Follow";
+    btn.className = `button ${following ? "button-outline" : "button-primary"} button-sm btn-toggle-follow`;
+  }
+
+  function bindCardEvents() {
+    grid.querySelectorAll(".btn-toggle-follow").forEach((btn) => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const username = btn.dataset.username;
+        const wasFollowing = btn.dataset.following === "true";
+        const willFollow = !wasFollowing;
+
+        // Optimistic UI update; undone below if the request fails.
+        setFollowButton(btn, willFollow);
+        btn.disabled = true;
+
+        try {
+          if (willFollow) {
+            await followUser(username);
+            options.toast?.(`Following @${username}`);
+          } else {
+            await unfollowUser(username);
+            options.toast?.(`Unfollowed @${username}`);
+          }
+          options.onFollowChanged?.();
+        } catch (err) {
+          setFollowButton(btn, wasFollowing);
+          options.toast?.(err.message || "Couldn't update follow status. Try again.");
+        } finally {
+          btn.disabled = false;
+        }
+      };
+    });
+
+    grid.querySelectorAll(".btn-open-dm").forEach((btn) => {
+      btn.onclick = () => {
+        const name = btn.dataset.friendName;
+        if (onOpenMessageThread) onOpenMessageThread(name);
+      };
+    });
+  }
+
+  // Each search gets a number, so a slow earlier response can't overwrite a newer one.
+  let latestRequest = 0;
+
+  async function loadUsers(query = "") {
+    const request = ++latestRequest;
+
+    let users;
+    try {
+      users = await searchUsers(query);
+    } catch (err) {
+      if (request !== latestRequest) return;
+      grid.innerHTML = renderStatus(
+        "Couldn't load people",
+        err.message || "Check your connection and try again.",
+        `<button type="button" class="button button-outline button-sm" id="friends-retry">Try again</button>`
+      );
+      grid.querySelector("#friends-retry").onclick = () => {
+        grid.innerHTML = loadingState();
+        loadUsers(query);
+      };
+      return;
+    }
+    if (request !== latestRequest) return;
+
+    if (users.length > 0) {
+      grid.innerHTML = users.map(renderUserCard).join("");
+      bindCardEvents();
+    } else if (query) {
+      grid.innerHTML = renderStatus("No users found", `No one matches "${query}". Try another name or username.`);
+    } else {
+      grid.innerHTML = renderStatus("No one else is here yet", "Invite your friends to Outfitted, then follow them here.");
+    }
+  }
+
+  loadUsers("");
+
+  let searchTimeout = null;
   if (searchInput) {
     searchInput.oninput = () => {
-      const q = searchInput.value.toLowerCase().trim();
-      container.querySelectorAll(".friend-profile-card").forEach((card) => {
-        const text = card.textContent.toLowerCase();
-        card.hidden = q && !text.includes(q);
-      });
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        loadUsers(searchInput.value.trim());
+      }, 250);
     };
   }
 }
