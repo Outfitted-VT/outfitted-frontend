@@ -1,5 +1,4 @@
 import { icons } from "./icons.js";
-import { friendsList } from "./data.js";
 import { searchUsers, followUser, unfollowUser, mediaUrl } from "./fits.js";
 import { escapeHtml } from "./format.js";
 
@@ -47,38 +46,19 @@ function renderUserCard(user) {
   `;
 }
 
-function renderMockCard(friend) {
+// Loading, empty, and error states share one full-width message block. `action` is optional
+// button markup (e.g. Try again).
+function renderStatus(title, text, action = "") {
   return `
-    <div class="friend-profile-card" data-friend-id="${friend.id}" data-username="${friend.id}">
-      <div class="friend-card-top">
-        <span class="avatar-chip lg" style="background:${friend.color}; color:#fff;">${escapeHtml(friend.initial)}</span>
-        <div class="friend-card-names">
-          <h3>${escapeHtml(friend.name)}</h3>
-          <small>${escapeHtml(friend.handle)}</small>
-        </div>
-        <button class="button ${friend.following ? "button-outline" : "button-primary"} button-sm btn-toggle-follow"
-          data-username="${escapeHtml(friend.id)}"
-          data-following="${friend.following ? "true" : "false"}">
-          ${friend.following ? "Following" : "+ Follow"}
-        </button>
-      </div>
-
-      <p class="friend-card-bio">${escapeHtml(friend.bio)}</p>
-
-      <div class="friend-card-stats">
-        <div><small>Fits Shared</small><strong>${escapeHtml(String(friend.fitsCount))}</strong></div>
-        <div><small>Status</small><strong>${escapeHtml(friend.status)}</strong></div>
-        <div><small>Opinion Score</small><strong>96%</strong></div>
-      </div>
-
-      <div class="friend-card-actions">
-        <button class="button button-dark button-block btn-open-dm" data-friend-name="${escapeHtml(friend.name)}">
-          ${icons.message}<span>Send Message / Fit Check</span>
-        </button>
-      </div>
+    <div class="friend-empty-state" role="status" style="grid-column: 1 / -1; text-align: center; padding: 48px 24px;">
+      <p style="font-size: 1.1rem; font-weight: 600; color: var(--ink);">${escapeHtml(title)}</p>
+      <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">${escapeHtml(text)}</p>
+      ${action ? `<div style="margin-top: 16px; display: flex; justify-content: center;">${action}</div>` : ""}
     </div>
   `;
 }
+
+const loadingState = () => renderStatus("Loading people…", "Finding people on Outfitted.");
 
 export function renderFriendsView() {
   return `
@@ -98,7 +78,7 @@ export function renderFriendsView() {
       </div>
 
       <div class="friends-grid" id="friends-grid-box">
-        ${friendsList.map(renderMockCard).join("")}
+        ${loadingState()}
       </div>
     </div>
   `;
@@ -111,6 +91,12 @@ export function connectFriends(onOpenMessageThread, options = {}) {
   const grid = container.querySelector("#friends-grid-box");
   const searchInput = container.querySelector("#friend-page-search");
 
+  function setFollowButton(btn, following) {
+    btn.dataset.following = following ? "true" : "false";
+    btn.textContent = following ? "Following" : "+ Follow";
+    btn.className = `button ${following ? "button-outline" : "button-primary"} button-sm btn-toggle-follow`;
+  }
+
   function bindCardEvents() {
     grid.querySelectorAll(".btn-toggle-follow").forEach((btn) => {
       btn.onclick = async (e) => {
@@ -119,10 +105,9 @@ export function connectFriends(onOpenMessageThread, options = {}) {
         const wasFollowing = btn.dataset.following === "true";
         const willFollow = !wasFollowing;
 
-        // Optimistic UI update
-        btn.dataset.following = willFollow ? "true" : "false";
-        btn.textContent = willFollow ? "Following" : "+ Follow";
-        btn.className = `button ${willFollow ? "button-outline" : "button-primary"} button-sm btn-toggle-follow`;
+        // Optimistic UI update; undone below if the request fails.
+        setFollowButton(btn, willFollow);
+        btn.disabled = true;
 
         try {
           if (willFollow) {
@@ -134,17 +119,10 @@ export function connectFriends(onOpenMessageThread, options = {}) {
           }
           options.onFollowChanged?.();
         } catch (err) {
-          // If offline or mock friend, update mock friend state
-          const mockFriend = friendsList.find((f) => f.id === username);
-          if (mockFriend) {
-            mockFriend.following = willFollow;
-          } else {
-            // Revert UI on real API error
-            btn.dataset.following = wasFollowing ? "true" : "false";
-            btn.textContent = wasFollowing ? "Following" : "+ Follow";
-            btn.className = `button ${wasFollowing ? "button-outline" : "button-primary"} button-sm btn-toggle-follow`;
-            options.toast?.(err.message || "Failed to update follow status");
-          }
+          setFollowButton(btn, wasFollowing);
+          options.toast?.(err.message || "Couldn't update follow status. Try again.");
+        } finally {
+          btn.disabled = false;
         }
       };
     });
@@ -157,50 +135,40 @@ export function connectFriends(onOpenMessageThread, options = {}) {
     });
   }
 
-  // Load live users from backend
+  // Each search gets a number, so a slow earlier response can't overwrite a newer one.
+  let latestRequest = 0;
+
   async function loadUsers(query = "") {
+    const request = ++latestRequest;
+
+    let users;
     try {
-      const users = await searchUsers(query);
-      if (users && users.length > 0) {
-        grid.innerHTML = users.map(renderUserCard).join("");
-      } else if (query) {
-        grid.innerHTML = `
-          <div class="friend-empty-state" style="grid-column: 1 / -1; text-align: center; padding: 48px 24px;">
-            <p style="font-size: 1.1rem; font-weight: 600; color: var(--on-surface);">No users found</p>
-            <p style="color: var(--on-surface-variant); font-size: 0.9rem; margin-top: 4px;">No one matches "${escapeHtml(query)}". Try another search.</p>
-          </div>
-        `;
-      } else {
-        // Fall back to mock circle if no users exist on server
-        grid.innerHTML = friendsList.map(renderMockCard).join("");
-      }
+      users = await searchUsers(query);
+    } catch (err) {
+      if (request !== latestRequest) return;
+      grid.innerHTML = renderStatus(
+        "Couldn't load people",
+        err.message || "Check your connection and try again.",
+        `<button type="button" class="button button-outline button-sm" id="friends-retry">Try again</button>`
+      );
+      grid.querySelector("#friends-retry").onclick = () => {
+        grid.innerHTML = loadingState();
+        loadUsers(query);
+      };
+      return;
+    }
+    if (request !== latestRequest) return;
+
+    if (users.length > 0) {
+      grid.innerHTML = users.map(renderUserCard).join("");
       bindCardEvents();
-    } catch {
-      // Offline fallback: filter local cards
-      if (!query) {
-        grid.innerHTML = friendsList.map(renderMockCard).join("");
-        bindCardEvents();
-      } else {
-        const q = query.toLowerCase();
-        const matches = friendsList.filter(
-          (f) => f.name.toLowerCase().includes(q) || f.handle.toLowerCase().includes(q) || f.bio.toLowerCase().includes(q)
-        );
-        if (matches.length > 0) {
-          grid.innerHTML = matches.map(renderMockCard).join("");
-        } else {
-          grid.innerHTML = `
-            <div class="friend-empty-state" style="grid-column: 1 / -1; text-align: center; padding: 48px 24px;">
-              <p style="font-size: 1.1rem; font-weight: 600;">No friends found</p>
-              <p style="color: var(--on-surface-variant); font-size: 0.9rem; margin-top: 4px;">No one matches "${escapeHtml(query)}".</p>
-            </div>
-          `;
-        }
-        bindCardEvents();
-      }
+    } else if (query) {
+      grid.innerHTML = renderStatus("No users found", `No one matches "${query}". Try another name or username.`);
+    } else {
+      grid.innerHTML = renderStatus("No one else is here yet", "Invite your friends to Outfitted, then follow them here.");
     }
   }
 
-  bindCardEvents();
   loadUsers("");
 
   let searchTimeout = null;
