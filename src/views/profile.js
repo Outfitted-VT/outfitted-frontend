@@ -37,9 +37,13 @@ export function renderProfileView() {
       <!-- Profile Header Card -->
       <section class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col space-y-space-sm mt-space-xs">
         <div class="flex items-center space-x-space-sm">
-          <div class="w-16 h-16 rounded-full overflow-hidden bg-surface-container-high ring-2 ring-secondary/20 shadow-sm flex-shrink-0">
+          <button type="button" class="relative group w-16 h-16 rounded-full overflow-hidden bg-surface-container-high ring-2 ring-secondary/20 shadow-sm flex-shrink-0 cursor-pointer p-0 border-0" id="btn-profile-avatar" title="Change profile picture" aria-label="Change profile picture">
             ${avatar()}
-          </div>
+            <span class="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <span class="material-symbols-outlined text-[20px]">photo_camera</span>
+            </span>
+          </button>
+          <input type="file" id="profile-avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none;" />
           <div class="min-w-0">
             <h2 class="font-title-ui text-headline-md text-on-surface font-semibold truncate">${escapeHtml(currentUser.name)}</h2>
             <p class="font-micro-mono text-micro-mono text-on-surface-variant uppercase tracking-wider">@${escapeHtml(currentUser.username)}</p>

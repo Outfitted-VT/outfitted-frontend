@@ -122,6 +122,38 @@ export async function setSaved(fitId, saved) {
   return parse(await apiFetch(`/fits/${fitId}/save`, { method: saved ? "PUT" : "DELETE" }));
 }
 
+export async function searchUsers(query = "", limit = 20) {
+  return parse(await apiFetch(`/users/search?q=${encodeURIComponent(query)}&limit=${limit}`));
+}
+
+export async function followUser(username) {
+  return parse(await apiFetch(`/users/${encodeURIComponent(username)}/follow`, { method: "PUT" }));
+}
+
+export async function unfollowUser(username) {
+  return parse(await apiFetch(`/users/${encodeURIComponent(username)}/follow`, { method: "DELETE" }));
+}
+
+export async function getFollowers(username, { cursor, limit = 20 } = {}) {
+  const params = new URLSearchParams({ limit });
+  if (cursor) params.set("cursor", cursor);
+  return parse(await apiFetch(`/users/${encodeURIComponent(username)}/followers?${params}`));
+}
+
+export async function getFollowing(username, { cursor, limit = 20 } = {}) {
+  const params = new URLSearchParams({ limit });
+  if (cursor) params.set("cursor", cursor);
+  return parse(await apiFetch(`/users/${encodeURIComponent(username)}/following?${params}`));
+}
+
+export async function updateProfile({ fullName, bio, avatarImageId } = {}) {
+  const body = {};
+  if (fullName !== undefined) body.full_name = fullName;
+  if (bio !== undefined) body.bio = bio;
+  if (avatarImageId !== undefined) body.avatar_image_id = avatarImageId;
+  return parse(await apiFetch("/users/me", json("PATCH", body)));
+}
+
 export async function getProfile(username) {
   return parse(await apiFetch(`/users/${encodeURIComponent(username)}`));
 }
