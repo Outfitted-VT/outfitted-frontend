@@ -15,8 +15,18 @@ function avatar(user, size = "w-10 h-10") {
   return `<div class="${size} rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md font-bold">${escapeHtml(initialOf(user))}</div>`;
 }
 
+// Feed frames follow Instagram: the cover photo's shape, kept between portrait 4:5 and
+// landscape 1.91:1. Every photo in the post fills that same frame, cropped from the center.
+const MIN_RATIO = 4 / 5;
+const MAX_RATIO = 1.91;
+
+function frameRatio(image) {
+  if (!image?.width || !image?.height) return MIN_RATIO;
+  return Math.min(MAX_RATIO, Math.max(MIN_RATIO, image.width / image.height));
+}
+
 function photos(fit) {
-  const ratio = fit.images[0] ? `${fit.images[0].width} / ${fit.images[0].height}` : "4 / 5";
+  const ratio = frameRatio(fit.images[0]);
   const slides = fit.images
     .map(
       (image, i) => `

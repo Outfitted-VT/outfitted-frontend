@@ -57,8 +57,17 @@ img[class*="w-"] {
   position: relative;
   flex: 0 0 100%;
   scroll-snap-align: center;
-  max-height: 70vh;
   background: rgb(var(--tw-surface-container));
+}
+/* Like Instagram on desktop: posts stay about 470px wide, so a 4:5 photo (~590px tall) fits on a
+   laptop screen. Phones (860px and below) keep full-width posts. */
+@media (min-width: 861px) {
+  article[data-fit-id],
+  .feed-cards-grid > .post-card {
+    width: 100%;
+    max-width: 470px;
+    margin-inline: auto;
+  }
 }
 .fit-dot {
   width: 6px;
