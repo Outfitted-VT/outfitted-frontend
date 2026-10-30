@@ -124,7 +124,6 @@ function renderSidebar() {
         <a href="#messages" class="nav-item ${activeTab === "messages" ? "active" : ""}" data-nav="messages" title="Messages">
           ${icons.message}
           <span class="sidebar-label">Messages</span>
-          <span class="nav-badge">2</span>
         </a>
         <a href="#assistant" class="nav-item ${activeTab === "assistant" ? "active" : ""}" data-nav="assistant" title="Stylist AI">
           ${icons.wand}
@@ -466,20 +465,6 @@ function renderNotificationsDrawer() {
               <small style="color:var(--muted);">15m ago</small>
             </div>
           </div>
-          <div style="display:flex; gap:12px; padding:10px; background:var(--surface-sunk); border-radius:8px;">
-            <span class="avatar-chip micro" style="background:#c85f47; color:#fff;">JL</span>
-            <div>
-              <p style="font-size:0.85rem;"><strong>Jordan Lee</strong> asked for a fit check on <strong>The Fit Check Circle</strong>.</p>
-              <small style="color:var(--muted);">45m ago</small>
-            </div>
-          </div>
-          <div style="display:flex; gap:12px; padding:10px; background:var(--surface-sunk); border-radius:8px;">
-            <span class="avatar-chip micro" style="background:#d4a42b; color:#fff;">AK</span>
-            <div>
-              <p style="font-size:0.85rem;"><strong>Alex Kim</strong> super-reacted with 💖 on your outfit.</p>
-              <small style="color:var(--muted);">2h ago</small>
-            </div>
-          </div>
         </div>
       </div>
     </dialog>
@@ -507,7 +492,7 @@ function renderAccountDrawer() {
             <span class="tile-icon" style="background:#ebf7f0; color:#0f3728;">${icons.users}</span>
             <div class="tile-text">
               <strong>Friends & Followers</strong>
-              <small>Taste you trust · ${friendsList.length} people</small>
+              <small>Taste you trust · ${friendsList.length} ${friendsList.length === 1 ? "person" : "people"}</small>
             </div>
             <span class="tile-arrow">${icons.arrowRight}</span>
           </button>
@@ -634,10 +619,6 @@ function renderAuthDialog() {
             <span class="avatar-chip micro" style="background:#275038; color:#fff;">MC</span>
             <span>Maya Chen (@mayamakesfits)</span>
           </button>
-          <button type="button" class="quick-profile-chip" data-profile="jordan">
-            <span class="avatar-chip micro" style="background:#c85f47; color:#fff;">JL</span>
-            <span>Jordan Lee (@jordy.jpg)</span>
-          </button>
         </div>
       </div>
     </dialog>
@@ -667,7 +648,6 @@ function renderMobileBottomNav() {
       <button class="mobile-nav-btn ${activeTab === "messages" ? "active" : ""}" data-nav="messages">
         <div class="mobile-nav-icon-wrap">
           ${icons.message}
-          <span class="mobile-unread-dot">2</span>
         </div>
         <span>Messages</span>
       </button>
@@ -910,11 +890,6 @@ function bindEvents() {
         currentUser.handle = "@mayamakesfits";
         currentUser.initial = "M";
         currentUser.bio = "Stylist & architecture student. Always oversized denim.";
-      } else if (p === "jordan") {
-        currentUser.name = "Jordan Lee";
-        currentUser.handle = "@jordy.jpg";
-        currentUser.initial = "J";
-        currentUser.bio = "Cardigans, coffee roasts, and quiet tailoring.";
       } else {
         currentUser.name = "Sofoniyas";
         currentUser.handle = "@sofoniyas";
