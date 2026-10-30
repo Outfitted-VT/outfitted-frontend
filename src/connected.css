@@ -123,6 +123,37 @@ img[class*="w-"] {
   .tryon-scan { animation: none; background: rgb(208 240 67 / 0.15); }
 }
 
+/* "Hide my face" switch on the try-on result. */
+.face-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: #c4c7c7;
+  transition: background 0.2s;
+}
+.face-switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  transition: transform 0.2s;
+}
+[aria-checked="true"] .face-switch {
+  background: #1a1c1b;
+}
+[aria-checked="true"] .face-switch span {
+  transform: translateX(16px);
+}
+[aria-busy="true"] .face-switch {
+  opacity: 0.5;
+}
+
 .match-card {
   background: rgb(var(--tw-surface-container-low));
   /* Set here: the global button reset (border: 0) wins over Tailwind's border class. */
@@ -192,10 +223,11 @@ img[class*="w-"] {
   #create-sheet .tryon-slot {
     aspect-ratio: 1 / 1;
   }
-  /* A tall portrait result would push the buttons out of view. */
-  #tryon-result-frame img {
-    max-height: 60vh;
-    object-fit: contain;
+  /* A tall portrait result would push the buttons out of view: cap the frame at 60vh tall by
+     narrowing it (src/create.js sets --result-ratio to the photo's width / height). */
+  #tryon-result-frame {
+    max-width: calc(60vh * var(--result-ratio, 0.8));
+    margin-inline: auto;
   }
 }
 
