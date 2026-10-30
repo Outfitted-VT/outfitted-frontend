@@ -24,10 +24,6 @@ export function renderShareModal() {
         <div class="direct-share-section">
           <h4>Direct Send to Friends</h4>
           <div class="friends-share-strip">
-            <button class="friend-share-chip" data-recipient="group-fit-check">
-              <span class="share-chip-icon">✱</span>
-              <span>The Fit Check Group</span>
-            </button>
             ${friendsList
               .map(
                 (f) => `
