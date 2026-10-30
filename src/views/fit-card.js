@@ -16,7 +16,9 @@ function avatar(user, size = "w-10 h-10") {
 }
 
 // Feed frames follow Instagram: the cover photo's shape, kept between portrait 4:5 and
-// landscape 1.91:1. Every photo in the post fills that same frame, cropped from the center.
+// landscape 1.91:1, shared by every photo in the post. Unlike Instagram nothing is cropped
+// (a fit photo cut at the ankles loses the shoes): a photo that doesn't match the frame is
+// shown whole, over a blurred copy of itself.
 const MIN_RATIO = 4 / 5;
 const MAX_RATIO = 1.91;
 
@@ -31,7 +33,8 @@ function photos(fit) {
     .map(
       (image, i) => `
         <div class="fit-slide" style="aspect-ratio:${ratio}">
-          <img class="w-full h-full object-cover" alt="Photo ${i + 1} of ${fit.images.length}" loading="lazy"
+          <img class="fit-slide-backdrop" alt="" aria-hidden="true" loading="lazy" src="${escapeHtml(mediaUrl(image.url))}" />
+          <img class="relative w-full h-full object-contain" alt="Photo ${i + 1} of ${fit.images.length}" loading="lazy"
             src="${escapeHtml(mediaUrl(image.url))}" />
           ${image.generated ? aiBadge("absolute top-3 left-3") : ""}
         </div>`
@@ -122,9 +125,9 @@ export function renderFitCard(fit, { mine = false } = {}) {
           <span class="material-symbols-outlined text-[22px] ${fit.liked_by_me ? "text-error" : ""}" style="${filled(fit.liked_by_me)}">favorite</span>
           <span class="font-label-md text-label-md font-semibold" data-like-count>${fit.like_count}</span>
         </button>
-        <button type="button" class="flex items-center gap-1 text-secondary bg-secondary-fixed/50 hover:bg-secondary hover:text-on-secondary px-3 py-1 rounded-full transition-all pt-space-xs font-label-md text-label-md font-semibold active:scale-95 shadow-sm" data-steal-swap-fit="${escapeHtml(fit.id)}">
-          <span class="material-symbols-outlined text-[17px]">compare</span>
-          <span>Steal & Swap</span>
+        <button type="button" class="flex items-center gap-1 text-secondary bg-secondary-fixed/50 hover:bg-secondary hover:text-on-secondary px-3 py-1 mt-space-xs rounded-full transition-all font-label-md text-label-md font-semibold active:scale-95 shadow-sm" data-ai-mode>
+          <span class="material-symbols-outlined text-[17px]">auto_awesome</span>
+          <span>AI mode</span>
         </button>
         <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors pt-space-xs" data-fit-save aria-pressed="${fit.saved_by_me}">
           <span class="material-symbols-outlined text-[22px]" style="${filled(fit.saved_by_me)}">bookmark</span>

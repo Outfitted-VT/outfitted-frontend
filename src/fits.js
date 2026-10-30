@@ -67,6 +67,12 @@ export async function uploadImage(file) {
   return parse(await apiFetch("/images", { method: "POST", body }));
 }
 
+// A copy of one of your images with every face blurred; the original is kept. Fails with
+// "No face found in this photo" when there's nothing to blur.
+export async function blurFaces(imageId) {
+  return parse(await apiFetch(`/images/${encodeURIComponent(imageId)}/blur-faces`, { method: "POST" }));
+}
+
 const json = (method, body) => ({
   method,
   headers: { "Content-Type": "application/json" },

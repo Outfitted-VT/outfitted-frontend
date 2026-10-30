@@ -88,9 +88,9 @@ export function renderProfileView() {
           ${studioTile("styler", "Style a Friend", "Dress your friend's avatar", "data-open-style-friend")}
         </div>
 
-        <button type="button" class="w-full h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-2 transition-all active:scale-95" data-steal-swap-fit="weekend-denim">
-          <span class="material-symbols-outlined text-[17px] text-secondary">compare</span>
-          <span>Steal & Swap Body Comparison Demo</span>
+        <button type="button" class="w-full h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-2 transition-all active:scale-95" data-ai-mode>
+          <span class="material-symbols-outlined text-[17px] text-secondary">auto_awesome</span>
+          <span>AI mode</span>
         </button>
       </section>
 

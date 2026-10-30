@@ -2,7 +2,7 @@
 
 import { ApiError } from "./auth.js";
 import { currentUser } from "./data.js";
-import { categoryOf, createFit, createTryOn, detectPieces, mediaUrl, uploadImage } from "./fits.js";
+import { blurFaces, categoryOf, createFit, createTryOn, detectPieces, mediaUrl, uploadImage } from "./fits.js";
 import { escapeHtml } from "./format.js";
 import { aiBadge } from "./views/fit-card.js";
 
@@ -42,7 +42,8 @@ function freshState() {
     editing: null, // index of the piece open in the editor, or null when adding
     detect: { cover: null, run: 0, status: "idle", found: 0 },
     // mode is "outfit" (one photo of a whole fit) or "pieces" (a photo per slot in `pieces`).
-    tryon: { mode: "outfit", person: null, outfit: null, pieces: {}, result: null, run: 0 },
+    // hideFace: "Hide my face" is on. blurred: the result with the face blurred, once made.
+    tryon: { mode: "outfit", person: null, outfit: null, pieces: {}, result: null, run: 0, hideFace: false, blurred: null },
   };
 }
 
@@ -70,6 +71,24 @@ function rememberPerson(image) {
 function forgetPerson() {
   try {
     localStorage.removeItem(personKey());
+  } catch {}
+}
+
+// --- remembering "Hide my face" between try-ons -----------------------------------------
+
+const HIDE_FACE_KEY = "outfitted.tryon.hideFace";
+
+function prefersHiddenFace() {
+  try {
+    return localStorage.getItem(HIDE_FACE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberHideFace(on) {
+  try {
+    localStorage.setItem(HIDE_FACE_KEY, on ? "1" : "0");
   } catch {}
 }
 
@@ -665,6 +684,7 @@ async function runTryOn() {
     }
     if (stale()) return;
     t.result = await createTryOn(t.person.image.id, clothing);
+    t.blurred = null;
     if (stale()) return;
     showResult();
   } catch (err) {
@@ -684,13 +704,65 @@ async function runTryOn() {
 }
 
 function showResult() {
-  const image = state.tryon.result.result_image;
+  const t = state.tryon;
+  const image = t.result.result_image;
   show("tryon-result");
+  showError("#tryon-result-error");
   $("#tryon-result-frame").style.aspectRatio = `${image.width} / ${image.height}`;
-  $("#tryon-result-image").src = mediaUrl(image.url);
-  $("#tryon-before-image").src = state.tryon.person.preview;
+  $("#tryon-result-frame").style.setProperty("--result-ratio", String(image.width / image.height));
+  $("#tryon-before-image").src = t.person.preview;
   $("#tryon-result-badge").innerHTML = aiBadge();
   compare("after");
+  t.hideFace = false;
+  renderHideFace();
+  if (prefersHiddenFace()) setHideFace(true);
+}
+
+// The image to show and post: the blurred copy while "Hide my face" is on.
+function resultImage() {
+  const t = state.tryon;
+  return t.hideFace && t.blurred ? t.blurred : t.result.result_image;
+}
+
+function renderHideFace({ busy = false } = {}) {
+  const t = state.tryon;
+  const toggle = $("#tryon-hide-face");
+  toggle.setAttribute("aria-checked", String(t.hideFace));
+  toggle.setAttribute("aria-busy", String(busy));
+  toggle.disabled = busy;
+  $("#tryon-post").disabled = busy;
+  $("#tryon-hide-face-note").textContent = busy
+    ? "Blurring your face…"
+    : t.hideFace
+      ? "Your face is blurred in the photo you post."
+      : "Blur your face in the photo you post.";
+  $("#tryon-result-image").src = mediaUrl(resultImage().url);
+}
+
+async function setHideFace(on) {
+  const t = state.tryon;
+  const result = t.result;
+  showError("#tryon-result-error");
+  rememberHideFace(on);
+  t.hideFace = on;
+  // The blurred copy is made once per result, then reused when toggling back and forth.
+  if (!on || t.blurred) {
+    renderHideFace();
+    return;
+  }
+  renderHideFace({ busy: true });
+  try {
+    const blurred = await blurFaces(result.result_image.id);
+    if (t.result !== result) return; // a newer try-on replaced this one
+    t.blurred = blurred;
+    renderHideFace();
+  } catch (err) {
+    if (t.result !== result) return;
+    // Never show the switch as on unless the face really is blurred.
+    t.hideFace = false;
+    renderHideFace();
+    showError("#tryon-result-error", errorMessage(err));
+  }
 }
 
 function compare(which) {
@@ -704,7 +776,7 @@ function compare(which) {
 
 function postTryOn() {
   // The try-on result is already uploaded, so detection starts right away.
-  state.photos = [{ image: state.tryon.result.result_image }];
+  state.photos = [{ image: resultImage() }];
   state.items = [];
   state.tags = { occasion: [], style: [] };
   show("compose");
@@ -771,6 +843,7 @@ export function initCreate({ onPosted, toast }) {
     show("tryon");
   };
   $("#tryon-post").onclick = postTryOn;
+  $("#tryon-hide-face").onclick = () => setHideFace(!state.tryon.hideFace);
   document.querySelectorAll("[data-compare]").forEach((tab) => {
     tab.onclick = () => compare(tab.dataset.compare);
   });

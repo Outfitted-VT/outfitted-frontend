@@ -125,11 +125,11 @@ export function renderChatView() {
               </div>
             </div>
 
-            <!-- Steal & Swap + 3D Room Actions -->
+            <!-- AI mode (placeholder) + 3D Room Actions -->
             <div class="pt-2 flex flex-col gap-2">
-              <button type="button" class="w-full h-10 rounded-full bg-secondary text-on-secondary font-title-ui text-label-md font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95" data-steal-swap-fit="office-evening">
-                <span class="material-symbols-outlined text-[18px]">compare</span>
-                <span>Steal & Swap (Compare on You)</span>
+              <button type="button" class="w-full h-10 rounded-full bg-secondary text-on-secondary font-title-ui text-label-md font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95" data-ai-mode>
+                <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                <span>AI mode</span>
               </button>
               
               <button class="flex items-center justify-between px-1 text-on-surface group w-full text-left" id="btn-open-fit-in-3d">

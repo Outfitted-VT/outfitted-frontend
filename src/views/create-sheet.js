@@ -234,6 +234,17 @@ function resultScreen() {
         <button type="button" role="tab" data-compare="after" aria-selected="true" class="compare-tab h-9 rounded-full font-label-md text-label-md font-semibold">Try-on</button>
         <button type="button" role="tab" data-compare="before" aria-selected="false" class="compare-tab h-9 rounded-full font-label-md text-label-md font-semibold">Original</button>
       </div>
+      <button type="button" role="switch" aria-checked="false" id="tryon-hide-face"
+        class="w-full rounded bg-surface-container-low text-left transition-colors disabled:cursor-wait">
+        <span class="flex items-center justify-between gap-space-sm px-space-sm py-space-xs">
+          <span class="flex flex-col gap-0.5">
+            <span class="font-label-md text-label-md text-on-surface font-semibold">Hide my face</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant font-normal" id="tryon-hide-face-note">Blur your face in the photo you post.</span>
+          </span>
+          <span class="face-switch" aria-hidden="true"><span></span></span>
+        </span>
+      </button>
+      <p id="tryon-result-error" role="alert" class="hidden font-label-md text-label-md text-on-error-container bg-error-container rounded px-space-sm py-space-xs"></p>
       <button type="button" id="tryon-post" class="${primaryButton}">
         <span class="material-symbols-outlined text-[20px]">send</span>Post this fit
       </button>
