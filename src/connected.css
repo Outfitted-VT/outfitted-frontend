@@ -57,7 +57,18 @@ img[class*="w-"] {
   position: relative;
   flex: 0 0 100%;
   scroll-snap-align: center;
+  overflow: hidden;
   background: rgb(var(--tw-surface-container));
+}
+/* Fills the space around a photo that doesn't match the frame (see src/views/fit-card.js). */
+.fit-slide-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(24px) brightness(0.92);
+  transform: scale(1.15);
 }
 /* Like Instagram on desktop: posts stay about 470px wide, so a 4:5 photo (~590px tall) fits on a
    laptop screen. Phones (860px and below) keep full-width posts. */

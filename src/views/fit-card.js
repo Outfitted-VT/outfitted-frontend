@@ -16,7 +16,9 @@ function avatar(user, size = "w-10 h-10") {
 }
 
 // Feed frames follow Instagram: the cover photo's shape, kept between portrait 4:5 and
-// landscape 1.91:1. Every photo in the post fills that same frame, cropped from the center.
+// landscape 1.91:1, shared by every photo in the post. Unlike Instagram nothing is cropped
+// (a fit photo cut at the ankles loses the shoes): a photo that doesn't match the frame is
+// shown whole, over a blurred copy of itself.
 const MIN_RATIO = 4 / 5;
 const MAX_RATIO = 1.91;
 
@@ -31,7 +33,8 @@ function photos(fit) {
     .map(
       (image, i) => `
         <div class="fit-slide" style="aspect-ratio:${ratio}">
-          <img class="w-full h-full object-cover" alt="Photo ${i + 1} of ${fit.images.length}" loading="lazy"
+          <img class="fit-slide-backdrop" alt="" aria-hidden="true" loading="lazy" src="${escapeHtml(mediaUrl(image.url))}" />
+          <img class="relative w-full h-full object-contain" alt="Photo ${i + 1} of ${fit.images.length}" loading="lazy"
             src="${escapeHtml(mediaUrl(image.url))}" />
           ${image.generated ? aiBadge("absolute top-3 left-3") : ""}
         </div>`
