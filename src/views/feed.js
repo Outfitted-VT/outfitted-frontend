@@ -63,10 +63,10 @@ export function renderFeedView() {
               </div>
             </div>
 
-            <!-- Steal & Swap Fast Action -->
-            <button class="w-full mt-space-2xs mb-1 h-8 rounded-full bg-secondary-fixed/60 hover:bg-secondary hover:text-on-secondary text-secondary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95" data-steal-swap-fit="office-evening">
-              <span class="material-symbols-outlined text-[16px]">compare</span>
-              <span>Steal & Swap on Me</span>
+            <!-- AI mode (placeholder) -->
+            <button type="button" class="w-full mt-space-2xs mb-1 h-8 rounded-full bg-secondary-fixed/60 hover:bg-secondary hover:text-on-secondary text-secondary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95" data-ai-mode>
+              <span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+              <span>AI mode</span>
             </button>
 
             <!-- Quick Vote Actions -->

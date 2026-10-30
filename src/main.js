@@ -18,7 +18,6 @@ import { escapeHtml } from "./format.js";
 import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
 import { renderProfileView } from "./views/profile.js";
 import { renderCreateSheet } from "./views/create-sheet.js";
-import { openStealSwap } from "./steal-swap.js";
 import { openDormCloset } from "./dorm-closet.js";
 import { openStyleFriend } from "./style-friend.js";
 import { applyTheme, getThemePreference, isDarkTheme, onThemeChange, setThemePreference } from "./theme.js";
@@ -1348,12 +1347,12 @@ function connectBackend() {
   });
 }
 
-// Steal & Swap, Dorm Closets, and Style a Friend (also inside cards that load later).
+// AI mode, Dorm Closets, and Style a Friend (also inside cards that load later).
 document.addEventListener("click", (e) => {
-  const swapBtn = e.target.closest("[data-steal-swap-fit]");
-  if (swapBtn) {
+  // AI mode is a placeholder until the feature is built.
+  if (e.target.closest("[data-ai-mode]")) {
     e.preventDefault();
-    openStealSwap(swapBtn.dataset.stealSwapFit || "weekend-denim", showToast);
+    showToast("AI mode is coming soon");
     return;
   }
   if (e.target.closest("[data-open-dorm-closet]")) {
