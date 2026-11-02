@@ -16,8 +16,20 @@ const spinner = `<span class="material-symbols-outlined animate-spin text-on-sur
  * @param {string} options.empty - HTML shown when there are no fits
  * @param {(message: string) => void} options.toast
  * @param {() => void} [options.onChange] - a fit was added or removed
+ * @param {(fit: object, onUpdated: (n: number) => void) => void} [options.onOpenComments]
+ * @param {(fit: object) => void} [options.onOpenTryOn]
  */
-export function mountFitList({ list, status, sentinel, path, empty, toast, onChange = () => {} }) {
+export function mountFitList({
+  list,
+  status,
+  sentinel,
+  path,
+  empty,
+  toast,
+  onChange = () => {},
+  onOpenComments,
+  onOpenTryOn,
+}) {
   const fits = new Map();
   let cursor = null;
   let done = false;
@@ -167,13 +179,50 @@ export function mountFitList({ list, status, sentinel, path, empty, toast, onCha
     else if (event.target.closest("[data-fit-save]")) toggle(fit, "saved_by_me", setSaved);
     else if (event.target.closest("[data-fit-delete]")) remove(fit);
     else if (event.target.closest("[data-fit-comments]")) {
-      options.onOpenComments?.(fit, (newCount) => {
+      onOpenComments?.(fit, (newCount) => {
         fit.comment_count = newCount;
         const counter = article.querySelector("[data-comment-count]");
         if (counter) counter.textContent = newCount;
       });
     } else if (event.target.closest("[data-ai-mode]")) {
-      options.onOpenTryOn?.(fit);
+      onOpenTryOn?.(fit);
+    }
+  });
+
+  // Double-tap on post slide triggers the Instagram/Wearly heart burst animation and likes the fit
+  let lastTapTime = 0;
+  let lastTapSlide = null;
+
+  list.addEventListener("pointerdown", (event) => {
+    // Avoid interfering with interactive controls/buttons
+    if (event.target.closest("button, a, input, [data-fit-like], [data-fit-save], [data-fit-comments]")) return;
+
+    const slide = event.target.closest(".fit-slide");
+    if (!slide) return;
+
+    const now = Date.now();
+    const isDoubleTap = now - lastTapTime < 350 && lastTapSlide === slide;
+    lastTapTime = now;
+    lastTapSlide = slide;
+
+    if (isDoubleTap) {
+      const rect = slide.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      const burst = document.createElement("div");
+      burst.className = "double-tap-heart-burst";
+      burst.style.left = `${x}px`;
+      burst.style.top = `${y}px`;
+      burst.innerHTML = `<span class="material-symbols-outlined">favorite</span>`;
+      slide.appendChild(burst);
+      setTimeout(() => burst.remove(), 900);
+
+      const article = slide.closest("[data-fit-id]");
+      const fit = article && fits.get(article.dataset.fitId);
+      if (fit && !fit.liked_by_me) {
+        toggle(fit, "liked_by_me", setLiked);
+      }
     }
   });
 

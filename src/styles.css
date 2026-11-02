@@ -3870,3 +3870,478 @@ textarea.field-input {
 :root[data-theme="dark"] .mustard-desc {
   color: var(--ink-soft);
 }
+
+/* ==========================================================================
+   FASHION CAROUSEL FEATURES: 3D Coverflow, Daily Calendar & 4-Tier Slot Machine
+   ========================================================================== */
+
+/* View Mode Toggle */
+.view-mode-toggle {
+  display: flex;
+  background: var(--surface-container-high, rgba(0, 0, 0, 0.06));
+  padding: 4px;
+  border-radius: var(--radius-full);
+  gap: 4px;
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.view-toggle-btn:hover {
+  color: var(--ink);
+}
+
+.view-toggle-btn.active {
+  background: var(--surface, #fff);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 3D Carousel Coverflow Stage */
+.carousel-category-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding: 4px;
+}
+
+.carousel-cat-pill {
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.carousel-cat-pill.active {
+  background: var(--brand-green, #0f3728);
+  color: #fff;
+  border-color: var(--brand-green, #0f3728);
+  box-shadow: 0 4px 14px rgba(15, 55, 40, 0.2);
+}
+
+.carousel-3d-stage-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  perspective: 1200px;
+  overflow: hidden;
+  padding: 24px 0;
+  background: radial-gradient(circle at center, rgba(15, 55, 40, 0.04) 0%, transparent 70%);
+  border-radius: var(--radius-l);
+}
+
+.carousel-3d-stage {
+  position: relative;
+  width: 280px;
+  height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+}
+
+.carousel-3d-card {
+  position: absolute;
+  width: 270px;
+  height: 370px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s ease;
+  user-select: none;
+}
+
+.carousel-card-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 290px;
+  background: var(--surface-container-high);
+  overflow: hidden;
+}
+
+.carousel-card-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.carousel-3d-card:hover .carousel-card-img-wrap img {
+  transform: scale(1.04);
+}
+
+.carousel-badge-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.carousel-cpw-pill {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(15, 55, 40, 0.85);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.carousel-card-brief {
+  padding: 12px 14px;
+}
+
+.carousel-card-brief h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carousel-card-brief p {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.carousel-nav-btn {
+  position: absolute;
+  z-index: 20;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.carousel-nav-btn:hover {
+  transform: scale(1.08);
+}
+
+.carousel-nav-btn.prev {
+  left: 20px;
+}
+
+.carousel-nav-btn.next {
+  right: 20px;
+}
+
+.active-item-analytics-card {
+  max-width: 540px;
+  margin: 20px auto 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.analytics-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* Calendar View */
+.calendar-layout-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 0.95fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .calendar-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 4-Tier Slot Machine Generator */
+.slot-machine-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.slot-tier-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 10px 14px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.slot-tier-row.spinning {
+  animation: slotRoll 0.4s ease-in-out infinite;
+}
+
+@keyframes slotRoll {
+  0% { transform: translateY(0); filter: blur(0); }
+  50% { transform: translateY(-4px); filter: blur(1px); }
+  100% { transform: translateY(0); filter: blur(0); }
+}
+
+.slot-tier-label {
+  width: 95px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.slot-tier-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.slot-tier-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface-container-high);
+  flex-shrink: 0;
+}
+
+.slot-tier-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.slot-tier-info h4 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slot-tier-info p {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.slot-tier-nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface-container-low);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 0.15s;
+}
+
+.slot-tier-nav-btn:hover {
+  background: var(--surface-container-high);
+}
+
+.slot-spin-action-row {
+  display: flex;
+  justify-content: center;
+  margin: 18px 0;
+}
+
+.btn-slot-roll {
+  height: 48px;
+  padding: 0 32px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--brand-coral, #d9534f) 0%, #f59e0b 100%);
+  color: #fff;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(217, 83, 79, 0.35);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.btn-slot-roll:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(217, 83, 79, 0.45);
+}
+
+.btn-slot-roll:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.slot-synergy-summary {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 18px 20px;
+  max-width: 580px;
+  margin: 16px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-subtle);
+}
+
+.slot-metrics-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.slot-palette-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slot-palette-group span.label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.slot-swatch-list {
+  display: flex;
+  gap: 6px;
+}
+
+.slot-swatch-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.slot-stat-chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slot-stat-chip {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-container-high);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.slot-verdict-text {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--ink-secondary);
+}
+
+.slot-actions-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* Double-Tap Floating Heart Animation */
+.double-tap-heart-burst {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+  transform: translate(-50%, -50%);
+  animation: heartBurst 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  color: #ef4444;
+}
+
+.double-tap-heart-burst span {
+  font-size: 72px;
+  font-variation-settings: 'FILL' 1;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.35));
+}
+
+@keyframes heartBurst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) rotate(-12deg);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.3) rotate(6deg);
+  }
+  60% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(1.1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -70%) scale(0.8) rotate(0deg);
+  }
+}
+
