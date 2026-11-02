@@ -17,10 +17,10 @@ export function apiBase() {
   if (window.__API_BASE__) return window.__API_BASE__;
   if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE;
   if (window.Capacitor?.isNativePlatform()) {
-    // The Android emulator reaches the host machine at 10.0.2.2; the iOS simulator shares its network.
+    // The Android emulator reaches the host machine at 10.0.2.2; iOS physical device or simulator reaches Mac LAN IP.
     return window.Capacitor.getPlatform() === "android"
       ? "http://10.0.2.2:8000/api/v1"
-      : "http://localhost:8000/api/v1";
+      : "http://172.31.10.71:8000/api/v1";
   }
   // Browser dev: Vite proxies /api to the backend (vite.config.js), so the API is same-origin.
   return "/api/v1";
