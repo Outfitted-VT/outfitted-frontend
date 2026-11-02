@@ -2,6 +2,7 @@ import { icons } from "./icons.js";
 import { history, outfitMemories, wardrobeCatalog, wardrobeOutfits } from "./data.js";
 import { escapeHtml } from "./format.js";
 import { openVirtualDressingRoom } from "./tryon-modal.js";
+import { listWardrobeItems, logWardrobeWear, listOutfitMemories, createOutfitMemory } from "./fits.js";
 
 let activeView = "grid"; // 'grid' | 'carousel' | 'calendar'
 let activeCarouselCategory = "clothing"; // 'clothing' | 'shoes' | 'accessories' | 'fits'
@@ -491,6 +492,12 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
           item.lastWorn = "Today";
           toast(`Logged "${item.name}" as worn! Cost-per-wear updated.`);
           refreshCarouselStage();
+
+          if (item.backendId) {
+            logWardrobeWear(item.backendId).catch((err) => {
+              console.warn("Could not sync wear count to backend:", err);
+            });
+          }
         }
       };
     });
@@ -536,6 +543,8 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
         return;
       }
 
+      const taggedPieces = piecesStr ? piecesStr.split(",").map((s) => s.trim()) : ["Oversized Denim Jacket"];
+
       const newMem = {
         id: `mem-${Date.now()}`,
         date: "2026-11-02",
@@ -544,7 +553,7 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
         year: 2026,
         title,
         photo: "./assets/feed/maya_fit.png",
-        taggedPieces: piecesStr ? piecesStr.split(",").map((s) => s.trim()) : ["Oversized Denim Jacket"],
+        taggedPieces,
         notes: notes || "Logged today's everyday outfit.",
         weather: "62°F · Crisp Autumn",
         rating: 5,
@@ -555,12 +564,89 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
       drawer?.classList.add("hidden");
       toast("Today's outfit memory saved!");
 
+      // Persist to backend database
+      createOutfitMemory({
+        date: newMem.date,
+        title: newMem.title,
+        photo_url: newMem.photo,
+        notes: newMem.notes,
+        weather: newMem.weather,
+        rating: newMem.rating,
+        tagged_pieces: newMem.taggedPieces,
+        auto_log_wear: true,
+      }).catch((err) => {
+        console.warn("Could not persist outfit memory to backend:", err);
+      });
+
       const gridEl = container.querySelector("#outfit-calendar-grid");
       const detailEl = container.querySelector("#memory-detail-content");
       if (gridEl) gridEl.innerHTML = renderCalendarDays();
       if (detailEl) detailEl.innerHTML = renderMemoryDetailCard(selectedCalendarMemory);
     };
   }
+
+  // Asynchronously sync with backend if user is authenticated
+  (async () => {
+    try {
+      const [backendItems, backendMemories] = await Promise.allSettled([
+        listWardrobeItems(),
+        listOutfitMemories(2026, 11),
+      ]);
+
+      if (backendItems.status === "fulfilled" && backendItems.value?.length) {
+        backendItems.value.forEach((bItem) => {
+          const cat = bItem.primary_category;
+          if (wardrobeCatalog[cat]) {
+            const existing = wardrobeCatalog[cat].find((x) => x.id === bItem.id || x.name === bItem.name);
+            if (!existing) {
+              wardrobeCatalog[cat].unshift({
+                id: bItem.id,
+                name: bItem.name,
+                brand: bItem.brand || "",
+                price: bItem.price,
+                timesWorn: bItem.times_worn,
+                lastWorn: bItem.last_worn_at ? "Recently" : "Never",
+                color: bItem.color || "#333",
+                category: bItem.sub_category || cat,
+                image: bItem.image_url || "./assets/wardrobe/outfit_uni1.png",
+                tag: bItem.tag || "Closet Piece",
+                backendId: bItem.id,
+              });
+            } else {
+              existing.backendId = bItem.id;
+              existing.timesWorn = bItem.times_worn;
+            }
+          }
+        });
+        refreshCarouselStage();
+      }
+
+      if (backendMemories.status === "fulfilled" && backendMemories.value?.length) {
+        backendMemories.value.forEach((bMem) => {
+          const exists = outfitMemories.find((m) => m.id === bMem.id || m.title === bMem.title);
+          if (!exists) {
+            const dateParts = bMem.date.split("-");
+            const dayNum = parseInt(dateParts[2], 10) || 1;
+            outfitMemories.unshift({
+              id: bMem.id,
+              date: bMem.date,
+              day: dayNum,
+              month: "Nov",
+              year: parseInt(dateParts[0], 10) || 2026,
+              title: bMem.title,
+              photo: bMem.photo_url || "./assets/feed/maya_fit.png",
+              taggedPieces: bMem.tagged_pieces || [],
+              notes: bMem.notes || "",
+              weather: bMem.weather || "Crisp Autumn",
+              rating: bMem.rating || 5,
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.warn("Backend wardrobe sync skipped (guest/offline mode):", err);
+    }
+  })();
 
   // Grid view filters
   const cards = container.querySelectorAll(".wardrobe-card");

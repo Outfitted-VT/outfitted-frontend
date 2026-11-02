@@ -309,3 +309,49 @@ export async function sendMessage(username, { content, fitId = null }) {
 export async function markMessagesRead(username) {
   return parse(await apiFetch(`/messages/${encodeURIComponent(username)}/read`, json("POST", {})));
 }
+
+// --- Digital Wardrobe Catalog & CPW Analytics ---
+
+export async function listWardrobeItems(category = null) {
+  const url = category ? `/wardrobe?category=${encodeURIComponent(category)}` : "/wardrobe";
+  return parse(await apiFetch(url));
+}
+
+export async function getWardrobeSummary() {
+  return parse(await apiFetch("/wardrobe/summary"));
+}
+
+export async function addWardrobeItem(item) {
+  return parse(await apiFetch("/wardrobe", json("POST", item)));
+}
+
+export async function updateWardrobeItem(itemId, patch) {
+  return parse(await apiFetch(`/wardrobe/${itemId}`, json("PATCH", patch)));
+}
+
+export async function logWardrobeWear(itemId) {
+  return parse(await apiFetch(`/wardrobe/${itemId}/wear`, json("POST", {})));
+}
+
+export async function deleteWardrobeItem(itemId) {
+  return parse(await apiFetch(`/wardrobe/${itemId}`, { method: "DELETE" }));
+}
+
+// --- Daily Outfit Memories & Fashion Calendar ---
+
+export async function listOutfitMemories(year = null, month = null) {
+  const params = new URLSearchParams();
+  if (year != null) params.set("year", year);
+  if (month != null) params.set("month", month);
+  const qs = params.toString();
+  return parse(await apiFetch(qs ? `/memories?${qs}` : "/memories"));
+}
+
+export async function createOutfitMemory(memory) {
+  return parse(await apiFetch("/memories", json("POST", memory)));
+}
+
+export async function deleteOutfitMemory(memoryId) {
+  return parse(await apiFetch(`/memories/${memoryId}`, { method: "DELETE" }));
+}
+
