@@ -275,3 +275,37 @@ export async function recordImpactEvent({
     )
   );
 }
+
+// --- Fit Comments ---
+
+export async function listComments(fitId) {
+  return parse(await apiFetch(`/fits/${fitId}/comments`));
+}
+
+export async function addComment(fitId, content) {
+  return parse(await apiFetch(`/fits/${fitId}/comments`, json("POST", { content })));
+}
+
+export async function deleteComment(fitId, commentId) {
+  return parse(await apiFetch(`/fits/${fitId}/comments/${commentId}`, { method: "DELETE" }));
+}
+
+// --- Direct Messaging ---
+
+export async function listThreads() {
+  return parse(await apiFetch("/messages/threads"));
+}
+
+export async function getConversation(username) {
+  return parse(await apiFetch(`/messages/${encodeURIComponent(username)}`));
+}
+
+export async function sendMessage(username, { content, fitId = null }) {
+  const body = { content };
+  if (fitId) body.fit_id = fitId;
+  return parse(await apiFetch(`/messages/${encodeURIComponent(username)}`, json("POST", body)));
+}
+
+export async function markMessagesRead(username) {
+  return parse(await apiFetch(`/messages/${encodeURIComponent(username)}/read`, json("POST", {})));
+}

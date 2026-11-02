@@ -3,6 +3,8 @@
 
 import { currentUser } from "./data.js";
 import { escapeHtml } from "./format.js";
+import { sendMessage } from "./fits.js";
+import { openVirtualDressingRoom } from "./tryon-modal.js";
 import { renderStealSwapModal } from "./views/steal-swap-modal.js";
 
 // Sample comparison dataset with realistic fit profiles and comparative metrics
@@ -222,25 +224,32 @@ function attachStealSwapEvents(toast) {
     };
   });
 
-  // Save entire look to closet
+  // Try on friend's fit / Steal to dressing room
   const btnSaveLook = container.querySelector("#btn-steal-entire-look");
   if (btnSaveLook) {
     btnSaveLook.onclick = () => {
-      btnSaveLook.innerHTML = `<span class="material-symbols-outlined text-[18px] text-tertiary-fixed">bookmark_added</span> Saved to My Fits!`;
-      toast(`Full outfit stolen and added to your wardrobe!`);
+      closeStealSwap();
+      toast(`Opening virtual dressing room with ${currentComparison.friend.name}'s look…`);
+      openVirtualDressingRoom({
+        image: currentComparison.friend.image,
+        name: currentComparison.title,
+      });
     };
   }
 
-  // Send "Who wore it better" poll to friend
+  // Send "Who wore it better" poll to friend via real direct message
   const btnSendPoll = container.querySelector("#btn-send-comparison-poll");
   if (btnSendPoll) {
-    btnSendPoll.onclick = () => {
+    btnSendPoll.onclick = async () => {
       btnSendPoll.disabled = true;
       btnSendPoll.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Sending poll…`;
-      setTimeout(() => {
-        btnSendPoll.innerHTML = `<span class="material-symbols-outlined text-[18px] text-tertiary-fixed">check_circle</span> Poll Sent to @${currentComparison.friend.username}!`;
-        toast(`"Who wore it better?" poll sent to ${currentComparison.friend.name}!`);
-      }, 700);
+      try {
+        await sendMessage(currentComparison.friend.username, {
+          content: `Who wore it better? Check our side-by-side comparison on the "${currentComparison.title}"! 🔥`,
+        });
+      } catch {}
+      btnSendPoll.innerHTML = `<span class="material-symbols-outlined text-[18px] text-tertiary-fixed">check_circle</span> Poll Sent to @${currentComparison.friend.username}!`;
+      toast(`"Who wore it better?" poll sent to ${currentComparison.friend.name}!`);
     };
   }
 }

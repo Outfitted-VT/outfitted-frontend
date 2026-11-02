@@ -166,6 +166,15 @@ export function mountFitList({ list, status, sentinel, path, empty, toast, onCha
     if (event.target.closest("[data-fit-like]")) toggle(fit, "liked_by_me", setLiked);
     else if (event.target.closest("[data-fit-save]")) toggle(fit, "saved_by_me", setSaved);
     else if (event.target.closest("[data-fit-delete]")) remove(fit);
+    else if (event.target.closest("[data-fit-comments]")) {
+      options.onOpenComments?.(fit, (newCount) => {
+        fit.comment_count = newCount;
+        const counter = article.querySelector("[data-comment-count]");
+        if (counter) counter.textContent = newCount;
+      });
+    } else if (event.target.closest("[data-ai-mode]")) {
+      options.onOpenTryOn?.(fit);
+    }
   });
 
   // Carousel dots follow the photo that's in view.
