@@ -750,7 +750,8 @@ function bindEvents() {
   } else if (activeTab === "wardrobe") {
     connectWardrobe(
       (outfit) => openVirtualDressingRoom(outfit),
-      (outfit) => openShareModalForPost(outfit)
+      (outfit) => openShareModalForPost(outfit),
+      showToast
     );
   } else if (activeTab === "friends") {
     connectFriends(

@@ -231,6 +231,21 @@ img[class*="w-"] {
   }
 }
 
+/* My fits photo labels sit on a white pill: keep the text dark in dark mode too. */
+.status-pill:not(.status-live) {
+  color: #1a1c1b;
+}
+/* My fits: shown under the Saved filter when nothing is saved yet (src/wardrobe.js). */
+.wardrobe-saved-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: rgb(var(--tw-on-surface-variant));
+  font: 400 14px/20px "Inter", system-ui, sans-serif;
+}
+.wardrobe-saved-empty[hidden] {
+  display: none;
+}
+
 /* Confirmation modal (src/confirm-dialog.js). */
 .confirm-dialog {
   border: 0; /* browsers give <dialog> a default border */
