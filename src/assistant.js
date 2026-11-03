@@ -1,5 +1,5 @@
 import { icons } from "./icons.js";
-import { sampleVisualSearchItems, wardrobeOutfits } from "./data.js";
+import { sampleVisualSearchItems, wardrobeOutfits, wardrobeCatalog } from "./data.js";
 
 export function renderStylistAssistant() {
   return `
@@ -65,16 +65,16 @@ export function renderStylistAssistant() {
       <section class="assistant-panel" id="panel-generator" hidden>
         <div class="generator-header">
           <div>
-            <h2>Algorithmic Moodboard & Fit Generator</h2>
-            <p>Select your aesthetic and let Outfitted assemble a coordinated look from top to toe.</p>
+            <h2>🎲 Interactive 4-Tier Outfit Generator</h2>
+            <p>Curate your outfit layer-by-layer or spin all 4 tiers simultaneously like a fashion slot machine.</p>
           </div>
           <button class="button button-primary" id="btn-randomize-outfit">
-            ${icons.wand}<span>Randomize & Generate</span>
+            <span class="material-symbols-outlined text-[18px]">casino</span><span>Spin / Roll Fit</span>
           </button>
         </div>
 
         <div class="vibe-selector-row">
-          <label>Vibe:</label>
+          <label>Vibe Presets:</label>
           <div class="vibe-pills" id="vibe-pills">
             <button class="vibe-pill active" data-vibe="Campus Casual">Campus Casual</button>
             <button class="vibe-pill" data-vibe="Concert Night">Concert Night</button>
@@ -212,66 +212,31 @@ export function renderStylistAssistant() {
   `;
 }
 
-const GENERATOR_PRESETS = {
+const VIBE_TIER_MAP = {
   "Campus Casual": {
+    indices: [1, 3, 1, 1], // Sunnies, Boxy Mockneck Tee, Straight Denim, Air Force 1
     title: "University Streetwear Edit",
     description: "Relaxed proportions, collegiate knitwear, and durable leather sneakers for everyday campus comfort.",
-    image: "./assets/wardrobe/outfit_uni1.png",
-    palette: ["#1e293b", "#e2e8f0", "#94a3b8", "#b91c1c"],
-    items: [
-      { category: "Top", name: "High-neck striped wool pullover", swatch: "#1e293b" },
-      { category: "Bottom", name: "Classic 90s stone-wash relaxed denim", swatch: "#64748b" },
-      { category: "Footwear", name: "Triple white classic court sneakers", swatch: "#f8fafc" },
-      { category: "Accessory", name: "Crossbody leather utility bag & retro sunnies", swatch: "#0f172a" },
-    ],
   },
   "Concert Night": {
+    indices: [0, 0, 2, 2], // Baguette Bag, Vintage Denim, Tartan Flares, Chelsea Boots
     title: "Indie Rock Club Look",
-    description: "Moody tartan flares, fitted polo knit, and platform Chelsea boots built for dancing and night lights.",
-    image: "./assets/wardrobe/outfit_concert1.png",
-    palette: ["#3f6212", "#713f12", "#451a03", "#fef08a"],
-    items: [
-      { category: "Top", name: "Fitted sage polo knit with open collar", swatch: "#3f6212" },
-      { category: "Bottom", name: "High-rise tartan plaid wide-leg flare", swatch: "#713f12" },
-      { category: "Footwear", name: "Glossy platform block-heel leather boots", swatch: "#451a03" },
-      { category: "Accessory", name: "Patent espresso baguette bag & signet ring", swatch: "#292524" },
-    ],
+    description: "Moody tartan flares, fitted denim layer, and platform Chelsea boots built for dancing and night lights.",
   },
   "Sunday Coffee": {
+    indices: [1, 1, 1, 3], // Sunnies, Cable Knit Cardigan, Straight Denim, Lug Penny Loafers
     title: "Warm Roastery Sunday",
-    description: "Cozy forest green cardigan layered over a crisp boxy tee with tailored dark trousers and vintage loafers.",
-    image: "./assets/feed/jordan_fit.png",
-    palette: ["#244b3c", "#fdfbf7", "#2b2e35", "#111111"],
-    items: [
-      { category: "Top", name: "Chunky forest rib-knit cardigan", swatch: "#244b3c" },
-      { category: "Base", name: "Heavyweight 280gsm white tee", swatch: "#ffffff" },
-      { category: "Bottom", name: "Pleated fluid charcoal wool trousers", swatch: "#2b2e35" },
-      { category: "Footwear", name: "Polished black penny loafers", swatch: "#111111" },
-    ],
+    description: "Cozy forest green cardigan layered over clean trousers and polished lug loafers.",
   },
   "Quiet Luxury": {
+    indices: [0, 2, 0, 3], // Baguette Bag, Camel Wool Blazer, Fluid Red Trousers, Lug Penny Loafers
     title: "Architectural Minimalist Tailoring",
-    description: "Unstructured camel wool blazer over lightweight cashmere and straight raw indigo trousers.",
-    image: "./assets/wardrobe/outfit_uni2.png",
-    palette: ["#c5a059", "#ffffff", "#1e3a8a", "#0f172a"],
-    items: [
-      { category: "Top", name: "Structured double-breasted camel blazer", swatch: "#c5a059" },
-      { category: "Layer", name: "Collegiate neutral hooded sweatshirt", swatch: "#f1f5f9" },
-      { category: "Bottom", name: "Straight-cut raw selvedge denim", swatch: "#1e3a8a" },
-      { category: "Footwear", name: "Chuck 70 high-tops & canvas tote", swatch: "#0f172a" },
-    ],
+    description: "Unstructured camel wool blazer with fluid pleated red trousers and timeless leather footwear.",
   },
   "Y2K Streetwear": {
+    indices: [2, 0, 3, 0], // Grommet Belt, Vintage Denim, Distressed Black Denim, Silver Runners
     title: "Cyber Grunge Flashback",
-    description: "Graphic washed band tee, distressed charcoal denim, canvas backpack, and vintage skateboard kicks.",
-    image: "./assets/wardrobe/outfit_friends1.png",
-    palette: ["#18181b", "#52525b", "#ef4444", "#a1a1aa"],
-    items: [
-      { category: "Top", name: "Faded vintage graphic tour tee", swatch: "#18181b" },
-      { category: "Bottom", name: "Distressed knee-slit dark wash denim", swatch: "#52525b" },
-      { category: "Footwear", name: "Low-profile skate sneakers with contrast laces", swatch: "#09090b" },
-      { category: "Accessory", name: "Canvas square backpack & chain belt", swatch: "#27272a" },
-    ],
+    description: "Faded denim jacket, distressed knee-slit denim, silver grommet belt, and metallic runners.",
   },
 };
 
@@ -361,86 +326,228 @@ export function connectStylistAssistant(onTryOnRequest, onPostFitRequest) {
     };
   });
 
-  // Outfit Generator Logic
+  // 4-Tier Interactive Outfit Generator & Slot Machine Deck
   const generatedBoard = container.querySelector("#generated-board-container");
   let currentVibe = "Campus Casual";
 
-  function renderGeneratedOutfit(vibe) {
-    const data = GENERATOR_PRESETS[vibe] || GENERATOR_PRESETS["Campus Casual"];
-    if (!generatedBoard) return;
-    generatedBoard.innerHTML = `
-      <div class="generated-card">
-        <div class="generated-visual">
-          <img src="${data.image}" alt="${data.title}" />
-          <span class="vibe-tag">${vibe}</span>
-        </div>
-        <div class="generated-details">
-          <div class="details-top">
-            <span class="eyebrow" style="color:var(--brand-green);">Generated Moodboard</span>
-            <h3>${data.title}</h3>
-            <p>${data.description}</p>
-          </div>
+  const tiers = [
+    {
+      id: "accessories",
+      label: "Accessories",
+      icon: "sunglasses",
+      items: wardrobeCatalog.accessories,
+    },
+    {
+      id: "tops",
+      label: "Top / Layer",
+      icon: "checkroom",
+      items: wardrobeCatalog.clothing.filter((c) => c.category === "Tops" || c.category === "Outerwear"),
+    },
+    {
+      id: "bottoms",
+      label: "Bottoms",
+      icon: "straighten",
+      items: wardrobeCatalog.clothing.filter((c) => c.category === "Bottoms"),
+    },
+    {
+      id: "shoes",
+      label: "Footwear",
+      icon: "steps",
+      items: wardrobeCatalog.shoes,
+    },
+  ];
 
-          <div class="generated-palette">
-            <strong>Palette:</strong>
-            <div class="swatch-strip">
-              ${data.palette.map((hex) => `<span style="background:${hex};" title="${hex}"></span>`).join("")}
+  let selectedIndices = [...VIBE_TIER_MAP["Campus Casual"].indices];
+
+  function getSelectedItems() {
+    return tiers.map((tier, tIdx) => {
+      const len = tier.items.length;
+      const idx = ((selectedIndices[tIdx] % len) + len) % len;
+      return tier.items[idx];
+    });
+  }
+
+  function renderSlotMachine() {
+    if (!generatedBoard) return;
+    const selectedItems = getSelectedItems();
+    const totalPrice = selectedItems.reduce((acc, it) => acc + (it.price || 0), 0);
+    const totalWorn = selectedItems.reduce((acc, it) => acc + (it.timesWorn || 1), 0);
+    const avgCpw = (totalPrice / (totalWorn || 1)).toFixed(2);
+    const topItem = selectedItems[1];
+
+    const activeVibeData = VIBE_TIER_MAP[currentVibe] || {
+      title: "Harmonized 4-Tier Curated Fit",
+      description: "Cohesive multi-layer ensemble balanced for color harmony and silhouette proportion.",
+    };
+
+    const dynamicVerdict = `Balanced synergy: the silhouette of ${selectedItems[1].brand} ${selectedItems[1].name} complements ${selectedItems[2].name}, anchored by ${selectedItems[3].brand} ${selectedItems[3].name} and finished with ${selectedItems[0].name}.`;
+
+    generatedBoard.innerHTML = `
+      <div class="slot-machine-deck">
+        ${tiers
+          .map((tier, tIdx) => {
+            const item = selectedItems[tIdx];
+            const cpw = item.timesWorn > 0 ? (item.price / item.timesWorn).toFixed(2) : item.price.toFixed(2);
+            return `
+            <div class="slot-tier-row" data-tier-row="${tIdx}">
+              <span class="slot-tier-label">
+                <span class="material-symbols-outlined text-[16px]">${tier.icon}</span>
+                ${tier.label}
+              </span>
+              <button class="slot-tier-nav-btn prev-tier-btn" data-tier="${tIdx}" title="Previous ${tier.label}">
+                <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              <div class="slot-tier-card">
+                <img src="${item.image}" alt="${item.name}" class="slot-tier-img" />
+                <div class="slot-tier-info">
+                  <h4>${item.name}</h4>
+                  <p>${item.brand} · <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${item.color};vertical-align:middle;margin:0 2px;"></span> ${item.tag || item.category} · <strong>$${item.price}</strong> <span style="color:var(--brand-coral);margin-left:4px;">($${cpw}/wear)</span></p>
+                </div>
+              </div>
+              <button class="slot-tier-nav-btn next-tier-btn" data-tier="${tIdx}" title="Next ${tier.label}">
+                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          `;
+          })
+          .join("")}
+      </div>
+
+      <div class="slot-spin-action-row">
+        <button class="btn-slot-roll" id="btn-slot-roll">
+          <span class="material-symbols-outlined">casino</span>
+          <span>Spin / Roll Fit</span>
+        </button>
+      </div>
+
+      <div class="slot-synergy-summary">
+        <div class="slot-metrics-row">
+          <div class="slot-palette-group">
+            <span class="label">Color Palette:</span>
+            <div class="slot-swatch-list">
+              ${selectedItems.map((it) => `<span class="slot-swatch-circle" style="background:${it.color};" title="${it.name} (${it.color})"></span>`).join("")}
             </div>
           </div>
-
-          <div class="generated-pieces-list">
-            ${data.items.map((item) => `
-              <div class="gen-piece-row">
-                <span class="piece-dot" style="background:${item.swatch}"></span>
-                <span class="piece-cat">${item.category}:</span>
-                <span class="piece-title">${item.name}</span>
-              </div>
-            `).join("")}
+          <div class="slot-stat-chips">
+            <span class="slot-stat-chip">Fit Total: $${totalPrice}</span>
+            <span class="slot-stat-chip" style="color:var(--brand-green);">Avg CPW: $${avgCpw}/wear</span>
+            <span class="slot-stat-chip" style="background:var(--brand-green);color:#fff;">98% Match</span>
           </div>
+        </div>
 
-          <div class="gen-actions">
-            <button class="button button-primary" id="btn-gen-tryon">
-              ${icons.sparkleIcon}<span>Try this look on</span>
-            </button>
-            <button class="button button-outline" id="btn-gen-post">
-              ${icons.plus}<span>Post fit to Circle</span>
-            </button>
-          </div>
+        <p class="slot-verdict-text">
+          <strong>Stylist AI Verdict:</strong> ${dynamicVerdict}
+        </p>
+
+        <div class="slot-actions-bar">
+          <button class="button button-primary" id="btn-slot-tryon">
+            ${icons.sparkleIcon}<span>Try Look On with Avatar</span>
+          </button>
+          <button class="button button-outline" id="btn-slot-post">
+            ${icons.plus}<span>Post Look to Circle</span>
+          </button>
         </div>
       </div>
     `;
 
-    const tryBtn = generatedBoard.querySelector("#btn-gen-tryon");
-    if (tryBtn && onTryOnRequest) {
-      tryBtn.onclick = () => onTryOnRequest(data);
+    // Wire tier navigation buttons
+    generatedBoard.querySelectorAll(".prev-tier-btn").forEach((btn) => {
+      btn.onclick = () => {
+        const t = parseInt(btn.dataset.tier, 10);
+        selectedIndices[t] = (selectedIndices[t] - 1 + tiers[t].items.length) % tiers[t].items.length;
+        renderSlotMachine();
+      };
+    });
+
+    generatedBoard.querySelectorAll(".next-tier-btn").forEach((btn) => {
+      btn.onclick = () => {
+        const t = parseInt(btn.dataset.tier, 10);
+        selectedIndices[t] = (selectedIndices[t] + 1) % tiers[t].items.length;
+        renderSlotMachine();
+      };
+    });
+
+    // Wire roll button
+    const rollBtn = generatedBoard.querySelector("#btn-slot-roll");
+    if (rollBtn) {
+      rollBtn.onclick = triggerSlotRoll;
     }
-    const postBtn = generatedBoard.querySelector("#btn-gen-post");
+
+    // Wire Try On button
+    const tryBtn = generatedBoard.querySelector("#btn-slot-tryon");
+    if (tryBtn && onTryOnRequest) {
+      tryBtn.onclick = () => {
+        onTryOnRequest({
+          title: activeVibeData.title,
+          description: activeVibeData.description,
+          image: topItem.image,
+          items: selectedItems,
+        });
+      };
+    }
+
+    // Wire Post button
+    const postBtn = generatedBoard.querySelector("#btn-slot-post");
     if (postBtn && onPostFitRequest) {
-      postBtn.onclick = () => onPostFitRequest(data);
+      postBtn.onclick = () => {
+        onPostFitRequest({
+          title: activeVibeData.title,
+          description: activeVibeData.description,
+          image: topItem.image,
+          items: selectedItems,
+        });
+      };
     }
   }
 
-  renderGeneratedOutfit(currentVibe);
+  function triggerSlotRoll() {
+    const rows = generatedBoard?.querySelectorAll(".slot-tier-row");
+    rows?.forEach((r) => r.classList.add("spinning"));
+
+    let ticks = 0;
+    const maxTicks = 6;
+    const interval = setInterval(() => {
+      ticks++;
+      tiers.forEach((tier, tIdx) => {
+        selectedIndices[tIdx] = Math.floor(Math.random() * tier.items.length);
+      });
+      // Update item previews
+      tiers.forEach((tier, tIdx) => {
+        const row = generatedBoard?.querySelector(`[data-tier-row="${tIdx}"]`);
+        if (!row) return;
+        const it = tier.items[selectedIndices[tIdx]];
+        const img = row.querySelector(".slot-tier-img");
+        const title = row.querySelector(".slot-tier-info h4");
+        if (img) img.src = it.image;
+        if (title) title.textContent = it.name;
+      });
+
+      if (ticks >= maxTicks) {
+        clearInterval(interval);
+        rows?.forEach((r) => r.classList.remove("spinning"));
+        renderSlotMachine();
+      }
+    }, 60);
+  }
+
+  renderSlotMachine();
 
   container.querySelectorAll(".vibe-pill").forEach((pill) => {
     pill.onclick = () => {
       container.querySelectorAll(".vibe-pill").forEach((p) => p.classList.remove("active"));
       pill.classList.add("active");
       currentVibe = pill.dataset.vibe;
-      renderGeneratedOutfit(currentVibe);
+      const vibeData = VIBE_TIER_MAP[currentVibe];
+      if (vibeData) {
+        selectedIndices = [...vibeData.indices];
+      }
+      renderSlotMachine();
     };
   });
 
   const btnRandomize = container.querySelector("#btn-randomize-outfit");
   if (btnRandomize) {
-    btnRandomize.onclick = () => {
-      const keys = Object.keys(GENERATOR_PRESETS);
-      const randomKey = keys[Math.floor(Math.random() * keys.length)];
-      container.querySelectorAll(".vibe-pill").forEach((p) => {
-        p.classList.toggle("active", p.dataset.vibe === randomKey);
-      });
-      renderGeneratedOutfit(randomKey);
-    };
+    btnRandomize.onclick = triggerSlotRoll;
   }
 
   // Visual Search Sample Switching

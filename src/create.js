@@ -28,6 +28,7 @@ const SCREENS = {
 
 let state;
 let hooks = { onPosted: () => {}, toast: () => {} };
+let selectedPrivacyTier = "public";
 const $ = (selector) => document.querySelector(selector);
 
 function freshState() {
@@ -493,12 +494,15 @@ async function submitFit(event) {
     images.forEach((image, i) => (state.photos[i].image = image)); // don't re-upload on retry
     submit.textContent = "Posting…";
     const imageIds = images.map((image) => image.id);
+    const allowTryOn = $("#compose-allow-tryon")?.checked ?? true;
     const fit = await createFit({
       imageIds,
       caption: $("#compose-caption").value.trim(),
       items: itemsForPost(imageIds),
       occasionTags: state.tags.occasion.map((tag) => tag.value),
       styleTags: state.tags.style.map((tag) => tag.value),
+      privacyTier: selectedPrivacyTier,
+      allowFriendTryOn: allowTryOn,
     });
     closeCreate();
     hooks.toast("Fit posted");
@@ -774,6 +778,16 @@ export function initCreate({ onPosted, toast }) {
 
   $("#compose-form").onsubmit = submitFit;
   $("#compose-caption").oninput = updateCaptionCount;
+
+  document.querySelectorAll(".btn-tier-select").forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll(".btn-tier-select").forEach((b) => {
+        b.className = "py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold text-on-surface hover:bg-surface-container transition-all active:scale-95 btn-tier-select";
+      });
+      btn.className = "py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold bg-primary text-on-primary transition-all active:scale-95 btn-tier-select";
+      selectedPrivacyTier = btn.dataset.tier;
+    };
+  });
   $("#item-open").onclick = () => setItemEditorOpen(true);
   $("#item-cancel").onclick = () => setItemEditorOpen(false);
   $("#item-add").onclick = saveItem;

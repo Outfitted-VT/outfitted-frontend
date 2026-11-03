@@ -110,6 +110,25 @@ function composeScreen() {
         </div>
       </div>
 
+      <div class="flex flex-col gap-space-xs">
+        ${label("Audience & Closet Privacy")}
+        <div class="grid grid-cols-3 gap-space-2xs bg-surface-container-low p-1 rounded-full text-center" id="compose-privacy-tier">
+          <button type="button" class="py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold bg-primary text-on-primary transition-all active:scale-95 btn-tier-select" data-tier="public">
+            🌐 Public
+          </button>
+          <button type="button" class="py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold text-on-surface hover:bg-surface-container transition-all active:scale-95 btn-tier-select" data-tier="friends">
+            🔒 Friends
+          </button>
+          <button type="button" class="py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold text-on-surface hover:bg-surface-container transition-all active:scale-95 btn-tier-select" data-tier="vault">
+            🛡️ Vault
+          </button>
+        </div>
+        <label class="flex items-center justify-between p-2 rounded bg-surface-container-low mt-1 cursor-pointer">
+          <span class="font-label-sm text-label-sm text-on-surface">Allow friends to 1-tap try on this look</span>
+          <input type="checkbox" id="compose-allow-tryon" checked class="w-4 h-4 accent-secondary rounded" />
+        </label>
+      </div>
+
       <p id="compose-error" role="alert" class="hidden font-label-md text-label-md text-on-error-container bg-error-container rounded px-space-sm py-space-xs"></p>
 
       <button type="submit" id="compose-submit" class="${primaryButton}" disabled>Post fit</button>
