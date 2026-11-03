@@ -266,7 +266,7 @@ function renderDetectStatus() {
   const d = state.detect;
   const messages = {
     idle: ["photo_camera", "Add a photo and we'll tag the pieces for you."],
-    running: ["progress_activity", "Finding the pieces and similar products…"],
+    running: ["progress_activity", "Finding the pieces…"],
     done: d.found
       ? ["auto_awesome", `Found ${d.found} piece${d.found === 1 ? "" : "s"}. Tap one to edit it.`]
       : ["auto_awesome", "We couldn't spot any pieces. Add them yourself."],
@@ -288,42 +288,15 @@ const hostOf = (url) => {
   }
 };
 
-// Similar products for a detected piece; the selected one is the piece's shop link.
-function matchStrip(item, i) {
-  const matches = item.matches || [];
-  if (!matches.length) return "";
-  return `
-    <div class="flex flex-col gap-1 pl-space-xs">
-      <span class="font-label-sm text-label-sm text-on-surface-variant font-normal">Shop similar · tap to choose, tap again to remove</span>
-      <div class="flex gap-space-xs overflow-x-auto -mx-margin px-margin pb-1">
-        ${matches
-          .map((match, m) => {
-            const selected = item.url === match.link;
-            return `
-              <button type="button" data-match="${i}:${m}" aria-pressed="${selected}"
-                class="match-card flex-shrink-0 w-36 flex items-center gap-1.5 p-1.5 rounded-DEFAULT text-left border transition-colors">
-                <span class="w-11 h-11 rounded bg-surface-container-high overflow-hidden flex-shrink-0">
-                  ${match.thumbnail ? `<img class="w-full h-full object-cover" alt="" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(match.thumbnail)}" />` : ""}
-                </span>
-                <span class="flex flex-col min-w-0">
-                  <span class="font-label-sm text-label-sm text-on-surface font-semibold truncate">${escapeHtml(match.source || hostOf(match.link))}</span>
-                  <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">${escapeHtml(match.price || match.title)}</span>
-                </span>
-              </button>`;
-          })
-          .join("")}
-      </div>
-    </div>`;
-}
-
 function renderItems() {
   $("#compose-items").innerHTML = state.items
     .map((item, i) => {
       const category = categoryOf(item.category);
       const detail = [item.brand, item.color, item.material].filter(Boolean).map(escapeHtml).join(" · ");
+      // Links come only from the user: a piece without one offers to add it.
       const link = item.url
         ? `<span class="inline-flex items-center gap-0.5 text-secondary font-semibold"><span class="material-symbols-outlined text-[13px]">link</span>${escapeHtml(hostOf(item.url))}</span>`
-        : "";
+        : `<span class="inline-flex items-center gap-0.5 text-secondary font-semibold" data-add-link><span class="material-symbols-outlined text-[13px]">add_link</span>Add shop link</span>`;
       return `
        <div class="flex flex-col gap-space-xs">
         <div class="flex items-center gap-space-sm bg-surface-container-low rounded-DEFAULT p-space-xs pr-1">
@@ -335,7 +308,7 @@ function renderItems() {
             <span class="flex flex-col min-w-0 flex-1">
               <span class="font-label-md text-label-md text-on-surface font-semibold truncate first-letter:uppercase">${escapeHtml(item.name)}</span>
               <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">${category.label}${detail ? ` · ${detail}` : ""}</span>
-              ${link ? `<span class="font-label-sm text-label-sm truncate">${link}</span>` : ""}
+              <span class="font-label-sm text-label-sm truncate">${link}</span>
             </span>
           </button>
           <button type="button" data-item-remove="${i}" aria-label="Remove ${escapeHtml(item.name)}"
@@ -343,19 +316,9 @@ function renderItems() {
             <span class="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>
-        ${matchStrip(item, i)}
        </div>`;
     })
     .join("");
-  document.querySelectorAll("[data-match]").forEach((button) => {
-    button.onclick = () => {
-      const [i, m] = button.dataset.match.split(":").map(Number);
-      const item = state.items[i];
-      const link = item.matches[m].link;
-      item.url = item.url === link ? null : link;
-      renderItems();
-    };
-  });
   $("#compose-item-count").textContent = state.items.length
     ? `${state.items.length} piece${state.items.length === 1 ? "" : "s"}`
     : "";
@@ -367,12 +330,16 @@ function renderItems() {
     };
   });
   document.querySelectorAll("[data-item-edit]").forEach((button) => {
-    button.onclick = () => setItemEditorOpen(true, Number(button.dataset.itemEdit));
+    button.onclick = (e) => {
+      // "Add shop link" opens the same editor, ready to paste the link.
+      const focus = e.target.closest("[data-add-link]") ? "#item-url" : "#item-name";
+      setItemEditorOpen(true, Number(button.dataset.itemEdit), { focus });
+    };
   });
 }
 
-// index: the piece to edit, or omit to add a new one.
-function setItemEditorOpen(open, index = null) {
+// index: the piece to edit, or omit to add a new one. focus: the field to start in.
+function setItemEditorOpen(open, index = null, { focus = "#item-name" } = {}) {
   state.editing = open ? index : null;
   $("#item-editor").classList.toggle("hidden", !open);
   $("#item-open").classList.toggle("hidden", open);
@@ -386,7 +353,7 @@ function setItemEditorOpen(open, index = null) {
   $("#item-add").textContent = item ? "Save piece" : "Add piece";
   selectCategory(item?.category || "top");
   $("#item-editor").scrollIntoView({ block: "nearest" });
-  $("#item-name").focus();
+  $(focus).focus();
 }
 
 function selectCategory(id) {
@@ -507,7 +474,7 @@ function updateCaptionCount() {
 // --- posting ---
 
 function itemsForPost(imageIds) {
-  return state.items.map(({ auto, matches, ...item }) => ({
+  return state.items.map(({ auto, ...item }) => ({
     ...item,
     // A pin must point at one of this fit's photos (the cover may have been removed).
     pin: item.pin && imageIds.includes(item.pin.image_id) ? item.pin : null,
