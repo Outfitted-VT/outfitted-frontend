@@ -84,7 +84,7 @@ function composeScreen() {
             <input class="${input} bg-surface-container-lowest" id="item-brand" maxlength="100" placeholder="Brand (optional)" />
             <input class="${input} bg-surface-container-lowest" id="item-color" maxlength="50" placeholder="Color (optional)" />
           </div>
-          <input class="${input} bg-surface-container-lowest" id="item-url" type="url" inputmode="url" maxlength="2048" autocapitalize="none" placeholder="Shop link (optional)" />
+          <input class="${input} bg-surface-container-lowest" id="item-url" type="url" inputmode="url" maxlength="2048" autocapitalize="none" placeholder="Where to buy it: paste a link (optional)" />
           <p class="hidden font-label-sm text-label-sm text-error font-normal" id="item-url-error">Enter a link that starts with https://</p>
           <div class="flex gap-space-xs">
             <button type="button" id="item-cancel" class="h-10 px-4 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold">Cancel</button>

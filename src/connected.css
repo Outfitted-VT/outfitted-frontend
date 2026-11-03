@@ -165,17 +165,6 @@ img[class*="w-"] {
   opacity: 0.5;
 }
 
-.match-card {
-  background: rgb(var(--tw-surface-container-low));
-  /* Set here: the global button reset (border: 0) wins over Tailwind's border class. */
-  border: 1.5px solid transparent;
-}
-.match-card[aria-pressed="true"] {
-  background: rgb(var(--tw-surface-container-lowest));
-  border-color: rgb(var(--tw-primary));
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
-}
-
 /* ---------- Wordmark: OUTFITTED. ---------- */
 .wordmark {
   display: inline-flex;
@@ -272,8 +261,7 @@ img[class*="w-"] {
    using the card colour, which would look sunken. */
 :root[data-theme="dark"] .compare-tab[aria-selected="true"],
 :root[data-theme="dark"] .compare-tab[aria-checked="true"],
-:root[data-theme="dark"] .auth-tab[aria-selected="true"],
-:root[data-theme="dark"] .match-card[aria-pressed="true"] {
+:root[data-theme="dark"] .auth-tab[aria-selected="true"] {
   background: rgb(var(--tw-surface-container-highest));
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
 }
