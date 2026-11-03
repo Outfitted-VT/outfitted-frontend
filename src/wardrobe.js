@@ -2,11 +2,20 @@ import { icons } from "./icons.js";
 import { history, outfitMemories, wardrobeCatalog, wardrobeOutfits } from "./data.js";
 import { escapeHtml } from "./format.js";
 import { openVirtualDressingRoom } from "./tryon-modal.js";
-import { listWardrobeItems, logWardrobeWear, listOutfitMemories, createOutfitMemory } from "./fits.js";
+import {
+  listWardrobeItems,
+  logWardrobeWear,
+  listOutfitMemories,
+  createOutfitMemory,
+  listFits,
+  setSaved,
+  mediaUrl,
+} from "./fits.js";
 
 let activeView = "grid"; // 'grid' | 'carousel' | 'calendar'
 let activeCarouselCategory = "clothing"; // 'clothing' | 'shoes' | 'accessories' | 'fits'
 let carouselIndex = 0;
+const savedFits = new Map(); // fit id -> fit, filled by connectWardrobe from GET /users/me/saved
 let selectedCalendarMemory = outfitMemories[0];
 
 export function renderWardrobePage() {
@@ -50,7 +59,7 @@ export function renderWardrobePage() {
             🕶️ Accessories (${wardrobeCatalog.accessories.length})
           </button>
           <button class="carousel-cat-pill ${activeCarouselCategory === "fits" ? "active" : ""}" data-cat="fits">
-            ✨ Full Outfits (${wardrobeOutfits.length})
+            ✨ Full Outfits (<span id="carousel-fit-count">${wardrobeOutfits.length}</span>)
           </button>
         </div>
 
@@ -138,7 +147,7 @@ export function renderWardrobePage() {
         <!-- Filter and Search Bar -->
         <div class="wardrobe-controls-bar">
           <div class="category-filters" id="wardrobe-filters">
-            <button class="category-pill active" data-filter="all">All Fits (${wardrobeOutfits.length})</button>
+            <button class="category-pill active" data-filter="all">All Fits (<span id="wardrobe-fit-count">${wardrobeOutfits.length}</span>)</button>
             <button class="category-pill" data-filter="Campus">Campus</button>
             <button class="category-pill" data-filter="Night Out">Night Out</button>
             <button class="category-pill" data-filter="Weekend">Weekend</button>
@@ -155,6 +164,9 @@ export function renderWardrobePage() {
         <div class="wardrobe-grid" id="wardrobe-grid-box">
           ${wardrobeOutfits.map((outfit) => renderWardrobeCard(outfit)).join("")}
         </div>
+        <p class="wardrobe-saved-empty" id="wardrobe-saved-empty" hidden>
+          Nothing saved yet. Tap <strong>Save</strong> on a post in the feed and it shows up here.
+        </p>
 
         <!-- Shared History Timeline -->
         <section class="wardrobe-history-section">
@@ -188,7 +200,16 @@ export function renderWardrobePage() {
 
 function getActiveCarouselList() {
   if (activeCarouselCategory === "fits") {
-    return wardrobeOutfits.map((o) => ({
+    // Saved fits have no price or wear count, so they show their pieces instead.
+    const saved = [...savedFits.values()].map((fit) => ({
+      id: fit.id,
+      saved: true,
+      name: savedFitTitle(fit),
+      brand: `@${fit.author.username}`,
+      image: fit.images[0] ? mediaUrl(fit.images[0].url) : "",
+      pieces: savedFitPieces(fit),
+    }));
+    return saved.concat(wardrobeOutfits.map((o) => ({
       id: o.id,
       name: o.title,
       brand: "Outfitted Wardrobe",
@@ -198,7 +219,7 @@ function getActiveCarouselList() {
       lastWorn: o.date,
       image: o.image,
       tag: o.vibe,
-    }));
+    })));
   }
   return wardrobeCatalog[activeCarouselCategory] || wardrobeCatalog.clothing;
 }
@@ -239,13 +260,15 @@ function renderCarouselStageItems() {
       return `
         <div class="carousel-3d-card ${isCenter ? "active" : ""}" style="${transformStyle}" data-index="${idx}">
           <div class="carousel-card-img-wrap">
-            <img src="${item.image}" alt="${escapeHtml(item.name)}" />
+            <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" />
             <span class="carousel-badge-pill">${escapeHtml(item.brand)}</span>
-            <span class="carousel-cpw-pill">$${costPerWear}/wear</span>
+            <span class="carousel-cpw-pill">${item.saved ? "Saved" : `$${costPerWear}/wear`}</span>
           </div>
           <div class="carousel-card-brief">
             <h4>${escapeHtml(item.name)}</h4>
-            <p>${escapeHtml(item.category)} · Worn ${item.timesWorn} times</p>
+            <p class="truncate">${
+              item.saved ? escapeHtml(item.pieces.join(" · ") || "No pieces tagged") : `${escapeHtml(item.category)} · Worn ${item.timesWorn} times`
+            }</p>
           </div>
         </div>
       `;
@@ -258,6 +281,7 @@ function renderActiveCarouselDetails() {
   if (!items.length) return "";
   const current = ((carouselIndex % items.length) + items.length) % items.length;
   const item = items[current];
+  if (item.saved) return renderSavedFitDetails(item);
 
   const cpw = (item.price / Math.max(1, item.timesWorn)).toFixed(2);
   const valueVerdict =
@@ -406,6 +430,73 @@ function renderWardrobeCard(outfit) {
           </button>
           <button class="button button-dark button-sm btn-wardrobe-share" data-outfit-id="${outfit.id}">
             ${icons.share}<span>Share</span>
+          </button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+const savedFitTitle = (fit) =>
+  fit.caption?.split("\n")[0] || `${fit.author.full_name || fit.author.username}'s fit`;
+const savedFitPieces = (fit) => fit.items.map((item) => [item.brand, item.name].filter(Boolean).join(" "));
+
+// The 3D carousel's panel for a saved fit: its pieces instead of price and wear stats.
+function renderSavedFitDetails(item) {
+  return `
+    <div class="active-item-analytics-card" data-saved-fit="${item.id}">
+      <div class="analytics-head">
+        <div>
+          <span class="font-micro-mono text-[10px] uppercase text-secondary font-bold tracking-wider">Saved from ${escapeHtml(item.brand)}</span>
+          <h3 class="font-headline-md text-headline-md font-semibold text-on-surface">${escapeHtml(item.name)}</h3>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-1.5">
+        ${
+          item.pieces.length
+            ? item.pieces
+                .map((piece) => `<span class="px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">${escapeHtml(piece)}</span>`)
+                .join("")
+            : `<span class="font-label-sm text-on-surface-variant">No pieces tagged</span>`
+        }
+      </div>
+      <div class="grid grid-cols-2 gap-space-xs pt-1">
+        <button type="button" class="h-10 rounded-full bg-primary text-on-primary font-label-md font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all" data-saved-tryon>
+          <span class="material-symbols-outlined text-[17px] text-tertiary-fixed">auto_awesome</span>
+          <span>Try this look</span>
+        </button>
+        <button type="button" class="h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all" data-saved-remove>
+          <span class="material-symbols-outlined text-[17px] text-secondary">bookmark_remove</span>
+          <span>Unsave</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// A fit the user saved from the feed: its first photo and the pieces tagged in it.
+function renderSavedFitCard(fit) {
+  const image = fit.images[0];
+  const title = savedFitTitle(fit);
+  const pieces = savedFitPieces(fit);
+  return `
+    <article class="wardrobe-card" data-category="" data-status="Saved" data-saved-fit="${fit.id}">
+      <div class="wardrobe-card-media">
+        ${image ? `<img src="${escapeHtml(mediaUrl(image.url))}" alt="${escapeHtml(title)}" loading="lazy" />` : ""}
+        <span class="status-pill">Saved</span>
+      </div>
+      <div class="wardrobe-card-meta">
+        <div class="meta-top">
+          <h4 class="truncate">${escapeHtml(title)}</h4>
+          <span class="vibe-badge">@${escapeHtml(fit.author.username)}</span>
+        </div>
+        <p class="pieces-preview">${pieces.length ? escapeHtml(pieces.join(" · ")) : "No pieces tagged"}</p>
+        <div class="wardrobe-card-footer">
+          <button class="button button-ghost button-sm" data-saved-tryon>
+            ${icons.wand}<span>Try this look</span>
+          </button>
+          <button class="button button-dark button-sm" data-saved-remove>
+            <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1">bookmark_remove</span><span>Unsave</span>
           </button>
         </div>
       </div>
@@ -649,13 +740,13 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
   })();
 
   // Grid view filters
-  const cards = container.querySelectorAll(".wardrobe-card");
   const filterPills = container.querySelectorAll(".category-pill");
   const searchInput = container.querySelector("#wardrobe-search-input");
 
   function applyFilters() {
     const activeFilter = container.querySelector(".category-pill.active")?.dataset.filter || "all";
     const query = searchInput?.value.toLowerCase().trim() || "";
+    const cards = container.querySelectorAll(".wardrobe-card");
 
     cards.forEach((card) => {
       const cat = card.dataset.category;
@@ -668,7 +759,66 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
 
       card.hidden = !(matchesFilter && matchesSearch);
     });
+    const empty = container.querySelector("#wardrobe-saved-empty");
+    if (empty) empty.hidden = !(activeFilter === "Saved" && !query && !container.querySelector("[data-saved-fit]"));
   }
+
+  // Fits the user saved from the feed go first in the grid and the carousel's Full Outfits
+  // (signed-in users only).
+  savedFits.clear();
+  const grid = container.querySelector("#wardrobe-grid-box");
+  const updateFitCounts = () => {
+    const total = String(wardrobeOutfits.length + savedFits.size);
+    container.querySelectorAll("#wardrobe-fit-count, #carousel-fit-count").forEach((count) => {
+      count.textContent = total;
+    });
+  };
+
+  (async () => {
+    try {
+      const page = await listFits("/users/me/saved", null, 50);
+      if (!grid?.isConnected) return;
+      page.items.forEach((fit) => savedFits.set(fit.id, fit));
+      grid.insertAdjacentHTML("afterbegin", page.items.map(renderSavedFitCard).join(""));
+      updateFitCounts();
+      applyFilters();
+      if (activeCarouselCategory === "fits") refreshCarouselStage();
+    } catch (err) {
+      console.warn("Saved fits skipped (guest/offline mode):", err);
+    }
+  })();
+
+  async function unsaveFit(id, button) {
+    button.disabled = true;
+    try {
+      await setSaved(id, false);
+      savedFits.delete(id);
+      grid?.querySelector(`[data-saved-fit="${id}"]`)?.remove();
+      updateFitCounts();
+      applyFilters();
+      if (activeCarouselCategory === "fits") refreshCarouselStage();
+      toast("Removed from saved");
+    } catch {
+      button.disabled = false;
+      toast("Couldn't unsave that fit. Try again.");
+    }
+  }
+
+  // Grid cards and the carousel's details panel use the same buttons.
+  container.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-saved-tryon], [data-saved-remove]");
+    const id = button?.closest("[data-saved-fit]")?.dataset.savedFit;
+    const fit = savedFits.get(id);
+    if (!fit) return;
+    if (button.matches("[data-saved-tryon]")) {
+      onTryOnRequest?.({
+        image: fit.images[0] ? mediaUrl(fit.images[0].url) : undefined,
+        name: fit.caption || fit.items[0]?.name || "This Fit",
+      });
+    } else {
+      unsaveFit(id, button);
+    }
+  });
 
   filterPills.forEach((pill) => {
     pill.onclick = () => {
