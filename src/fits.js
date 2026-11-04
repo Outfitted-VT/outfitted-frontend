@@ -128,6 +128,16 @@ export async function setSaved(fitId, saved) {
   return parse(await apiFetch(`/fits/${fitId}/save`, { method: saved ? "PUT" : "DELETE" }));
 }
 
+// Votes: "wear" or "rethink", or null to retract. One vote per person per fit, so voting
+// again replaces the previous choice. Unlike likes and saves these return the whole fit,
+// with everyone's tallies, so the result bar can be redrawn without a second request.
+export async function setVote(fitId, choice) {
+  const path = `/fits/${fitId}/vote`;
+  return parse(
+    await apiFetch(path, choice ? json("PUT", { choice }) : { method: "DELETE" })
+  );
+}
+
 export async function searchUsers(query = "", limit = 20) {
   return parse(await apiFetch(`/users/search?q=${encodeURIComponent(query)}&limit=${limit}`));
 }

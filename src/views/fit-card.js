@@ -89,6 +89,38 @@ function tags(fit) {
     </div>`;
 }
 
+// The "wear it or rethink" verdict. `votes` is everyone's tally; `my_vote` is this
+// viewer's choice, or null. Reuses the .poll-* styles already in styles.css.
+function poll(fit) {
+  const votes = fit.votes || { wear: 0, rethink: 0 };
+  const total = votes.wear + votes.rethink;
+  const share = total ? Math.round((votes.wear / total) * 100) : 0;
+  const mine = fit.my_vote || null;
+  const option = (choice, label) => `
+    <button type="button" class="btn-poll-option${mine === choice ? " voted" : ""}"
+      data-fit-vote="${choice}" aria-pressed="${mine === choice}">${label}</button>`;
+  const summary = total
+    ? `<strong>${share}%</strong> say wear it · ${total} vote${total === 1 ? "" : "s"}`
+    : "No votes yet";
+  return `
+    <div class="poll-component" data-fit-poll>
+      <div class="flex items-center justify-between">
+        <span class="poll-question-label">Would you wear it?</span>
+        ${mine ? `<button type="button" class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface underline" data-fit-vote="">Clear</button>` : ""}
+      </div>
+      <div class="poll-buttons-row">
+        ${option("wear", "Wear it")}
+        ${option("rethink", "Rethink")}
+      </div>
+      <div class="poll-results-bar-wrap">
+        <div class="poll-progress-track">
+          <div class="poll-progress-fill" style="width:${share}%"></div>
+        </div>
+        <span class="poll-results-stat">${summary}</span>
+      </div>
+    </div>`;
+}
+
 const filled = (on) => `font-variation-settings:'FILL' ${on ? 1 : 0}`;
 
 export function renderFitCard(fit, { mine = false } = {}) {
@@ -119,6 +151,8 @@ export function renderFitCard(fit, { mine = false } = {}) {
       ${tags(fit)}
 
       ${items(fit)}
+
+      ${poll(fit)}
 
       <footer class="flex items-center justify-between pt-space-2xs border-t border-surface-container-high">
         <div class="flex items-center gap-4">

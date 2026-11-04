@@ -2,7 +2,7 @@
 
 import { confirmDialog } from "./confirm-dialog.js";
 import { currentUser } from "./data.js";
-import { deleteFit, listFits, setLiked, setSaved } from "./fits.js";
+import { deleteFit, listFits, setLiked, setSaved, setVote } from "./fits.js";
 import { renderFitCard } from "./views/fit-card.js";
 
 const spinner = `<span class="material-symbols-outlined animate-spin text-on-surface-variant">progress_activity</span>`;
@@ -149,6 +149,30 @@ export function mountFitList({
     }
   }
 
+  // Moving the bar before the request lands, so voting feels instant.
+  function withVote(fit, choice) {
+    const votes = { wear: 0, rethink: 0, ...(fit.votes || {}) };
+    if (fit.my_vote) votes[fit.my_vote] = Math.max(0, votes[fit.my_vote] - 1);
+    if (choice) votes[choice] += 1;
+    return { ...fit, votes, my_vote: choice };
+  }
+
+  // Tapping the option you already picked clears your vote.
+  async function vote(fit, picked) {
+    const choice = picked && picked !== fit.my_vote ? picked : null;
+    const before = { ...fit };
+    replaceCard(withVote(fit, choice));
+    try {
+      // The response carries everyone's tallies, not just ours, so it also picks up
+      // votes cast since this card was rendered.
+      replaceCard(await setVote(fit.id, choice));
+    } catch (err) {
+      console.error(err);
+      replaceCard(before);
+      toast("Couldn't save your vote. Check your connection.");
+    }
+  }
+
   async function remove(fit) {
     try {
       const deleted = await confirmDialog({
@@ -175,7 +199,9 @@ export function mountFitList({
     const article = event.target.closest("[data-fit-id]");
     const fit = article && fits.get(article.dataset.fitId);
     if (!fit) return;
-    if (event.target.closest("[data-fit-like]")) toggle(fit, "liked_by_me", setLiked);
+    const voteButton = event.target.closest("[data-fit-vote]");
+    if (voteButton) vote(fit, voteButton.dataset.fitVote || null);
+    else if (event.target.closest("[data-fit-like]")) toggle(fit, "liked_by_me", setLiked);
     else if (event.target.closest("[data-fit-save]")) toggle(fit, "saved_by_me", setSaved);
     else if (event.target.closest("[data-fit-delete]")) remove(fit);
     else if (event.target.closest("[data-fit-comments]")) {
