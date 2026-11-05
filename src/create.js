@@ -2,7 +2,16 @@
 
 import { ApiError } from "./auth.js";
 import { currentUser } from "./data.js";
-import { blurFaces, categoryOf, createFit, createTryOn, detectPieces, mediaUrl, uploadImage } from "./fits.js";
+import {
+  blurFaces,
+  categoryOf,
+  createFit,
+  createTryOn,
+  detectPieces,
+  mediaUrl,
+  updateFit,
+  uploadImage,
+} from "./fits.js";
 import { escapeHtml } from "./format.js";
 import { aiBadge } from "./views/fit-card.js";
 
@@ -35,6 +44,8 @@ const SCREENS = {
   "tryon-loading": { kicker: "AI try-on", title: "Working on it" },
   "tryon-result": { kicker: "AI try-on", title: "Here's your look", back: "tryon" },
 };
+// The compose screen while editing a posted fit.
+const EDIT_SCREEN = { kicker: "Edit fit", title: "Edit your fit" };
 
 let state;
 let hooks = { onPosted: () => {}, toast: () => {} };
@@ -50,12 +61,14 @@ function freshState() {
     items: [],
     tags: { occasion: [], style: [] },
     category: "top",
-    editing: null, // index of the piece open in the editor, or null when adding
+    editingItem: null, // index of the piece open in the editor, or null when adding
     detect: { cover: null, run: 0, status: "idle", found: 0 },
     // Posting a try-on result: { tryonId, imageId, categories }. tryonId is sent with the post
     // while that photo is in it. categories: the item categories tried on (a promise for an
     // entire fit), so detection on that photo keeps only those; null keeps everything.
     posting: null,
+    // Editing a posted fit: { fit, onSaved }. Its photos can't change, so there's no detection.
+    editing: null,
     // mode is "outfit" (one photo of a whole fit) or "pieces" (a photo per slot in `pieces`).
     // hideFace: "Hide my face" is on. blurred: the result with the face blurred, once made.
     // fitId / from: "Try this look" on someone's fit (its id and author's username), else null.
@@ -148,6 +161,8 @@ function closeCreate() {
     setItemEditorOpen(false);
     renderCompose();
     $("#compose-caption").value = "";
+    selectTier("public");
+    $("#compose-allow-tryon").checked = true;
   }, 280);
 }
 
@@ -162,7 +177,7 @@ function show(screen) {
   document.querySelectorAll("#create-sheet [data-screen]").forEach((el) => {
     el.classList.toggle("hidden", el.dataset.screen !== screen);
   });
-  const meta = SCREENS[screen];
+  const meta = screen === "compose" && state.editing ? EDIT_SCREEN : SCREENS[screen];
   $("#create-kicker").textContent = meta.kicker;
   $("#create-title").textContent = meta.title;
   $("#create-back").classList.toggle("invisible", !meta.back);
@@ -199,20 +214,21 @@ function renderCompose() {
 }
 
 function renderPhotos() {
+  const locked = Boolean(state.editing); // a posted fit's photos can't be changed
   const tiles = state.photos.map((photo, i) => {
     const src = photo.preview || mediaUrl(photo.image.url);
     return `
       <div class="relative flex-shrink-0 w-24 h-32 rounded-DEFAULT overflow-hidden bg-surface-container-high">
         <img class="w-full h-full object-cover" alt="Photo ${i + 1}" src="${escapeHtml(src)}" />
         ${photo.image?.generated ? aiBadge("absolute bottom-1.5 left-1.5 scale-90 origin-bottom-left") : ""}
-        <button type="button" data-photo-remove="${i}" aria-label="Remove photo ${i + 1}"
+        ${locked ? "" : `<button type="button" data-photo-remove="${i}" aria-label="Remove photo ${i + 1}"
           class="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/55 text-white flex items-center justify-center backdrop-blur">
           <span class="material-symbols-outlined text-[16px]">close</span>
-        </button>
+        </button>`}
         ${i === 0 ? `<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-white/85 text-[#1a1c1b] font-micro-mono text-[9px] uppercase font-bold">Cover</span>` : ""}
       </div>`;
   });
-  if (state.photos.length < MAX_PHOTOS) {
+  if (!locked && state.photos.length < MAX_PHOTOS) {
     tiles.push(`
       <button type="button" id="compose-add-photo"
         class="flex-shrink-0 w-24 h-32 rounded-DEFAULT border border-dashed border-outline-variant bg-surface-container-low flex flex-col items-center justify-center gap-1 text-on-surface-variant active:scale-95 transition-transform">
@@ -221,8 +237,11 @@ function renderPhotos() {
       </button>`);
   }
   $("#compose-photos").innerHTML = tiles.join("");
-  $("#compose-photo-count").textContent = `${state.photos.length} / ${MAX_PHOTOS}`;
+  $("#compose-photo-count").textContent = locked
+    ? "Can't be changed after posting"
+    : `${state.photos.length} / ${MAX_PHOTOS}`;
   $("#compose-submit").disabled = state.photos.length === 0;
+  $("#compose-submit").textContent = locked ? "Save changes" : "Post fit";
 
   $("#compose-add-photo")?.addEventListener("click", async () => {
     const files = await pickFiles($("#compose-file"));
@@ -245,6 +264,7 @@ function renderPhotos() {
 
 // Suggestions are marked `auto` until the user edits them; a new cover replaces only those.
 async function detectCover() {
+  if (state.editing) return; // keep the pieces the fit was posted with
   const d = state.detect;
   const cover = state.photos[0] || null;
   if (cover === d.cover) return;
@@ -298,6 +318,12 @@ function dropSuggestions() {
 }
 
 function renderDetectStatus() {
+  if (state.editing) {
+    $("#compose-detect").innerHTML = `
+      <span class="material-symbols-outlined text-[16px] text-secondary">edit</span>
+      <span>Tap a piece to edit it or add where to buy it.</span>`;
+    return;
+  }
   const d = state.detect;
   const messages = {
     idle: ["photo_camera", "Add a photo and we'll tag the pieces for you."],
@@ -360,7 +386,7 @@ function renderItems() {
   document.querySelectorAll("[data-item-remove]").forEach((button) => {
     button.onclick = () => {
       state.items.splice(Number(button.dataset.itemRemove), 1);
-      if (state.editing !== null) setItemEditorOpen(false);
+      if (state.editingItem !== null) setItemEditorOpen(false);
       renderItems();
     };
   });
@@ -375,7 +401,7 @@ function renderItems() {
 
 // index: the piece to edit, or omit to add a new one. focus: the field to start in.
 function setItemEditorOpen(open, index = null, { focus = "#item-name" } = {}) {
-  state.editing = open ? index : null;
+  state.editingItem = open ? index : null;
   $("#item-editor").classList.toggle("hidden", !open);
   $("#item-open").classList.toggle("hidden", open);
   if (!open) return;
@@ -417,13 +443,13 @@ function saveItem() {
     color: $("#item-color").value.trim() || null,
     url: url || null,
   };
-  if (state.editing === null) {
+  if (state.editingItem === null) {
     state.items.push({ ...fields, source: "user" });
   } else {
     // Edited suggestions keep source "detected" (that's where they came from) but stop being
     // `auto`, so a new cover photo won't replace them.
-    const item = state.items[state.editing];
-    state.items[state.editing] = { ...item, ...fields, auto: false };
+    const item = state.items[state.editingItem];
+    state.items[state.editingItem] = { ...item, ...fields, auto: false };
   }
   renderItems();
   setItemEditorOpen(false);
@@ -509,7 +535,8 @@ function updateCaptionCount() {
 // --- posting ---
 
 function itemsForPost(imageIds) {
-  return state.items.map(({ auto, ...item }) => ({
+  // id: a posted fit's pieces have one, but saving replaces them all.
+  return state.items.map(({ auto, id, ...item }) => ({
     ...item,
     // A pin must point at one of this fit's photos (the cover may have been removed).
     pin: item.pin && imageIds.includes(item.pin.image_id) ? item.pin : null,
@@ -518,6 +545,7 @@ function itemsForPost(imageIds) {
 
 async function submitFit(event) {
   event.preventDefault();
+  if (state.editing) return saveEdits();
   if (!state.photos.length) return;
   const submit = $("#compose-submit");
   submit.disabled = true;
@@ -549,6 +577,63 @@ async function submitFit(event) {
   } finally {
     submit.disabled = state.photos.length === 0;
     submit.textContent = "Post fit";
+  }
+}
+
+// --- editing a posted fit ---
+
+function selectTier(tier) {
+  selectedPrivacyTier = tier;
+  document.querySelectorAll(".btn-tier-select").forEach((b) => {
+    b.className =
+      b.dataset.tier === tier
+        ? "py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold bg-primary text-on-primary transition-all active:scale-95 btn-tier-select"
+        : "py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold text-on-surface hover:bg-surface-container transition-all active:scale-95 btn-tier-select";
+  });
+}
+
+// Opens the compose screen filled in with your fit. onSaved(fit) gets the updated fit.
+// item: the index of a piece to open in the editor straight away, at its shop link.
+export function openEditFit(fit, { onSaved = () => {}, item = null } = {}) {
+  openCreate("compose", (s) => {
+    s.editing = { fit, onSaved };
+    s.photos = fit.images.map((image) => ({ image }));
+    s.items = fit.items.map((posted) => ({ ...posted }));
+    s.tags = {
+      occasion: (fit.occasion_tags || []).map((value) => ({ value, auto: false })),
+      style: (fit.style_tags || []).map((value) => ({ value, auto: false })),
+    };
+  });
+  $("#compose-caption").value = fit.caption || "";
+  updateCaptionCount();
+  selectTier(fit.privacy_tier || "public");
+  $("#compose-allow-tryon").checked = fit.allow_friend_try_on ?? true;
+  if (item !== null && fit.items[item]) setItemEditorOpen(true, item, { focus: "#item-url" });
+}
+
+async function saveEdits() {
+  const { fit, onSaved } = state.editing;
+  const submit = $("#compose-submit");
+  submit.disabled = true;
+  submit.textContent = "Saving…";
+  showError("#compose-error");
+  try {
+    const updated = await updateFit(fit.id, {
+      caption: $("#compose-caption").value.trim() || null,
+      items: itemsForPost(fit.images.map((image) => image.id)),
+      occasionTags: state.tags.occasion.map((tag) => tag.value),
+      styleTags: state.tags.style.map((tag) => tag.value),
+      privacyTier: selectedPrivacyTier,
+      allowFriendTryOn: $("#compose-allow-tryon").checked,
+    });
+    closeCreate();
+    hooks.toast("Changes saved");
+    onSaved(updated);
+  } catch (err) {
+    console.error(err);
+    showError("#compose-error", errorMessage(err));
+    submit.disabled = false;
+    submit.textContent = "Save changes";
   }
 }
 
@@ -869,13 +954,7 @@ export function initCreate({ onPosted, toast }) {
   $("#compose-caption").oninput = updateCaptionCount;
 
   document.querySelectorAll(".btn-tier-select").forEach((btn) => {
-    btn.onclick = () => {
-      document.querySelectorAll(".btn-tier-select").forEach((b) => {
-        b.className = "py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold text-on-surface hover:bg-surface-container transition-all active:scale-95 btn-tier-select";
-      });
-      btn.className = "py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold bg-primary text-on-primary transition-all active:scale-95 btn-tier-select";
-      selectedPrivacyTier = btn.dataset.tier;
-    };
+    btn.onclick = () => selectTier(btn.dataset.tier);
   });
   $("#item-open").onclick = () => setItemEditorOpen(true);
   $("#item-cancel").onclick = () => setItemEditorOpen(false);

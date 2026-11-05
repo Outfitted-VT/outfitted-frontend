@@ -116,7 +116,7 @@ function composeScreen() {
           <button type="button" class="py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold bg-primary text-on-primary transition-all active:scale-95 btn-tier-select" data-tier="public">
             🌐 Public
           </button>
-          <button type="button" class="py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold text-on-surface hover:bg-surface-container transition-all active:scale-95 btn-tier-select" data-tier="friends">
+          <button type="button" class="py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold text-on-surface hover:bg-surface-container transition-all active:scale-95 btn-tier-select" data-tier="close_friends">
             🔒 Friends
           </button>
           <button type="button" class="py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold text-on-surface hover:bg-surface-container transition-all active:scale-95 btn-tier-select" data-tier="vault">
