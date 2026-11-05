@@ -61,14 +61,15 @@ function photos(fit) {
     </div>${dots}`;
 }
 
-function items(fit) {
+// mine: your own fit, whose pieces without a shop link offer to add one.
+function items(fit, mine) {
   if (!fit.items.length) return "";
   return `
     <div class="flex flex-col gap-space-2xs">
       <span class="font-micro-mono text-micro-mono uppercase tracking-widest text-on-surface-variant font-semibold">In this fit</span>
       <div class="flex gap-space-xs overflow-x-auto -mx-space-md px-space-md pb-1">
         ${fit.items
-          .map((item) => {
+          .map((item, i) => {
             const category = categoryOf(item.category);
             const detail = [item.brand, item.color, item.material].filter(Boolean).map(escapeHtml).join(" · ");
             const tag = item.url ? "a" : "div";
@@ -83,6 +84,7 @@ function items(fit) {
                   <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">${detail || category.label}</span>
                 </span>
                 ${item.url ? `<span class="flex-shrink-0 inline-flex items-center gap-0.5 pl-1 font-label-sm text-label-sm text-secondary font-semibold">Shop<span class="material-symbols-outlined text-[14px]">north_east</span></span>` : ""}
+                ${!item.url && mine ? `<button type="button" class="flex-shrink-0 inline-flex items-center gap-0.5 pl-1 font-label-sm text-label-sm text-secondary font-semibold hover:underline" data-fit-add-link="${i}" aria-label="Add a shop link for ${escapeHtml(item.name)}"><span class="material-symbols-outlined text-[14px]">add_link</span>Add link</button>` : ""}
               </${tag}>`;
           })
           .join("")}
@@ -149,9 +151,14 @@ export function renderFitCard(fit, { mine = false } = {}) {
         </div>
         ${
           mine
-            ? `<button class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" data-fit-delete aria-label="Delete fit">
-                 <span class="material-symbols-outlined text-[20px]">delete</span>
-               </button>`
+            ? `<div class="flex items-center flex-shrink-0">
+                 <button class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" data-fit-edit aria-label="Edit fit">
+                   <span class="material-symbols-outlined text-[20px]">edit</span>
+                 </button>
+                 <button class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" data-fit-delete aria-label="Delete fit">
+                   <span class="material-symbols-outlined text-[20px]">delete</span>
+                 </button>
+               </div>`
             : ""
         }
       </header>
@@ -162,7 +169,7 @@ export function renderFitCard(fit, { mine = false } = {}) {
 
       ${tags(fit)}
 
-      ${items(fit)}
+      ${items(fit, mine)}
 
       ${poll(fit)}
 

@@ -18,6 +18,7 @@ const spinner = `<span class="material-symbols-outlined animate-spin text-on-sur
  * @param {() => void} [options.onChange] - a fit was added or removed
  * @param {(fit: object, onUpdated: (n: number) => void) => void} [options.onOpenComments]
  * @param {(fit: object) => void} [options.onOpenTryOn]
+ * @param {(fit: object, options: { onSaved: (fit: object) => void, item?: number }) => void} [options.onEdit]
  */
 export function mountFitList({
   list,
@@ -29,6 +30,7 @@ export function mountFitList({
   onChange = () => {},
   onOpenComments,
   onOpenTryOn,
+  onEdit,
 }) {
   const fits = new Map();
   let cursor = null;
@@ -204,6 +206,11 @@ export function mountFitList({
     else if (event.target.closest("[data-fit-like]")) toggle(fit, "liked_by_me", setLiked);
     else if (event.target.closest("[data-fit-save]")) toggle(fit, "saved_by_me", setSaved);
     else if (event.target.closest("[data-fit-delete]")) remove(fit);
+    else if (event.target.closest("[data-fit-edit]")) onEdit?.(fit, { onSaved: replaceCard });
+    else if (event.target.closest("[data-fit-add-link]")) {
+      const item = Number(event.target.closest("[data-fit-add-link]").dataset.fitAddLink);
+      onEdit?.(fit, { onSaved: replaceCard, item });
+    }
     else if (event.target.closest("[data-fit-comments]")) {
       onOpenComments?.(fit, (newCount) => {
         fit.comment_count = newCount;

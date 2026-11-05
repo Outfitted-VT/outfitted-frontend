@@ -11,7 +11,7 @@ import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
-import { initCreate, openCreate, openTryOnFrom } from "./create.js";
+import { initCreate, openCreate, openEditFit, openTryOnFrom } from "./create.js";
 import { mountFitList } from "./feed.js";
 import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl, getImpactSummary, getTrueSizePassport, addReferenceGarment, removeReferenceGarment, translateSize } from "./fits.js";
 import { escapeHtml, initialOf } from "./format.js";
@@ -1332,6 +1332,7 @@ function connectBackend() {
         });
       },
       onOpenTryOn: openTryOnFrom,
+      onEdit: openEditFit,
     });
   }
 
@@ -1352,6 +1353,7 @@ function connectBackend() {
         });
       },
       onOpenTryOn: openTryOnFrom,
+      onEdit: openEditFit,
     });
     loadProfileCounts();
     connectProfileIntelligence();

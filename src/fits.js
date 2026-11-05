@@ -112,6 +112,21 @@ export async function detectPieces(imageId) {
   return parse(await apiFetch("/detections", json("POST", { image_id: imageId })));
 }
 
+// Edit your fit. Only the fields passed change; items and tags replace the whole list.
+// Photos can't be changed after posting.
+export async function updateFit(fitId, { caption, items, occasionTags, styleTags, privacyTier, allowFriendTryOn }) {
+  const body = {
+    caption,
+    items,
+    occasion_tags: occasionTags,
+    style_tags: styleTags,
+    privacy_tier: privacyTier,
+    allow_friend_try_on: allowFriendTryOn,
+  };
+  Object.keys(body).forEach((key) => body[key] === undefined && delete body[key]);
+  return parse(await apiFetch(`/fits/${fitId}`, json("PATCH", body)));
+}
+
 export async function deleteFit(fitId) {
   return parse(await apiFetch(`/fits/${fitId}`, { method: "DELETE" }));
 }
