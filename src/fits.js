@@ -87,6 +87,7 @@ export async function createFit({
   styleTags = [],
   privacyTier = "public",
   allowFriendTryOn = true,
+  tryonId = null, // posting a try-on: the try-on it came from, so others can try the look
 }) {
   return parse(
     await apiFetch(
@@ -99,6 +100,7 @@ export async function createFit({
         style_tags: styleTags,
         privacy_tier: privacyTier,
         allow_friend_try_on: allowFriendTryOn,
+        tryon_id: tryonId,
       })
     )
   );
@@ -176,8 +178,9 @@ export async function getProfile(username) {
 
 // Pass either `outfitImageId` (one photo of a whole outfit) or `pieces`
 // ([{ slot, imageId }], slot being "head", "top", "outerwear", "one_piece", "bottom", "feet", or "accessory").
-export async function createTryOn(personImageId, { outfitImageId, pieces }) {
-  const body = { person_image_id: personImageId };
+// fitId: "Try this look" on that fit, which allows its clothing photos (uploaded by its author).
+export async function createTryOn(personImageId, { outfitImageId, pieces, fitId = null }) {
+  const body = { person_image_id: personImageId, fit_id: fitId };
   if (pieces) body.pieces = pieces.map(({ slot, imageId }) => ({ slot, image_id: imageId }));
   else body.outfit_image_id = outfitImageId;
   return parse(await apiFetch("/tryons", json("POST", body)));
