@@ -687,7 +687,6 @@ function render() {
 
       ${renderMobileBottomNav()}
       ${renderCreateSheet()}
-      <div id="steal-swap-modal-root" class="hidden"></div>
       <div id="dorm-closet-modal-root" class="hidden"></div>
       <div id="style-friend-modal-root" class="hidden"></div>
       ${renderPostYourFitModal()}

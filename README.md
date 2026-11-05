@@ -2,16 +2,15 @@
 
 Native iOS and Android mobile applications for **Outfitted**, powered by **Capacitor 8** and **Vite**.
 
-Outfitted is a social fit-sharing platform: post a look, get votes from friends, and try outfits on a 3D avatar with WebGL and `<model-viewer>`.
+Outfitted is a social fit-sharing platform: post a look, get votes from friends, and try outfits on yourself with AI try-on. The API lives in [outfitted-backend](https://github.com/Outfitted-VT/outfitted-backend).
 
 ---
 
 ## Features
 
 - **Native iOS & Android**: Native Xcode project (`ios/`) and Android Studio project (`android/`) with Capacitor bridges.
-- **3D Interactive Fitting Room & Garment Viewer**: Three.js and Google `<model-viewer>` running smoothly in native WebViews.
 - **Native Safe Areas & UI**: Status bar styling, splash screen handling, and dynamic island / notch safe area support.
-- **Offline & Standalone Ready**: 3D assets and dependencies are bundled locally. Includes graceful local session fallback when running offline or without the backend server.
+- **Offline & Standalone Ready**: Includes graceful local session fallback when running offline or without the backend server.
 - **Dev Server & Live Reload**: Fast local development powered by Vite.
 
 ---
@@ -29,15 +28,14 @@ outfitted-frontend/
 ├── src/                    # Application source code
 │   ├── main.js             # UI rendering, interactions & Capacitor init
 │   ├── auth.js             # Auth client with mobile base URL & offline fallback
-│   ├── fitting-stage.js    # Three.js 3D avatar & garment stage
-│   ├── tryon.js            # Virtual try-on experience
-│   ├── data.js             # Sample feed posts, passport data, and history
-│   ├── pipeline.js         # Avatar rebuild pipeline stub
+│   ├── create.js           # Create sheet: post a fit and AI try-on
+│   ├── feed.js             # Fit lists (feed, profile) backed by the API
+│   ├── fits.js             # API calls for fits, users, and try-ons
+│   ├── data.js             # Sample data for screens not yet on the API
+│   ├── views/              # HTML templates (fit card, create sheet, profile)
 │   ├── styles.css          # Design tokens, mobile responsive & safe-area styles
-│   ├── landing.css         # Landing page styles
-│   └── tryon.css           # Try-on modal styles
-├── assets/ / public/       # 3D GLB models (avatar.glb, leggings.glb, raglan-tee.glb) & images
-├── scripts/                # Utility scripts & Python auth server
+│   └── connected.css       # Styles for the API-backed screens
+├── public/                 # Images served as-is (branding, feed, wardrobe)
 ├── capacitor.config.json   # Capacitor app and plugin configuration
 ├── vite.config.js          # Vite bundler configuration
 └── package.json            # Scripts and dependencies
@@ -113,15 +111,10 @@ The resulting APK will be at:
 
 ---
 
-## Optional: Running the Auth Backend
+## Running the Backend
 
-The mobile app includes an offline/local session fallback, but you can also run the original Python backend:
+The app talks to [outfitted-backend](https://github.com/Outfitted-VT/outfitted-backend). Start it on port 8000 and `npm run dev` forwards `/api` and `/media` to it (see `vite.config.js`).
 
-```bash
-npm run serve
-# Or: python scripts/serve.py 5173
-```
-
-- **iOS Simulator**: connects to `http://localhost:5173` automatically.
-- **Android Emulator**: connects to `http://10.0.2.2:5173` (the host machine address) automatically.
-- **Physical Device**: set `localStorage.setItem('OUTFITTED_API_BASE', 'http://<your-host-ip>:5173')` or `window.__API_BASE__`.
+- **iOS Simulator**: reaches the backend at `http://localhost:8000` automatically.
+- **Android Emulator**: reaches it at `http://10.0.2.2:8000` (the host machine) automatically.
+- **Physical Device**: build with `VITE_API_BASE=http://<your-host-ip>:8000/api/v1` (see `apiBase()` in `src/auth.js`).
