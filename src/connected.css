@@ -268,6 +268,21 @@ img[class*="w-"] {
   }
 }
 
+/* Feed rail "Your people" (loadYourPeople in src/main.js). */
+.people-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.people-find-btn {
+  align-self: flex-start;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--ink);
+  color: var(--surface);
+}
+
 /* My fits photo labels sit on a white pill: keep the text dark in dark mode too. */
 .status-pill:not(.status-live) {
   color: #1a1c1b;

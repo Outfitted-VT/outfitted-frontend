@@ -13,8 +13,8 @@ import { SplashScreen } from "@capacitor/splash-screen";
 import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
 import { initCreate, openCreate } from "./create.js";
 import { mountFitList } from "./feed.js";
-import { getProfile, uploadImage, updateProfile, mediaUrl, getImpactSummary, getTrueSizePassport, addReferenceGarment, removeReferenceGarment, translateSize } from "./fits.js";
-import { escapeHtml } from "./format.js";
+import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl, getImpactSummary, getTrueSizePassport, addReferenceGarment, removeReferenceGarment, translateSize } from "./fits.js";
+import { escapeHtml, initialOf } from "./format.js";
 import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
 import { renderProfileView } from "./views/profile.js";
 import { renderCommentsDrawer, openCommentsDrawer } from "./views/comments-drawer.js";
@@ -327,23 +327,9 @@ function renderRightRail() {
         <div class="rail-section-head">
           <span class="rail-section-title">YOUR PEOPLE ↗</span>
         </div>
-        <small style="color:var(--muted); font-size:0.8rem;">Your people will show up here.</small>
-
-        <div class="people-list">
-          ${friendsList.slice(0, 4).map((f) => `
-            <div class="people-item">
-              <div class="people-item-info">
-                <span class="avatar-chip micro" style="background:${f.color}; color:#fff;">${f.initial}</span>
-                <div class="people-item-text">
-                  <strong>${f.name}</strong>
-                  <small>${f.handle}</small>
-                </div>
-              </div>
-              <button class="btn-follow-toggle ${f.following ? "following" : ""}" data-friend-id="${f.id}">
-                ${f.following ? "Following" : "+ Follow"}
-              </button>
-            </div>
-          `).join("")}
+        <!-- Filled with the people you follow by loadYourPeople(). -->
+        <div class="people-list" id="rail-people">
+          <small class="people-note">Loading…</small>
         </div>
       </div>
 
@@ -1150,18 +1136,6 @@ function bindEvents() {
     };
   });
 
-  // Follow toggles on right rail
-  document.querySelectorAll(".btn-follow-toggle").forEach((btn) => {
-    btn.onclick = () => {
-      const id = btn.dataset.friendId;
-      const friend = friendsList.find((f) => f.id === id);
-      if (friend) {
-        friend.following = !friend.following;
-        btn.textContent = friend.following ? "Following" : "+ Follow";
-        btn.classList.toggle("following", friend.following);
-      }
-    };
-  });
 }
 
 function openCommentsSheet(post) {
@@ -1275,8 +1249,73 @@ async function loadProfileCounts() {
   }
 }
 
+// Feed's right rail: the people you follow, most recently followed first. Unfollowing keeps the
+// row (as "+ Follow") so a mis-tap can be undone.
+const RAIL_PEOPLE_LIMIT = 5;
+
+async function loadYourPeople() {
+  const list = document.querySelector("#rail-people");
+  if (!list) return;
+  const note = (text) => `<small class="people-note">${text}</small>`;
+  try {
+    const page = await getFollowing(currentUser.username, { limit: RAIL_PEOPLE_LIMIT });
+    if (!list.isConnected) return;
+    if (!page.items.length) {
+      list.innerHTML = `${note("You're not following anyone yet.")}
+        <button type="button" class="people-find-btn">Find people</button>`;
+      list.querySelector(".people-find-btn").onclick = () => {
+        activeTab = "friends";
+        render();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      };
+      return;
+    }
+    list.innerHTML = page.items
+      .map((user) => {
+        const name = user.full_name || user.username;
+        const avatar = user.avatar?.url
+          ? `<img src="${escapeHtml(mediaUrl(user.avatar.url))}" alt="" class="w-full h-full object-cover rounded-full" />`
+          : escapeHtml(initialOf(user));
+        return `
+          <div class="people-item">
+            <div class="people-item-info">
+              <span class="avatar-chip micro overflow-hidden" style="background:#275038; color:#fff;">${avatar}</span>
+              <div class="people-item-text">
+                <strong>${escapeHtml(name)}</strong>
+                <small>@${escapeHtml(user.username)}</small>
+              </div>
+            </div>
+            <button type="button" class="btn-follow-toggle following" data-follow-username="${escapeHtml(user.username)}">Following</button>
+          </div>`;
+      })
+      .join("");
+  } catch (err) {
+    console.error(err);
+    if (list.isConnected) list.innerHTML = note("Couldn't load your people.");
+  }
+}
+
+document.addEventListener("click", async (e) => {
+  const button = e.target.closest("#rail-people [data-follow-username]");
+  if (!button || button.disabled) return;
+  const following = button.classList.contains("following");
+  button.disabled = true;
+  try {
+    await (following ? unfollowUser : followUser)(button.dataset.followUsername);
+    button.classList.toggle("following", !following);
+    button.textContent = following ? "+ Follow" : "Following";
+    loadProfileCounts();
+  } catch (err) {
+    console.error(err);
+    showToast(following ? "Couldn't unfollow. Try again." : "Couldn't follow. Try again.");
+  } finally {
+    button.disabled = false;
+  }
+});
+
 // Called after every render(): mounts whichever backend-connected parts are on screen.
 function connectBackend() {
+  loadYourPeople();
   const feedList = document.querySelector("#feed-fits");
   if (feedList) {
     mountFitList({
