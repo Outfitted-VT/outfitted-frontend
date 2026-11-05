@@ -17,6 +17,16 @@ const TRYON_INTRO = {
 // bottom, so it can't be combined with them.
 const PIECE_SLOTS = ["head", "top", "outerwear", "one_piece", "bottom", "feet", "accessory"];
 const CONFLICTS = { one_piece: ["top", "bottom"], top: ["one_piece"], bottom: ["one_piece"] };
+// The item categories each try-on slot can produce, for tagging only the pieces tried on.
+const SLOT_CATEGORIES = {
+  head: ["headwear"],
+  top: ["top"],
+  outerwear: ["outerwear"],
+  one_piece: ["dress"],
+  bottom: ["bottom"],
+  feet: ["shoes"],
+  accessory: ["bag", "accessory", "jewelry"],
+};
 
 const SCREENS = {
   menu: { kicker: "Create", title: "What are we doing?" },
@@ -42,7 +52,9 @@ function freshState() {
     category: "top",
     editing: null, // index of the piece open in the editor, or null when adding
     detect: { cover: null, run: 0, status: "idle", found: 0 },
-    // Posting a try-on result: { tryonId, imageId }, sent with the post while that photo is in it.
+    // Posting a try-on result: { tryonId, imageId, categories }. tryonId is sent with the post
+    // while that photo is in it. categories: the item categories tried on (a promise for an
+    // entire fit), so detection on that photo keeps only those; null keeps everything.
     posting: null,
     // mode is "outfit" (one photo of a whole fit) or "pieces" (a photo per slot in `pieces`).
     // hideFace: "Hide my face" is on. blurred: the result with the face blurred, once made.
@@ -254,12 +266,18 @@ async function detectCover() {
     if (stale()) return;
     const result = await detectPieces(cover.image.id);
     if (stale()) return;
+    // A pieces try-on: the photo also shows clothes the user didn't try on (their own), so
+    // tag only what they tried. A directly uploaded photo keeps everything detected.
+    const tried = state.posting?.imageId === cover.image.id ? await state.posting.categories : null;
+    if (stale()) return;
+    const items = tried ? result.items.filter((item) => tried.includes(item.category)) : result.items;
+    d.onlyTried = Boolean(tried);
     dropSuggestions();
-    state.items.push(...result.items.map((item) => ({ ...item, auto: true })));
+    state.items.push(...items.map((item) => ({ ...item, auto: true })));
     addTags("occasion", result.occasion_tags, true);
     addTags("style", result.style_tags, true);
     d.status = "done";
-    d.found = result.items.length;
+    d.found = items.length;
   } catch (err) {
     if (stale()) return;
     console.error(err);
@@ -285,8 +303,8 @@ function renderDetectStatus() {
     idle: ["photo_camera", "Add a photo and we'll tag the pieces for you."],
     running: ["progress_activity", "Finding the pieces…"],
     done: d.found
-      ? ["auto_awesome", `Found ${d.found} piece${d.found === 1 ? "" : "s"}. Tap one to edit it.`]
-      : ["auto_awesome", "We couldn't spot any pieces. Add them yourself."],
+      ? ["auto_awesome", `Found ${d.found} piece${d.found === 1 ? "" : "s"}${d.onlyTried ? " you tried on" : ""}. Tap one to edit it.`]
+      : ["auto_awesome", `We couldn't spot ${d.onlyTried ? "the pieces you tried on" : "any pieces"}. Add them yourself.`],
     failed: ["info", "Couldn't detect the pieces right now. Add them yourself."],
   };
   const [icon, text] = messages[d.status];
@@ -768,10 +786,32 @@ function compare(which) {
 function postTryOn() {
   // The try-on result is already uploaded, so detection starts right away.
   state.photos = [{ image: resultImage() }];
-  state.posting = { tryonId: state.tryon.result.id, imageId: resultImage().id };
+  const t = state.tryon;
+  state.posting = {
+    tryonId: t.result.id,
+    imageId: resultImage().id,
+    categories:
+      t.result.mode === "pieces"
+        ? t.result.pieces.flatMap((p) => SLOT_CATEGORIES[p.slot] || [])
+        : outfitCategories(t.outfit),
+  };
   state.items = [];
   state.tags = { occasion: [], style: [] };
   show("compose");
+}
+
+// What an entire-fit try-on put on: the pieces in the outfit photo, which may be just a top
+// and trousers. Someone else's photo (Try this look) can't be sent to detection, so it uses the
+// pieces tagged on their post. Resolves to null (keep everything) if neither finds anything.
+async function outfitCategories(outfit) {
+  if (outfit?.categories?.length) return outfit.categories;
+  if (!outfit?.image || outfit.shared) return null;
+  try {
+    const { items } = await detectPieces(outfit.image.id);
+    return items.length ? items.map((item) => item.category) : null;
+  } catch {
+    return null;
+  }
 }
 
 // --- "Try this look" on someone's fit -------------------------------------------------------
@@ -785,7 +825,7 @@ export function openTryOnFrom(fit) {
     hooks.toast(`@${fit.author.username} turned off try-ons for this fit`);
     return;
   }
-  const shared = (image) => ({ image, preview: mediaUrl(image.url) });
+  const shared = (image) => ({ image, preview: mediaUrl(image.url), shared: true });
   openCreate("tryon", (s) => {
     const t = s.tryon;
     const source = fit.try_on_source;
@@ -796,7 +836,8 @@ export function openTryOnFrom(fit) {
       source.pieces.forEach(({ slot, image }) => (t.pieces[slot] = shared(image)));
     } else {
       const outfit = source?.outfit_image || fit.images?.[0];
-      if (outfit) t.outfit = shared(outfit);
+      // The post's tagged pieces say what's in the outfit (see outfitCategories).
+      if (outfit) t.outfit = { ...shared(outfit), categories: (fit.items || []).map((item) => item.category) };
     }
   });
 }
