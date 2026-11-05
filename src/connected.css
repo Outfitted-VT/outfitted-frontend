@@ -298,6 +298,299 @@ img[class*="w-"] {
   display: none;
 }
 
+/* ---------- Styling feedback (src/views/comments-drawer.js) ----------
+   Phones: a bottom sheet. 768px and up: a contained dialog in the middle of the screen. */
+.comments-open,
+.comments-open body {
+  overflow: hidden;
+}
+.comments-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  background: rgb(0 0 0 / 0);
+  transition: background 0.2s ease;
+}
+.comments-backdrop.hidden {
+  display: none;
+}
+.comments-backdrop.open {
+  background: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.comments-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: min(80vh, 680px);
+  background: rgb(var(--tw-surface-container-lowest));
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  box-shadow: 0 -8px 30px rgb(0 0 0 / 0.18);
+  transform: translateY(100%);
+  transition: transform 0.24s ease;
+}
+.comments-backdrop.open .comments-dialog {
+  transform: none;
+}
+.comments-handle {
+  flex-shrink: 0;
+  width: 40px;
+  height: 4px;
+  margin: 10px auto 0;
+  border-radius: 999px;
+  background: rgb(var(--tw-surface-container-highest));
+}
+.comments-header {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 20px 12px;
+  border-bottom: 1px solid rgb(var(--tw-surface-container-high) / 0.6);
+}
+.comments-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: rgb(var(--tw-on-surface-variant));
+}
+.comments-close:hover {
+  background: rgb(var(--tw-surface-container));
+}
+.comments-filters,
+.comments-suggestions {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.comments-filter {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgb(var(--tw-surface-container-low));
+  color: rgb(var(--tw-on-surface));
+  font: 500 13px/18px "Inter", system-ui, sans-serif;
+  transition: background 0.15s, color 0.15s;
+}
+.comments-filter:hover {
+  background: rgb(var(--tw-surface-container));
+}
+.comments-filter[aria-pressed="true"] {
+  background: rgb(var(--tw-primary));
+  color: rgb(var(--tw-on-primary));
+}
+.comments-recap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 20px 4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgb(var(--tw-surface-container-low));
+}
+.comments-recap-img {
+  width: 40px;
+  height: 50px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgb(var(--tw-surface-container-high));
+}
+.comments-verdict {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgb(var(--tw-tertiary-fixed));
+  color: rgb(var(--tw-on-tertiary-fixed));
+  font: 600 11px/14px "JetBrains Mono", ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.comments-verdict.muted {
+  background: rgb(var(--tw-surface-container));
+  color: rgb(var(--tw-on-surface-variant));
+}
+.comments-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 20px 16px;
+}
+.comments-take {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgb(var(--tw-surface-container-low));
+}
+.comments-you {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgb(var(--tw-tertiary-fixed));
+  color: rgb(var(--tw-on-tertiary-fixed));
+  font: 700 9px/14px "JetBrains Mono", ui-monospace, monospace;
+}
+.comments-text {
+  font: 400 14px/21px "Inter", system-ui, sans-serif;
+  color: rgb(var(--tw-on-surface));
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.comments-delete {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--tw-on-surface-variant));
+}
+.comments-delete:hover {
+  color: rgb(var(--tw-error));
+}
+.comments-note {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgb(var(--tw-surface-container));
+  color: rgb(var(--tw-on-surface-variant));
+  font: 400 12px/17px "Inter", system-ui, sans-serif;
+}
+.comments-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 24px 0;
+  text-align: center;
+  font: 400 13px/18px "Inter", system-ui, sans-serif;
+  color: rgb(var(--tw-on-surface-variant));
+}
+.comments-retry {
+  font-weight: 600;
+  color: rgb(var(--tw-secondary));
+}
+.comments-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgb(var(--tw-surface-container-high) / 0.6);
+}
+.comments-suggestion {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgb(var(--tw-surface-container));
+  color: rgb(var(--tw-on-surface));
+  font: 500 12px/16px "Inter", system-ui, sans-serif;
+}
+.comments-suggestion:hover {
+  background: rgb(var(--tw-surface-container-high));
+}
+.comments-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 6px;
+  border-radius: 999px;
+  background: rgb(var(--tw-surface-container-low));
+}
+.comments-form-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgb(var(--tw-surface-container-lowest));
+  color: rgb(var(--tw-secondary));
+}
+.comments-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--tw-on-surface));
+  font: 400 14px/20px "Inter", system-ui, sans-serif;
+  outline: none;
+}
+.comments-form input::placeholder {
+  color: rgb(var(--tw-on-surface-variant) / 0.8);
+}
+.comments-send {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgb(var(--tw-primary));
+  color: rgb(var(--tw-on-primary));
+  transition: opacity 0.15s, transform 0.1s;
+}
+.comments-send:active {
+  transform: scale(0.92);
+}
+.comments-send:disabled {
+  opacity: 0.35;
+}
+
+@media (min-width: 768px) {
+  .comments-backdrop {
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+  }
+  .comments-dialog {
+    width: 100%;
+    max-width: 560px;
+    height: min(82vh, 720px);
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.3);
+    transform: translateY(12px) scale(0.98);
+    opacity: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .comments-backdrop.open .comments-dialog {
+    opacity: 1;
+  }
+  .comments-handle {
+    display: none;
+  }
+  .comments-header {
+    padding-top: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comments-backdrop,
+  .comments-dialog {
+    transition: none;
+  }
+}
+
 /* Confirmation modal (src/confirm-dialog.js). */
 .confirm-dialog {
   border: 0; /* browsers give <dialog> a default border */
