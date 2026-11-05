@@ -40,13 +40,25 @@ function photos(fit) {
         </div>`
     )
     .join("");
-  const dots =
-    fit.images.length > 1
-      ? `<div class="flex justify-center gap-1.5 pt-space-xs">${fit.images
-          .map((_, i) => `<span class="fit-dot ${i === 0 ? "active" : ""}"></span>`)
-          .join("")}</div>`
-      : "";
-  return `<div class="fit-slides" data-slides>${slides}</div>${dots}`;
+  if (fit.images.length < 2) return `<div class="fit-slides" data-slides>${slides}</div>`;
+
+  // Several photos: swipe, or use the arrows (src/feed.js moves the slides and keeps the arrows,
+  // counter, and dots in step).
+  const arrow = (step, icon, label, hidden) => `
+    <button type="button" class="fit-arrow ${step < 0 ? "left-2" : "right-2"}" data-slide-step="${step}"
+      aria-label="${label}" ${hidden ? "hidden" : ""}>
+      <span class="material-symbols-outlined text-[20px]">${icon}</span>
+    </button>`;
+  const dots = `<div class="flex justify-center gap-1.5 pt-space-xs">${fit.images
+    .map((_, i) => `<span class="fit-dot ${i === 0 ? "active" : ""}"></span>`)
+    .join("")}</div>`;
+  return `
+    <div class="relative">
+      <div class="fit-slides" data-slides>${slides}</div>
+      ${arrow(-1, "chevron_left", "Previous photo", true)}
+      ${arrow(1, "chevron_right", "Next photo", false)}
+      <span class="fit-count" data-slide-count>1/${fit.images.length}</span>
+    </div>${dots}`;
 }
 
 function items(fit) {
@@ -167,7 +179,7 @@ export function renderFitCard(fit, { mine = false } = {}) {
         </div>
         <button type="button" class="flex items-center gap-1 text-secondary bg-secondary-fixed/50 hover:bg-secondary hover:text-on-secondary px-3 py-1 mt-space-xs rounded-full transition-all font-label-md text-label-md font-semibold active:scale-95 shadow-sm" data-ai-mode data-fit-id="${fit.id}">
           <span class="material-symbols-outlined text-[17px]">auto_awesome</span>
-          <span>AI Try-On</span>
+          <span>Try this look</span>
         </button>
         <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors pt-space-xs" data-fit-save aria-pressed="${fit.saved_by_me}">
           <span class="material-symbols-outlined text-[22px]" style="${filled(fit.saved_by_me)}">bookmark</span>

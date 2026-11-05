@@ -1495,7 +1495,7 @@ async function connectProfileIntelligence() {
   }
 }
 
-// AI mode, Dorm Closets, and Style a Friend (also inside cards that load later).
+// Try this look, Dorm Closets, and Style a Friend (also inside cards that load later).
 document.addEventListener("click", (e) => {
   // 1-Tap AI Try-on on any fit
   if (e.target.closest("[data-ai-mode]")) {

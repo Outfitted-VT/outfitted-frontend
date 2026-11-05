@@ -212,6 +212,10 @@ export function mountFitList({
       });
     } else if (event.target.closest("[data-ai-mode]")) {
       onOpenTryOn?.(fit);
+    } else if (event.target.closest("[data-slide-step]")) {
+      const button = event.target.closest("[data-slide-step]");
+      const slides = button.parentElement.querySelector("[data-slides]");
+      slides.scrollBy({ left: Number(button.dataset.slideStep) * slides.clientWidth, behavior: "smooth" });
     }
   });
 
@@ -252,15 +256,23 @@ export function mountFitList({
     }
   });
 
-  // Carousel dots follow the photo that's in view.
+  // Carousel dots, counter, and arrows follow the photo that's in view.
   list.addEventListener(
     "scroll",
     (event) => {
       const slides = event.target.closest?.("[data-slides]");
       if (!slides) return;
+      const count = slides.children.length;
       const index = Math.round(slides.scrollLeft / slides.clientWidth);
-      slides.parentElement.querySelectorAll(".fit-dot").forEach((dot, i) => {
+      const carousel = slides.parentElement;
+      carousel.parentElement.querySelectorAll(".fit-dot").forEach((dot, i) => {
         dot.classList.toggle("active", i === index);
+      });
+      const counter = carousel.querySelector("[data-slide-count]");
+      if (counter) counter.textContent = `${index + 1}/${count}`;
+      carousel.querySelectorAll("[data-slide-step]").forEach((button) => {
+        const step = Number(button.dataset.slideStep);
+        button.hidden = step < 0 ? index === 0 : index === count - 1;
       });
     },
     true
