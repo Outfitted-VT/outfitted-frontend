@@ -216,7 +216,7 @@ export function renderProfileView() {
 
         <button type="button" class="w-full h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-2 transition-all active:scale-95" data-ai-mode>
           <span class="material-symbols-outlined text-[17px] text-secondary">auto_awesome</span>
-          <span>AI Try-On</span>
+          <span>Try this look</span>
         </button>
       </section>
 
