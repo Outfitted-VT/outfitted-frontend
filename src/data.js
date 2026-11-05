@@ -463,26 +463,6 @@ export const brandIcons = [
   { id: "icon-chat", label: "Chat Bubbles Social Hanger", path: "./assets/branding/icon_chat_hanger.png" },
 ];
 
-export const fitPassport = {
-  measurements: [
-    { label: "Height", value: "172 cm" },
-    { label: "Chest", value: "92 cm" },
-    { label: "Waist", value: "76 cm" },
-    { label: "Hips", value: "98 cm" },
-    { label: "Inseam", value: "80 cm" },
-  ],
-  sizes: [
-    { label: "Tops", value: "M / L" },
-    { label: "Bottoms", value: "30 / 32" },
-    { label: "Fit pref.", value: "Relaxed Boxy" },
-  ],
-  sharing: [
-    { id: "measurements", label: "Measurements", on: true },
-    { id: "avatar", label: "3D avatar", on: true },
-    { id: "photos", label: "Original photos", on: false },
-  ],
-};
-
 export const partnerProduct = {
   store: "Northline Athletics",
   name: "Raglan Run Tee",
@@ -490,7 +470,6 @@ export const partnerProduct = {
   color: "Lagoon teal",
   swatch: "#2bb3c7",
   sizes: ["XS", "S", "M", "L", "XL"],
-  model: "./assets/raglan-tee.glb",
   fit: {
     XS: { verdict: "Too tight", chest: "Tight", length: "Short", shoulders: "Tight" },
     S: { verdict: "Snug fit", chest: "Fitted", length: "Regular", shoulders: "Snug" },
