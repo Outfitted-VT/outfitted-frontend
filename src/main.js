@@ -11,7 +11,7 @@ import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
-import { initCreate, openCreate } from "./create.js";
+import { initCreate, openCreate, openTryOnFrom } from "./create.js";
 import { mountFitList } from "./feed.js";
 import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl, getImpactSummary, getTrueSizePassport, addReferenceGarment, removeReferenceGarment, translateSize } from "./fits.js";
 import { escapeHtml, initialOf } from "./format.js";
@@ -1331,13 +1331,7 @@ function connectBackend() {
           onCommentAdded: onUpdated,
         });
       },
-      onOpenTryOn: (fit) => {
-        const img = fit.images?.[0]?.url ? mediaUrl(fit.images[0].url) : "./assets/feed/maya_fit.png";
-        openVirtualDressingRoom({
-          image: img,
-          name: fit.caption || fit.items?.[0]?.name || "This Fit",
-        });
-      },
+      onOpenTryOn: openTryOnFrom,
     });
   }
 
@@ -1357,13 +1351,7 @@ function connectBackend() {
           onCommentAdded: onUpdated,
         });
       },
-      onOpenTryOn: (fit) => {
-        const img = fit.images?.[0]?.url ? mediaUrl(fit.images[0].url) : "./assets/feed/maya_fit.png";
-        openVirtualDressingRoom({
-          image: img,
-          name: fit.caption || fit.items?.[0]?.name || "This Fit",
-        });
-      },
+      onOpenTryOn: openTryOnFrom,
     });
     loadProfileCounts();
     connectProfileIntelligence();
@@ -1535,16 +1523,12 @@ async function connectProfileIntelligence() {
 
 // Try this look, Dorm Closets, and Style a Friend (also inside cards that load later).
 document.addEventListener("click", (e) => {
-  // 1-Tap AI Try-on on any fit
-  if (e.target.closest("[data-ai-mode]")) {
+  // "Try this look" outside a fit card (e.g. the profile's studio): an empty try-on. On a fit
+  // card the fit list handles it, prefilled with that fit (openTryOnFrom).
+  const tryButton = e.target.closest("[data-ai-mode]");
+  if (tryButton && !tryButton.closest("article[data-fit-id]")) {
     e.preventDefault();
-    const btn = e.target.closest("[data-ai-mode]");
-    const article = btn.closest("[data-fit-id]");
-    const img = article?.querySelector("img.fit-slide-backdrop, img")?.src;
-    openVirtualDressingRoom({
-      image: img || "./assets/feed/maya_fit.png",
-      name: "Selected Outfit",
-    });
+    openCreate("tryon");
     return;
   }
   if (e.target.closest("[data-open-dorm-closet]")) {

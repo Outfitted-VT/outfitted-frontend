@@ -42,9 +42,23 @@ function freshState() {
     category: "top",
     editing: null, // index of the piece open in the editor, or null when adding
     detect: { cover: null, run: 0, status: "idle", found: 0 },
+    // Posting a try-on result: { tryonId, imageId }, sent with the post while that photo is in it.
+    posting: null,
     // mode is "outfit" (one photo of a whole fit) or "pieces" (a photo per slot in `pieces`).
     // hideFace: "Hide my face" is on. blurred: the result with the face blurred, once made.
-    tryon: { mode: "outfit", person: null, outfit: null, pieces: {}, result: null, run: 0, hideFace: false, blurred: null },
+    // fitId / from: "Try this look" on someone's fit (its id and author's username), else null.
+    tryon: {
+      mode: "outfit",
+      person: null,
+      outfit: null,
+      pieces: {},
+      result: null,
+      run: 0,
+      hideFace: false,
+      blurred: null,
+      fitId: null,
+      from: null,
+    },
   };
 }
 
@@ -99,8 +113,10 @@ function closeOnEscape(e) {
   if (e.key === "Escape" && !$("#create-backdrop").classList.contains("hidden")) closeCreate();
 }
 
-export function openCreate(screen = "menu") {
+// setup(state) can fill in the fresh state before the first screen renders.
+export function openCreate(screen = "menu", setup = null) {
   state = freshState();
+  setup?.(state);
   const sheet = $("#create-sheet");
   $("#create-backdrop").classList.remove("hidden");
   show(screen);
@@ -495,7 +511,9 @@ async function submitFit(event) {
     submit.textContent = "Posting…";
     const imageIds = images.map((image) => image.id);
     const allowTryOn = $("#compose-allow-tryon")?.checked ?? true;
+    const posting = state.posting;
     const fit = await createFit({
+      tryonId: posting && imageIds.includes(posting.imageId) ? posting.tryonId : null,
       imageIds,
       caption: $("#compose-caption").value.trim(),
       items: itemsForPost(imageIds),
@@ -530,7 +548,9 @@ function renderTryOn() {
   document.querySelectorAll("[data-tryon-panel]").forEach((panel) => {
     panel.classList.toggle("hidden", panel.dataset.tryonPanel !== t.mode);
   });
-  $("#tryon-intro").textContent = TRYON_INTRO[t.mode];
+  $("#tryon-intro").textContent = t.from
+    ? `Trying @${t.from}'s look. Add a photo of you, or swap any piece for your own.`
+    : TRYON_INTRO[t.mode];
   renderPieces();
 
   for (const slot of ["person", "outfit"]) {
@@ -654,7 +674,7 @@ async function runTryOn() {
       clothing = { pieces: pieces.map(([slot, piece]) => ({ slot, imageId: piece.image.id })) };
     }
     if (stale()) return;
-    t.result = await createTryOn(t.person.image.id, clothing);
+    t.result = await createTryOn(t.person.image.id, { ...clothing, fitId: t.fitId });
     t.blurred = null;
     if (stale()) return;
     showResult();
@@ -748,9 +768,37 @@ function compare(which) {
 function postTryOn() {
   // The try-on result is already uploaded, so detection starts right away.
   state.photos = [{ image: resultImage() }];
+  state.posting = { tryonId: state.tryon.result.id, imageId: resultImage().id };
   state.items = [];
   state.tags = { occasion: [], style: [] };
   show("compose");
+}
+
+// --- "Try this look" on someone's fit -------------------------------------------------------
+
+// Opens the try-on screen with the fit's clothes filled in: the photos from the try-on it was
+// posted from (its outfit photo, or each piece in its slot), or else its cover photo as the
+// outfit. The person slot keeps your last photo, as usual.
+export function openTryOnFrom(fit) {
+  const mine = fit.author.username === currentUser.username;
+  if (!fit.allow_friend_try_on && !mine) {
+    hooks.toast(`@${fit.author.username} turned off try-ons for this fit`);
+    return;
+  }
+  const shared = (image) => ({ image, preview: mediaUrl(image.url) });
+  openCreate("tryon", (s) => {
+    const t = s.tryon;
+    const source = fit.try_on_source;
+    t.fitId = fit.id;
+    t.from = mine ? null : fit.author.username;
+    if (source?.mode === "pieces") {
+      t.mode = "pieces";
+      source.pieces.forEach(({ slot, image }) => (t.pieces[slot] = shared(image)));
+    } else {
+      const outfit = source?.outfit_image || fit.images?.[0];
+      if (outfit) t.outfit = shared(outfit);
+    }
+  });
 }
 
 // --- wiring ----------------------------------------------------------------------------

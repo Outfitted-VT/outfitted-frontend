@@ -2,6 +2,7 @@ import { icons } from "./icons.js";
 import { history, outfitMemories, wardrobeCatalog, wardrobeOutfits } from "./data.js";
 import { escapeHtml } from "./format.js";
 import { openVirtualDressingRoom } from "./tryon-modal.js";
+import { openTryOnFrom } from "./create.js";
 import {
   listWardrobeItems,
   logWardrobeWear,
@@ -811,10 +812,7 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
     const fit = savedFits.get(id);
     if (!fit) return;
     if (button.matches("[data-saved-tryon]")) {
-      onTryOnRequest?.({
-        image: fit.images[0] ? mediaUrl(fit.images[0].url) : undefined,
-        name: fit.caption || fit.items[0]?.name || "This Fit",
-      });
+      openTryOnFrom(fit);
     } else {
       unsaveFit(id, button);
     }
