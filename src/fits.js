@@ -187,6 +187,21 @@ export async function updateProfile({ fullName, bio, avatarImageId } = {}) {
   return parse(await apiFetch("/users/me", json("PATCH", body)));
 }
 
+export async function updateStyleProfile({ styles, fit, top, bottom, tone }) {
+  const body = {
+    style_tags: styles,
+    fit_preference: fit,
+    top_size: top,
+    bottom_size: bottom,
+    feedback_tone: tone,
+  };
+  return parse(await apiFetch("/users/me", json("PATCH", body)));
+}
+
+export async function getSuggestions(limit = 6) {
+  return parse(await apiFetch(`/users/suggestions?limit=${limit}`));
+}
+
 export async function getProfile(username) {
   return parse(await apiFetch(`/users/${encodeURIComponent(username)}`));
 }
@@ -316,26 +331,6 @@ export async function addComment(fitId, content) {
 
 export async function deleteComment(fitId, commentId) {
   return parse(await apiFetch(`/fits/${fitId}/comments/${commentId}`, { method: "DELETE" }));
-}
-
-// --- Direct Messaging ---
-
-export async function listThreads() {
-  return parse(await apiFetch("/messages/threads"));
-}
-
-export async function getConversation(username) {
-  return parse(await apiFetch(`/messages/${encodeURIComponent(username)}`));
-}
-
-export async function sendMessage(username, { content, fitId = null }) {
-  const body = { content };
-  if (fitId) body.fit_id = fitId;
-  return parse(await apiFetch(`/messages/${encodeURIComponent(username)}`, json("POST", body)));
-}
-
-export async function markMessagesRead(username) {
-  return parse(await apiFetch(`/messages/${encodeURIComponent(username)}/read`, json("POST", {})));
 }
 
 // --- Digital Wardrobe Catalog & CPW Analytics ---

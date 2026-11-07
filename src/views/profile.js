@@ -1,21 +1,24 @@
 import { currentUser } from "../data.js";
-import { mediaUrl } from "../fits.js";
+import { listFits, listWardrobeItems, mediaUrl, updateProfile } from "../fits.js";
 import { escapeHtml } from "../format.js";
+import { avatar, iconButton, ofIcons, pillCta, stateBlock } from "./components.js";
+import { fitTally, isLive } from "./feed-view.js";
+import { openSheet } from "./sheet.js";
 
-function avatar() {
-  if (currentUser.avatarUrl) {
-    return `<img class="w-full h-full object-cover" alt="" src="${escapeHtml(mediaUrl(currentUser.avatarUrl))}" />`;
-  }
-  return `<div class="w-full h-full bg-primary text-on-primary flex items-center justify-center font-headline-md text-headline-md">${escapeHtml(currentUser.initial || "?")}</div>`;
-}
+const TABS = [
+  ["history", "Fit history"],
+  ["wardrobe", "Wardrobe"],
+  ["saved", "Saved"],
+];
+const THEMES = [
+  ["light", "Light"],
+  ["dark", "Dark"],
+  ["system", "Match system"],
+];
+const STICKER_STYLES = ["lime", "white"];
+const PAGE_SIZE = 20;
 
-const stat = (id, label) => `
-  <div>
-    <div class="font-title-ui text-title-ui font-semibold text-on-surface" id="${id}">–</div>
-    <div class="font-micro-mono text-micro-mono text-on-surface-variant uppercase">${label}</div>
-  </div>`;
-
-const divider = `<div class="w-[1px] h-8 bg-surface-container-highest"></div>`;
+const profile = { screen: "main", tab: "history", pages: new Map() };
 
 const studioTile = (icon, title, text, attr) => `
   <button type="button" ${attr}
@@ -29,48 +32,9 @@ const studioTile = (icon, title, text, attr) => `
     </span>
   </button>`;
 
-export function renderProfileView() {
+
+function studioSections() {
   return `
-    <div class="flex flex-col w-full px-margin space-y-space-md pb-12">
-      <!-- Profile Header Card -->
-      <section class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col space-y-space-sm mt-space-xs">
-        <div class="flex items-center space-x-space-sm">
-          <button type="button" class="relative group w-16 h-16 rounded-full overflow-hidden bg-surface-container-high ring-2 ring-secondary/20 shadow-sm flex-shrink-0 cursor-pointer p-0 border-0" id="btn-profile-avatar" title="Change profile picture" aria-label="Change profile picture">
-            ${avatar()}
-            <span class="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <span class="material-symbols-outlined text-[20px]">photo_camera</span>
-            </span>
-          </button>
-          <input type="file" id="profile-avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none;" />
-          <div class="min-w-0">
-            <h2 class="font-title-ui text-headline-md text-on-surface font-semibold truncate">${escapeHtml(currentUser.name)}</h2>
-            <p class="font-micro-mono text-micro-mono text-on-surface-variant uppercase tracking-wider">@${escapeHtml(currentUser.username)}</p>
-          </div>
-        </div>
-
-        ${currentUser.bio ? `<p class="font-body-md text-body-md text-on-surface leading-snug">${escapeHtml(currentUser.bio)}</p>` : ""}
-
-        <!-- Social Metrics Strip -->
-        <div class="flex items-center justify-around py-space-xs bg-surface-container-low rounded text-center">
-          ${stat("profile-fit-count", "Fits")}
-          ${divider}
-          ${stat("profile-follower-count", "Followers")}
-          ${divider}
-          ${stat("profile-following-count", "Following")}
-        </div>
-
-        <div class="grid grid-cols-2 gap-space-xs pt-1">
-          <button class="h-10 rounded-full bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all" id="btn-profile-new-fit">
-            <span class="material-symbols-outlined text-[17px] text-tertiary-fixed">add_circle</span>
-            <span>New fit</span>
-          </button>
-          <button class="h-10 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-container-high active:scale-95 transition-all" id="btn-profile-signout">
-            <span class="material-symbols-outlined text-[17px]">logout</span>
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </section>
-
       <!-- Returns Saved & Impact Counter Dashboard -->
       <section class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col gap-space-sm border-l-4 border-secondary">
         <div class="flex items-center justify-between">
@@ -219,16 +183,265 @@ export function renderProfileView() {
           <span>Try this look</span>
         </button>
       </section>
-
-      <!-- Your fits -->
-      <section class="flex flex-col space-y-space-xs">
-        <div class="flex items-center justify-between px-1">
-          <span class="font-micro-mono text-micro-mono uppercase text-on-surface-variant tracking-wider font-semibold">Your fits</span>
-        </div>
-        <div class="flex flex-col gap-space-lg" id="profile-fits"></div>
-        <div class="py-space-md flex justify-center" id="profile-status"></div>
-        <div id="profile-sentinel" aria-hidden="true"></div>
-      </section>
-    </div>
   `;
+}
+
+const capitalize = (text) => (text ? text.charAt(0).toUpperCase() + text.slice(1) : "");
+const STYLE_LABELS = { y2k: "Y2K" };
+
+const ICON = (paths, stroke = "currentColor", width = 1.9) =>
+  `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const SHARE = ICON('<path d="M12 15V4M7 8l5-5 5 5"/><path d="M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/>');
+const SETTINGS = ICON('<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>');
+const FRIENDS = ICON('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 15c1.6.7 2.6 2.4 3 5"/>', "currentColor", 2);
+
+function stickers() {
+  const styles = (currentUser.styleTags || []).slice(0, 2).map((tag, i) =>
+    `<span class="of-sticker ${STICKER_STYLES[i]}">${escapeHtml(STYLE_LABELS[tag] || capitalize(tag))}</span>`
+  );
+  const fit = [currentUser.topSize && `Size ${currentUser.topSize}`, capitalize(currentUser.fitPreference)].filter(Boolean).join(" · ");
+  if (fit) styles.push(`<span class="of-sticker ink">${escapeHtml(fit)}</span>`);
+  return styles.length ? `<div class="of-stickers">${styles.join("")}</div>` : "";
+}
+
+function hero() {
+  return `<section class="of-hero">
+    <span class="of-hero-ring" aria-hidden="true"></span>
+    <div class="of-hero-top">
+      <button type="button" class="of-hero-avatar" id="btn-profile-avatar" aria-label="Change profile photo">${avatar(currentUser, { size: 76 })}</button>
+      <input type="file" id="profile-avatar-input" accept="image/jpeg,image/png,image/webp" hidden />
+      <div class="of-hero-name"><h1>${escapeHtml(currentUser.name || currentUser.username)}</h1></div>
+    </div>
+    ${currentUser.bio ? `<p class="of-hero-bio">${escapeHtml(currentUser.bio)}</p>` : ""}
+    ${stickers()}
+  </section>`;
+}
+
+const stat = (id, label, cls = "") => `<div class="of-stat ${cls}"><span class="of-stat-num" id="${id}">–</span><span class="of-stat-label">${label}</span></div>`;
+
+function stats() {
+  return `<div class="of-stats" aria-label="Profile stats">
+    ${stat("profile-fit-count", "FITS")}${stat("profile-following-count", "CIRCLE", "blue")}${stat("profile-follower-count", "FOLLOWERS")}
+  </div>`;
+}
+
+function tabs() {
+  return `<div class="of-tabs" role="tablist" aria-label="Profile sections">${TABS.map(([id, label]) =>
+    `<button type="button" role="tab" class="of-tab-link ${profile.tab === id ? "on" : ""}" aria-selected="${profile.tab === id}" data-profile-tab="${id}">${label}</button>`
+  ).join("")}</div>`;
+}
+
+export function renderProfileView() {
+  if (profile.screen === "settings") return renderSettingsView();
+  return `<section class="of-screen of-profile" id="of-profile">
+    <header class="of-profile-head">
+      <span class="of-handle">@${escapeHtml((currentUser.username || "").toUpperCase())}</span>
+      <div class="of-profile-tools">
+        <button type="button" class="of-bell" data-profile-share aria-label="Share profile">${SHARE}</button>
+        <button type="button" class="of-bell" data-profile-settings aria-label="Settings">${SETTINGS}</button>
+      </div>
+    </header>
+    ${hero()}
+    ${stats()}
+    <div class="of-profile-actions">
+      <button type="button" class="of-profile-btn ink" data-nav-tab="friends">${FRIENDS}Close Friends</button>
+      <button type="button" class="of-profile-btn soft" data-profile-edit>Edit profile</button>
+    </div>
+    ${tabs()}
+    <div class="of-grid" id="profile-grid" role="tabpanel"></div>
+    <div class="of-grid-foot" id="profile-grid-foot"></div>
+  </section>`;
+}
+
+function themeOption([value, label]) {
+  return `<button type="button" role="radio" class="of-menu-row of-radio-row" data-theme-option="${value}" aria-checked="false">${label}<i aria-hidden="true"></i></button>`;
+}
+
+export function renderSettingsView() {
+  return `<section class="of-screen of-settings" id="of-profile">
+    <header class="of-profile-head">
+      ${iconButton({ icon: ofIcons.back(20), label: "Back to profile", data: { "data-profile-back": true } })}
+      <h1 class="of-display of-settings-title">Settings</h1>
+    </header>
+    <section class="of-settings-card" role="radiogroup" aria-label="Appearance">
+      <p class="of-meta-label">Appearance</p>
+      ${THEMES.map(themeOption).join("")}
+    </section>
+    <div class="of-settings-studio">${studioSections()}</div>
+    <button type="button" class="of-btn of-btn-ink of-signout" id="btn-profile-signout">Sign out</button>
+  </section>`;
+}
+
+function colorDots(fit) {
+  const colors = fit.items.map((item) => item.color).filter((c) => c && CSS.supports("color", c)).slice(0, 4);
+  return colors.map((c) => `<span style="background:${escapeHtml(c)}"></span>`).join("");
+}
+
+function statusTag(fit) {
+  if (isLive(fit)) return `<span class="of-hist-tag live">LIVE</span>`;
+  const date = new Date(fit.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `<span class="of-hist-tag">${escapeHtml(date.toUpperCase())}</span>`;
+}
+
+function strip(images, tagHtml = "") {
+  const shown = images.slice(0, 2).map((image) => `<img src="${escapeHtml(mediaUrl(image.url))}" alt="" loading="lazy" />`);
+  return `<div class="of-hist-strip ${shown.length === 1 ? "single" : ""}">${shown.join("")}${tagHtml}</div>`;
+}
+
+function fitCard(fit) {
+  const { pct, total } = fitTally(fit);
+  const title = (fit.caption || "Untitled fit").split("\n")[0];
+  return `<article class="of-histcard">
+    ${strip(fit.images, statusTag(fit))}
+    <div class="of-hist-body">
+      <span class="of-hist-title">${escapeHtml(title)}</span>
+      <span class="of-hist-pct ${total ? "" : "none"}">${total ? `${pct}% wear it` : "No votes yet"}</span>
+      <span class="of-hist-dots">${colorDots(fit)}</span>
+    </div>
+  </article>`;
+}
+
+function wardrobeCard(item) {
+  const image = item.image_url
+    ? `<img src="${escapeHtml(mediaUrl(item.image_url))}" alt="" loading="lazy" />`
+    : `<span class="of-hist-empty">${ofIcons.image(24)}</span>`;
+  const detail = [item.brand, item.color].filter(Boolean).map(escapeHtml).join(" · ");
+  return `<article class="of-histcard">
+    <div class="of-hist-strip single">${image}</div>
+    <div class="of-hist-body">
+      <span class="of-hist-title">${escapeHtml(item.name)}</span>
+      <span class="of-hist-meta">${detail || escapeHtml(capitalize(item.primary_category))}</span>
+      <span class="of-hist-pct">Worn ${item.times_worn}×</span>
+    </div>
+  </article>`;
+}
+
+const EMPTY = {
+  history: "Your fits will show up here once you post.",
+  wardrobe: "Add pieces to your wardrobe from My fits.",
+  saved: "Fits you save show up here.",
+};
+
+async function fetchPage(tab, cursor) {
+  if (tab === "wardrobe") return { items: await listWardrobeItems(), next_cursor: null };
+  const path = tab === "saved" ? "/users/me/saved" : `/users/${encodeURIComponent(currentUser.username)}/fits`;
+  return listFits(path, cursor, PAGE_SIZE);
+}
+
+function page(tab) {
+  if (!profile.pages.has(tab)) profile.pages.set(tab, { items: [], cursor: null, done: false, loading: false, error: false });
+  return profile.pages.get(tab);
+}
+
+function paintGrid(root) {
+  const grid = root.querySelector("#profile-grid");
+  const foot = root.querySelector("#profile-grid-foot");
+  if (!grid) return;
+  const state = page(profile.tab);
+  const card = profile.tab === "wardrobe" ? wardrobeCard : fitCard;
+  grid.innerHTML = state.items.map(card).join("");
+  if (state.error) foot.innerHTML = stateBlock({ icon: ofIcons.cloudOff(), title: "Couldn't load this tab", body: "Check your connection and try again.", cta: { label: "Try again", data: { "data-grid-more": true } } });
+  else if (state.loading) foot.innerHTML = `<p class="of-muted">Loading…</p>`;
+  else if (!state.items.length) foot.innerHTML = `<p class="of-muted">${EMPTY[profile.tab]}</p>`;
+  else foot.innerHTML = state.done ? "" : `<button type="button" class="of-btn of-btn-soft" data-grid-more>Load more</button>`;
+}
+
+async function loadMore(root) {
+  const tab = profile.tab;
+  const state = page(tab);
+  if (state.loading || state.done) return;
+  state.loading = true;
+  state.error = false;
+  paintGrid(root);
+  try {
+    const result = await fetchPage(tab, state.cursor);
+    state.items.push(...result.items);
+    state.cursor = result.next_cursor;
+    state.done = !result.next_cursor;
+  } catch {
+    state.error = true;
+  }
+  state.loading = false;
+  if (root.isConnected && profile.tab === tab) paintGrid(root);
+}
+
+function setTab(root, tab) {
+  profile.tab = tab;
+  root.querySelectorAll("[data-profile-tab]").forEach((button) => {
+    const on = button.dataset.profileTab === tab;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-selected", String(on));
+  });
+  paintGrid(root);
+  if (!page(tab).items.length) loadMore(root);
+}
+
+async function share(toast) {
+  const text = `Find me on Outfitted: @${currentUser.username}`;
+  try {
+    if (navigator.share) return await navigator.share({ title: "Outfitted", text });
+    await navigator.clipboard.writeText(text);
+    toast("Profile handle copied");
+  } catch {}
+}
+
+function editProfile({ toast, rerender }) {
+  const { root, close } = openSheet({
+    title: "Edit profile",
+    body: `<div class="of-sheet-body of-form">
+      <label class="of-field-label">Name<input class="of-field" maxlength="100" data-edit-name value="${escapeHtml(currentUser.name || "")}" /></label>
+      <label class="of-field-label">Bio<input class="of-field" maxlength="160" data-edit-bio value="${escapeHtml(currentUser.bio || "")}" /></label>
+      <button type="button" class="of-menu-row" data-edit-photo><span class="of-menu-icon">${ofIcons.image()}</span>Change photo</button>
+    </div>
+    <p class="of-toast-error" data-error hidden></p>
+    ${pillCta({ label: "Save", data: { "data-edit-save": true } })}`,
+  });
+  root.querySelector("[data-edit-photo]").addEventListener("click", () => {
+    close();
+    document.querySelector("#profile-avatar-input")?.click();
+  });
+  root.querySelector("[data-edit-save]").addEventListener("click", async (event) => {
+    event.currentTarget.disabled = true;
+    const fullName = root.querySelector("[data-edit-name]").value.trim() || null;
+    const bio = root.querySelector("[data-edit-bio]").value.trim() || null;
+    try {
+      const user = await updateProfile({ fullName, bio });
+      Object.assign(currentUser, { name: user.full_name || user.username, bio: user.bio || "" });
+      close();
+      toast("Profile updated");
+      rerender();
+    } catch (err) {
+      const error = root.querySelector("[data-error]");
+      error.hidden = false;
+      error.textContent = err.message || "Couldn't save your profile.";
+      event.currentTarget.disabled = false;
+    }
+  });
+}
+
+function go(screen, rerender) {
+  profile.screen = screen;
+  rerender();
+}
+
+export function resetProfile() {
+  profile.screen = "main";
+  profile.pages.clear();
+}
+
+export function mountProfile({ toast, rerender }) {
+  const root = document.querySelector("#of-profile");
+  if (!root) return;
+  root.addEventListener("click", (event) => {
+    const tab = event.target.closest("[data-profile-tab]");
+    if (tab) return setTab(root, tab.dataset.profileTab);
+    if (event.target.closest("[data-grid-more]")) return loadMore(root);
+    if (event.target.closest("[data-profile-settings]")) return go("settings", rerender);
+    if (event.target.closest("[data-profile-back]")) return go("main", rerender);
+    if (event.target.closest("[data-profile-share]")) return share(toast);
+    if (event.target.closest("[data-profile-edit]")) editProfile({ toast, rerender });
+  });
+  if (profile.screen !== "main") return;
+  profile.pages.clear();
+  setTab(root, profile.tab);
 }

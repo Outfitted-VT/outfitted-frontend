@@ -1,7 +1,7 @@
-import { currentUser, posts, friendsList, wardrobeOutfits, history, messagesData } from "./data.js";
+import "./onboarding.js";
+import { currentUser, posts, friendsList, wardrobeOutfits, history } from "./data.js";
 import { icons } from "./icons.js";
 import { renderStylistAssistant, connectStylistAssistant } from "./assistant.js";
-import { renderMessagesView, connectMessages } from "./messages.js";
 import { renderWardrobePage, connectWardrobe } from "./wardrobe.js";
 import { renderFriendsView, connectFriends } from "./friends.js";
 import { renderVirtualDressingRoomModal, connectVirtualDressingRoom, openVirtualDressingRoom } from "./tryon-modal.js";
@@ -12,16 +12,25 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
 import { initCreate, openCreate, openEditFit, openTryOnFrom } from "./create.js";
-import { mountFitList } from "./feed.js";
 import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl, getImpactSummary, getTrueSizePassport, addReferenceGarment, removeReferenceGarment, translateSize } from "./fits.js";
 import { escapeHtml, initialOf } from "./format.js";
 import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
-import { renderProfileView } from "./views/profile.js";
+import { mountProfile, renderProfileView, resetProfile } from "./views/profile.js";
 import { renderCommentsDrawer, openCommentsDrawer } from "./views/comments-drawer.js";
 import { renderCreateSheet } from "./views/create-sheet.js";
 import { openDormCloset } from "./dorm-closet.js";
 import { openStyleFriend } from "./style-friend.js";
 import { applyTheme, getThemePreference, isDarkTheme, onThemeChange, setThemePreference } from "./theme.js";
+import { appHeader, setChatUnreadDot, tabBar } from "./views/components.js";
+import { mountFeed, renderFeedScreen } from "./views/feed-view.js";
+import { mountRoom, renderRoomScreen } from "./views/room.js";
+import { initKeyboard } from "./keyboard.js";
+import { startMessaging, stopMessaging, subscribe as onMessagesChange, unreadTotal } from "./messages-store.js";
+import { mountInbox, renderInbox } from "./views/messages-inbox.js";
+import { mountThread, renderThread, unmountThread } from "./views/messages-thread.js";
+import { openNewChatSheet } from "./views/new-chat-sheet.js";
+import { openFitCheckSheet } from "./views/fit-check-sheet.js";
+import { cachedWeather } from "./weather.js";
 
 // Native (iOS/Android) status bar and splash screen. The status bar follows the theme.
 if (Capacitor.isNativePlatform()) {
@@ -38,7 +47,7 @@ applyTheme();
 
 const app = document.querySelector("#app");
 
-let activeTab = "feed"; // 'feed' | 'wardrobe' | 'friends' | 'messages' | 'assistant' | 'profile'
+let activeTab = "feed"; // 'feed' | 'room' | 'wardrobe' | 'friends' | 'messages' | 'assistant' | 'profile'
 let activePostForComments = null;
 
 // Wide screens: the sidebar is either full or collapsed to an icon rail. Remembered per browser.
@@ -58,47 +67,6 @@ function showToast(message) {
   setTimeout(() => toast.remove(), 2800);
 }
 
-/* ---------- Top Bar Component ---------- */
-function renderTopBar() {
-  return `
-    <header class="main-topbar">
-      <div class="topbar-container">
-        <a class="topbar-brand" href="#feed" data-nav="feed" aria-label="Outfitted home">
-          <div class="brand-text-wrap">
-            <span class="wordmark">OUTFITTED<span class="wordmark-dot">.</span></span>
-            <span class="brand-tagline">GOOD FITS. BETTER FRIENDS.</span>
-          </div>
-        </a>
-
-        <div class="topbar-center-banner">
-          <div class="feed-header-pill">The feed <span class="asterisk-coral">✱</span></div>
-          <span class="daily-dose-tag">YOUR DAILY DOSE OF GOOD TASTE</span>
-        </div>
-
-        <div class="topbar-actions">
-          <button class="topbar-ai-pill" data-nav="assistant" title="Stylist AI">
-            ${icons.wand}
-            <span>✦ Stylist AI</span>
-          </button>
-          <button class="brand-suite-btn" id="open-branding-suite" title="App Icons & Splash Screen">
-            <span class="asterisk-coral">✱</span>
-            <span>Brand Marks</span>
-          </button>
-          <div class="notif-bell-wrap">
-            <button class="icon-button" id="btn-notifications" aria-label="Notifications">
-              ${icons.bell}
-            </button>
-            <span class="notif-dot"></span>
-          </div>
-          <button type="button" class="user-badge-hi overflow-hidden p-0" id="account-badge" aria-label="Account & Studio Menu" title="Account profile & studio menu">
-            ${currentUser.avatarUrl ? `<img src="${escapeHtml(mediaUrl(currentUser.avatarUrl))}" alt="" class="w-full h-full object-cover rounded-full" />` : escapeHtml(currentUser.initial || "HI")}
-          </button>
-        </div>
-      </div>
-    </header>
-  `;
-}
-
 /* ---------- Left Navigation Sidebar ---------- */
 function renderSidebar() {
   return `
@@ -112,6 +80,10 @@ function renderSidebar() {
         <a href="#feed" class="nav-item ${activeTab === "feed" ? "active" : ""}" data-nav="feed" title="Feed">
           ${icons.feed}
           <span class="sidebar-label">Feed</span>
+        </a>
+        <a href="#room" class="nav-item ${activeTab === "room" ? "active" : ""}" data-nav="room" title="3D Room">
+          ${icons.cube}
+          <span class="sidebar-label">3D Room</span>
         </a>
         <a href="#wardrobe" class="nav-item ${activeTab === "wardrobe" ? "active" : ""}" data-nav="wardrobe" title="My fits">
           ${icons.hanger}
@@ -150,157 +122,6 @@ function renderSidebar() {
         </button>
       </div>
     </aside>
-  `;
-}
-
-/* ---------- Post Card Component (Image 1 & 6) ---------- */
-function renderPostCard(post) {
-  const totalVotes = post.votes.yes + post.votes.no;
-  const yesShare = totalVotes > 0 ? Math.round((post.votes.yes / totalVotes) * 100) : 50;
-
-  return `
-    <article class="post-card" id="post-${post.id}" data-post-id="${post.id}">
-      <header class="post-card-header">
-        <div class="post-author-wrap">
-          <span class="avatar-chip" style="background:${post.initialBg || "#2d5a3f"}">${post.initial}</span>
-          <div class="post-author-meta">
-            <strong class="author-name">${post.author}</strong>
-            <small class="author-handle">${post.handle || "@friend"} · ${post.time}</small>
-          </div>
-        </div>
-        <button class="icon-button" aria-label="Options">${icons.more}</button>
-      </header>
-
-      <div class="post-media-stage">
-        <img src="${post.image}" alt="${post.title}" class="post-img-main" />
-        <span class="fit-file-badge">${post.fileTag || "THE FIT FILES / 01"}</span>
-      </div>
-
-      <div class="post-card-body">
-        <div class="post-title-row">
-          <h3 class="post-card-title">${post.title}</h3>
-          <span class="sample-fit-pill">SAMPLE FIT</span>
-        </div>
-
-        <p class="post-question-text">${post.question}</p>
-
-        <div class="post-pieces-line">
-          <span>👕</span>
-          <p>${post.piecesSummary || post.pieces.map((p) => p.name).join(" · ")}</p>
-        </div>
-
-        <!-- Interactive Poll -->
-        <div class="poll-component" data-post-id="${post.id}">
-          <span class="poll-question-label">Would you wear it?</span>
-          <div class="poll-buttons-row">
-            <button class="btn-poll-option ${post.userVote === "yes" ? "voted" : ""}" data-vote="yes" data-post-id="${post.id}">
-              Wear it
-            </button>
-            <button class="btn-poll-option ${post.userVote === "no" ? "voted" : ""}" data-vote="no" data-post-id="${post.id}">
-              Rethink
-            </button>
-          </div>
-          <div class="poll-results-bar-wrap">
-            <div class="poll-progress-track">
-              <div class="poll-progress-fill" style="width:${yesShare}%"></div>
-            </div>
-            <span class="poll-results-stat"><strong>${yesShare}%</strong> say wear it · ${totalVotes} votes</span>
-          </div>
-        </div>
-
-        <!-- Super Reactions -->
-        <div class="super-react-bar" data-post-id="${post.id}">
-          ${Object.entries(post.superReactions || { "🎧": 3, "💍": 2, "🍦": 1, "💖": 8, "🧁": 2, "🎀": 5 })
-            .map(([emoji, count]) => `
-              <button class="reaction-sticker-btn" data-emoji="${emoji}" data-post-id="${post.id}">
-                <span>${emoji}</span>
-                <span class="rx-count">${count}</span>
-              </button>
-            `)
-            .join("")}
-        </div>
-      </div>
-
-      <footer class="post-card-footer">
-        <div class="footer-left-actions">
-          <button class="btn-card-action btn-card-like ${post.hasLiked ? "liked" : ""}" data-post-id="${post.id}">
-            ${icons.heart}
-            <span class="like-count">${post.likes}</span>
-          </button>
-          <button class="btn-card-action btn-card-comment" data-post-id="${post.id}">
-            ${icons.comment}
-            <span>${post.commentsList ? post.commentsList.length : post.comments}</span>
-          </button>
-          <button class="btn-card-action btn-card-share" data-post-id="${post.id}">
-            ${icons.share}
-            <span>Share</span>
-          </button>
-        </div>
-        <button class="btn-try-look-cta" data-post-id="${post.id}">
-          <span>Try a look</span>
-          <span>${icons.arrowRight}</span>
-        </button>
-      </footer>
-    </article>
-  `;
-}
-
-/* ---------- Center Feed Hero & Feed Stream ---------- */
-function renderMainFeed() {
-  return `
-    <div class="main-feed-column">
-      <!-- Hero Banner (Image 1) -->
-      <section class="feed-hero-banner" aria-label="Social Fit Check Hero">
-        <p class="eyebrow" style="color:var(--brand-coral);">
-          <span class="coral-bullet">•</span> THE SOCIAL FIT CHECK
-        </p>
-        <h1 class="hero-heading">
-          Good fits are <span class="hero-underline">better together.</span>
-        </h1>
-        <p class="hero-subtitle">
-          Show your people the look. Get the real opinion. Wear it your way.
-        </p>
-        <div class="hero-actions-row">
-          <button class="button button-primary" id="btn-hero-post-fit">
-            <span>Post a fit</span>
-            <span>${icons.arrowRight}</span>
-          </button>
-          <button class="button button-outline" id="btn-hero-try-on">
-            ${icons.sparkleIcon}
-            <span>Try it on</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- Real fits from the backend (loaded by src/feed.js) -->
-      <section class="feed-section-header" aria-label="Fits from your circle">
-        <p class="eyebrow" style="color:var(--brand-coral);">LIVE FROM YOUR CIRCLE</p>
-        <div class="feed-header-top">
-          <h2 class="feed-title-big">Latest fits ↘</h2>
-        </div>
-      </section>
-      <div class="flex flex-col gap-space-lg" id="feed-fits"></div>
-      <div class="py-space-md flex justify-center" id="feed-status"></div>
-      <div id="feed-sentinel" aria-hidden="true"></div>
-
-      <!-- Feed Section Header -->
-      <div class="feed-section-header">
-        <p class="eyebrow" style="color:var(--brand-green);">YOUR CORNER OF THE INTERNET</p>
-        <div class="feed-header-top">
-          <h2 class="feed-title-big">Fresh off the fits ↘</h2>
-          <button class="sort-dropdown-btn" id="btn-feed-sort">
-            <span>Latest first</span>
-            ${icons.chevronDown}
-          </button>
-        </div>
-        <p class="feed-header-lede">A LITTLE INSPIRATION WHILE YOUR CIRCLE GETS DRESSED</p>
-      </div>
-
-      <!-- Feed Cards -->
-      <div class="feed-cards-grid" id="feed-cards-container">
-        ${posts.map(renderPostCard).join("")}
-      </div>
-    </div>
   `;
 }
 
@@ -611,41 +432,52 @@ function renderAuthDialog() {
   `;
 }
 
-/* ---------- Mobile Bottom Navigation Bar (Image 6) ---------- */
-function renderMobileBottomNav() {
-  return `
-    <nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
-      <button class="mobile-nav-btn ${activeTab === "feed" ? "active" : ""}" data-nav="feed">
-        ${icons.feed}
-        <span>Feed</span>
-      </button>
-      <button class="mobile-nav-btn ${activeTab === "wardrobe" ? "active" : ""}" data-nav="wardrobe">
-        ${icons.hanger}
-        <span>My fits</span>
-      </button>
-      <button class="mobile-nav-btn btn-mobile-new" id="btn-mobile-create-fit" aria-label="Post a new fit">
-        <span class="plus-badge">${icons.plus}</span>
-        <span>Post</span>
-      </button>
-      <button class="mobile-nav-btn ${activeTab === "assistant" ? "active" : ""}" data-nav="assistant">
-        ${icons.wand}
-        <span>Stylist AI</span>
-      </button>
-      <button class="mobile-nav-btn ${activeTab === "messages" ? "active" : ""}" data-nav="messages">
-        <div class="mobile-nav-icon-wrap">
-          ${icons.message}
-        </div>
-        <span>Messages</span>
-      </button>
-    </nav>
-  `;
+/* ---------- Main Render Loop ---------- */
+const OWN_HEADER_TABS = new Set(["room", "profile"]);
+let chatConversationId = null;
+let releaseInbox = () => {};
+
+function renderChatScreen() {
+  return chatConversationId ? renderThread(chatConversationId) : renderInbox();
 }
 
-/* ---------- Main Render Loop ---------- */
+function openChat(id) {
+  activeTab = "messages";
+  chatConversationId = id;
+  render();
+}
+
+function connectChat() {
+  if (chatConversationId) {
+    mountThread({
+      id: chatConversationId,
+      toast: showToast,
+      onBack: () => openChat(null),
+      onOpenRoom: () => {
+        activeTab = "room";
+        render();
+      },
+    });
+    return;
+  }
+  releaseInbox = mountInbox({
+    onOpen: openChat,
+    onCompose: () => openNewChatSheet({ onStarted: openChat }),
+    toast: showToast,
+  });
+}
+
+function releaseScreens() {
+  releaseInbox();
+  releaseInbox = () => {};
+  unmountThread();
+}
+
 function render() {
+  releaseScreens();
   app.innerHTML = `
     <div id="app-shell" class="${sidebarCollapsed ? "sidebar-collapsed" : ""}">
-      ${renderTopBar()}
+      ${OWN_HEADER_TABS.has(activeTab) ? "" : appHeader({ user: currentUser })}
 
       <div class="app-body-container">
         ${renderSidebar()}
@@ -653,25 +485,27 @@ function render() {
         <main id="main-content-region">
           ${
             activeTab === "feed"
-              ? renderMainFeed()
+              ? renderFeedScreen()
+              : activeTab === "room"
+              ? renderRoomScreen()
               : activeTab === "wardrobe"
               ? renderWardrobePage()
               : activeTab === "friends"
               ? renderFriendsView()
               : activeTab === "messages"
-              ? renderMessagesView()
+              ? renderChatScreen()
               : activeTab === "assistant"
               ? renderStylistAssistant()
               : activeTab === "profile"
               ? renderProfileView()
-              : renderMainFeed()
+              : renderFeedScreen()
           }
         </main>
 
         ${activeTab === "feed" ? renderRightRail() : ""}
       </div>
 
-      ${renderMobileBottomNav()}
+      ${tabBar({ active: activeTab, chatUnread: unreadTotal() > 0 })}
       ${renderCreateSheet()}
       <div id="dorm-closet-modal-root" class="hidden"></div>
       <div id="style-friend-modal-root" class="hidden"></div>
@@ -701,6 +535,8 @@ function bindEvents() {
       accountSheet?.close();
       const target = el.dataset.nav;
       activeTab = target;
+      if (target === "messages") chatConversationId = null;
+      if (target === "profile") resetProfile();
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -731,7 +567,7 @@ function bindEvents() {
       (outfit) => openPostFitModalWithData(outfit)
     );
   } else if (activeTab === "messages") {
-    connectMessages();
+    connectChat();
   } else if (activeTab === "wardrobe") {
     connectWardrobe(
       (outfit) => openVirtualDressingRoom(outfit),
@@ -981,12 +817,7 @@ function bindEvents() {
   }
 
   const btnAskGroup = document.querySelector("#btn-ask-group-cart");
-  if (btnAskGroup) {
-    btnAskGroup.onclick = () => {
-      activeTab = "messages";
-      render();
-    };
-  }
+  if (btnAskGroup) btnAskGroup.onclick = postFitDilemma;
 
   // Post fit modal photo upload handling
   const postModal = document.querySelector("#post-fit-modal");
@@ -1316,13 +1147,8 @@ document.addEventListener("click", async (e) => {
 // Called after every render(): mounts whichever backend-connected parts are on screen.
 function connectBackend() {
   loadYourPeople();
-  const feedList = document.querySelector("#feed-fits");
-  if (feedList) {
-    mountFitList({
-      list: feedList,
-      status: document.querySelector("#feed-status"),
-      sentinel: document.querySelector("#feed-sentinel"),
-      path: "/fits",
+  mountFeed({
+    listOptions: {
       empty: emptyState("No fits yet", "Be the first: post what you're wearing, or try an outfit on."),
       toast: showToast,
       onOpenComments: (fit, onUpdated) => {
@@ -1333,34 +1159,21 @@ function connectBackend() {
       },
       onOpenTryOn: openTryOnFrom,
       onEdit: openEditFit,
-    });
-  }
+    },
+  });
 
-  const profileList = document.querySelector("#profile-fits");
-  if (profileList) {
-    mountFitList({
-      list: profileList,
-      status: document.querySelector("#profile-status"),
-      sentinel: document.querySelector("#profile-sentinel"),
-      path: `/users/${encodeURIComponent(currentUser.username)}/fits`,
-      empty: emptyState("You haven't posted yet", "Your fits will show up here."),
-      toast: showToast,
-      onChange: loadProfileCounts,
-      onOpenComments: (fit, onUpdated) => {
-        openCommentsDrawer(fit, {
-          toast: showToast,
-          onCommentAdded: onUpdated,
-        });
-      },
-      onOpenTryOn: openTryOnFrom,
-      onEdit: openEditFit,
-    });
-    loadProfileCounts();
-    connectProfileIntelligence();
-  }
+  mountRoom({
+    onTryOn: () => openCreate("tryon"),
+    onAskCircle: (fit) => askCircle(fit),
+  });
+
+  mountProfile({ toast: showToast, rerender: render });
+  if (document.querySelector("#profile-fit-count")) loadProfileCounts();
+  if (document.querySelector("#passport-section")) connectProfileIntelligence();
 
   initCreate({
     toast: showToast,
+    onDilemma: postFitDilemma,
     onPosted: () => {
       activeTab = "feed";
       render();
@@ -1544,23 +1357,72 @@ document.addEventListener("click", (e) => {
   }
 });
 
+function lookContext(fit) {
+  const occasion = fit.occasion_tags?.[0];
+  const weather = cachedWeather();
+  const parts = [occasion && occasion.charAt(0).toUpperCase() + occasion.slice(1), weather && `${weather.temp}°C`];
+  return parts.filter(Boolean).join(" · ") || null;
+}
+
+function askCircle(fit) {
+  const [image] = fit.images;
+  openFitCheckSheet({
+    look: { imageId: image.id, imageUrl: image.url, question: fit.caption || "", context: lookContext(fit), fitId: fit.id },
+    onSent: openChat,
+  });
+}
+
+function postFitDilemma() {
+  openFitCheckSheet({ onSent: openChat });
+}
+
 /* ---------- Account (see src/auth.js) ---------- */
 
 function enterApp(user) {
   const name = user.full_name || user.username;
   Object.assign(currentUser, {
+    id: user.id,
     name,
     username: user.username,
     handle: `@${user.username}`,
     initial: name.charAt(0).toUpperCase(),
     bio: user.bio || "",
     avatarUrl: user.avatar?.url || null,
+    styleTags: user.style_tags || [],
+    fitPreference: user.fit_preference || null,
+    topSize: user.top_size || null,
+    bottomSize: user.bottom_size || null,
   });
   activeTab = "feed";
+  chatConversationId = null;
+  resetProfile();
   render();
+  startMessaging();
 }
 
+onMessagesChange(() => setChatUnreadDot(unreadTotal() > 0));
+initKeyboard();
+
+async function enterAppFromSession() {
+  const user = await getMe().catch(() => null);
+  if (user) enterApp(user);
+}
+
+window.addEventListener("of:signed-in", enterAppFromSession);
+window.addEventListener("of:navigate", (event) => {
+  document.querySelectorAll(".of-sheet-backdrop").forEach((sheet) => sheet.remove());
+  activeTab = event.detail.tab;
+  render();
+});
+window.addEventListener("of:onboarded", async (event) => {
+  if (!event.detail?.signedIn) return;
+  await enterAppFromSession();
+  if (event.detail?.scan) openCreate("tryon");
+});
+
 function showAuthScreen(message = "") {
+  releaseScreens();
+  stopMessaging();
   app.innerHTML = renderAuthScreen();
   setAuthMode("login");
   if (message) showAuthErrors(message);

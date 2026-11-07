@@ -927,11 +927,16 @@ export function openTryOnFrom(fit) {
   });
 }
 
+function startDilemma() {
+  closeCreate();
+  hooks.onDilemma?.();
+}
+
 // --- wiring ----------------------------------------------------------------------------
 
 // Call after the sheet's markup is in the page.
-export function initCreate({ onPosted, toast }) {
-  hooks = { onPosted, toast };
+export function initCreate({ onPosted, onDilemma, toast }) {
+  hooks = { onPosted, onDilemma, toast };
   state = freshState();
 
   $("#create-close").onclick = closeCreate;
@@ -947,7 +952,7 @@ export function initCreate({ onPosted, toast }) {
     if (back) show(back);
   };
   document.querySelectorAll("[data-create-go]").forEach((button) => {
-    button.onclick = () => show(button.dataset.createGo);
+    button.onclick = () => (button.dataset.createGo === "dilemma" ? startDilemma() : show(button.dataset.createGo));
   });
 
   $("#compose-form").onsubmit = submitFit;

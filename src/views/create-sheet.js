@@ -37,6 +37,13 @@ function menuScreen() {
         "See an outfit on you before you buy it. Then post it if you love it.",
         "bg-surface-container-low text-on-surface border border-surface-container-high"
       )}
+      ${option(
+        "dilemma",
+        "forum",
+        "Post a Fit Dilemma",
+        "Send a photo and a question to a chat. Your circle votes wear it or rethink.",
+        "bg-surface-container-low text-on-surface border border-surface-container-high"
+      )}
     </section>`;
 }
 

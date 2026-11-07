@@ -1,197 +1,90 @@
 // A posted fit, as returned by the API (see "The fit object" in the backend's docs/API.md).
 
-import { categoryOf, mediaUrl } from "../fits.js";
-import { escapeHtml, initialOf, timeAgo } from "../format.js";
+import { mediaUrl } from "../fits.js";
+import { escapeHtml, timeAgo } from "../format.js";
 
 export const aiBadge = (extra = "") => `
   <span class="ai-badge ${extra}" title="Generated with AI virtual try-on">
     <span class="material-symbols-outlined text-[13px]">auto_awesome</span>AI try-on
   </span>`;
 
-function avatar(user, size = "w-10 h-10") {
-  if (user.avatar) {
-    return `<img class="${size} rounded-full object-cover" alt="" src="${escapeHtml(mediaUrl(user.avatar.url))}" />`;
+const LIVE_MS = 24 * 60 * 60 * 1000;
+const PHOTO_ZOOM = "background-size:260%;";
+const CHECK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+
+export const isLiveFit = (fit) => Date.now() - new Date(fit.created_at).getTime() < LIVE_MS;
+
+function imageFor(item, fit, index) {
+  return fit.images.find((i) => i.id === item.pin?.image_id) || fit.images[index] || fit.images[0];
+}
+
+function sharesPhoto(item, fit) {
+  return Boolean(item.pin) && fit.items.filter((other) => other.pin?.image_id === item.pin.image_id).length > 1;
+}
+
+function crop(item, fit, index) {
+  const image = imageFor(item, fit, index);
+  if (!image) return "";
+  const zoom = sharesPhoto(item, fit);
+  const position = zoom ? `${Math.round(item.pin.x * 100)}% ${Math.round(item.pin.y * 100)}%` : "center";
+  return `background-image:url('${escapeHtml(mediaUrl(image.url))}');background-position:${position};${zoom ? PHOTO_ZOOM : ""}`;
+}
+
+function header(fit) {
+  const live = isLiveFit(fit) ? `<span class="of-live-tag"><span></span>LIVE</span>` : "";
+  return `<div class="of-fitcard-head">
+    ${live}
+    <span class="of-fitcard-handle">@${escapeHtml(fit.author.username)}</span>
+    <span class="of-fitcard-time">${timeAgo(fit.created_at)}</span>
+  </div>`;
+}
+
+function piece(item, fit, i) {
+  return `<figure class="of-piece">
+    <span class="of-piece-photo" style="${crop(item, fit, i)}" role="img" aria-label="${escapeHtml(item.name)}"></span>
+    <figcaption><span class="of-piece-name">${escapeHtml(item.name)}</span><span class="of-piece-color">${escapeHtml(item.color || item.brand || "")}</span></figcaption>
+  </figure>`;
+}
+
+function media(fit) {
+  if (fit.items.length > 1) {
+    return `<div class="of-pieces">${fit.items.slice(0, 3).map((item, i) => piece(item, fit, i)).join("")}</div>`;
   }
-  return `<div class="${size} rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md font-bold">${escapeHtml(initialOf(user))}</div>`;
+  const [image] = fit.images;
+  if (!image) return "";
+  return `<div class="of-photo fit-slide"><img src="${escapeHtml(mediaUrl(image.url))}" alt="" loading="lazy" />${image.generated ? aiBadge("absolute top-3 left-3") : ""}</div>`;
 }
 
-// Feed frames follow Instagram: the cover photo's shape, kept between portrait 4:5 and
-// landscape 1.91:1, shared by every photo in the post. Unlike Instagram nothing is cropped
-// (a fit photo cut at the ankles loses the shoes): a photo that doesn't match the frame is
-// shown whole, over a blurred copy of itself.
-const MIN_RATIO = 4 / 5;
-const MAX_RATIO = 1.91;
-
-function frameRatio(image) {
-  if (!image?.width || !image?.height) return MIN_RATIO;
-  return Math.min(MAX_RATIO, Math.max(MIN_RATIO, image.width / image.height));
-}
-
-function photos(fit) {
-  const ratio = frameRatio(fit.images[0]);
-  const slides = fit.images
-    .map(
-      (image, i) => `
-        <div class="fit-slide" style="aspect-ratio:${ratio}">
-          <img class="fit-slide-backdrop" alt="" aria-hidden="true" loading="lazy" src="${escapeHtml(mediaUrl(image.url))}" />
-          <img class="relative w-full h-full object-contain" alt="Photo ${i + 1} of ${fit.images.length}" loading="lazy"
-            src="${escapeHtml(mediaUrl(image.url))}" />
-          ${image.generated ? aiBadge("absolute top-3 left-3") : ""}
-        </div>`
-    )
-    .join("");
-  if (fit.images.length < 2) return `<div class="fit-slides" data-slides>${slides}</div>`;
-
-  // Several photos: swipe, or use the arrows (src/feed.js moves the slides and keeps the arrows,
-  // counter, and dots in step).
-  const arrow = (step, icon, label, hidden) => `
-    <button type="button" class="fit-arrow ${step < 0 ? "left-2" : "right-2"}" data-slide-step="${step}"
-      aria-label="${label}" ${hidden ? "hidden" : ""}>
-      <span class="material-symbols-outlined text-[20px]">${icon}</span>
-    </button>`;
-  const dots = `<div class="flex justify-center gap-1.5 pt-space-xs">${fit.images
-    .map((_, i) => `<span class="fit-dot ${i === 0 ? "active" : ""}"></span>`)
-    .join("")}</div>`;
-  return `
-    <div class="relative">
-      <div class="fit-slides" data-slides>${slides}</div>
-      ${arrow(-1, "chevron_left", "Previous photo", true)}
-      ${arrow(1, "chevron_right", "Next photo", false)}
-      <span class="fit-count" data-slide-count>1/${fit.images.length}</span>
-    </div>${dots}`;
-}
-
-// mine: your own fit, whose pieces without a shop link offer to add one.
-function items(fit, mine) {
-  if (!fit.items.length) return "";
-  return `
-    <div class="flex flex-col gap-space-2xs">
-      <span class="font-micro-mono text-micro-mono uppercase tracking-widest text-on-surface-variant font-semibold">In this fit</span>
-      <div class="flex gap-space-xs overflow-x-auto -mx-space-md px-space-md pb-1">
-        ${fit.items
-          .map((item, i) => {
-            const category = categoryOf(item.category);
-            const detail = [item.brand, item.color, item.material].filter(Boolean).map(escapeHtml).join(" · ");
-            const tag = item.url ? "a" : "div";
-            const link = item.url ? `href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer"` : "";
-            return `
-              <${tag} ${link} class="flex-shrink-0 flex items-center gap-space-xs bg-surface-container-low rounded-DEFAULT pl-1.5 pr-space-sm py-1.5 max-w-[220px]">
-                <span class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant flex-shrink-0">
-                  <span class="material-symbols-outlined text-[17px]">${category.icon}</span>
-                </span>
-                <span class="flex flex-col min-w-0">
-                  <span class="font-label-md text-label-md text-on-surface font-semibold truncate first-letter:uppercase">${escapeHtml(item.name)}</span>
-                  <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">${detail || category.label}</span>
-                </span>
-                ${item.url ? `<span class="flex-shrink-0 inline-flex items-center gap-0.5 pl-1 font-label-sm text-label-sm text-secondary font-semibold">Shop<span class="material-symbols-outlined text-[14px]">north_east</span></span>` : ""}
-                ${!item.url && mine ? `<button type="button" class="flex-shrink-0 inline-flex items-center gap-0.5 pl-1 font-label-sm text-label-sm text-secondary font-semibold hover:underline" data-fit-add-link="${i}" aria-label="Add a shop link for ${escapeHtml(item.name)}"><span class="material-symbols-outlined text-[14px]">add_link</span>Add link</button>` : ""}
-              </${tag}>`;
-          })
-          .join("")}
-      </div>
-    </div>`;
-}
-
-function tags(fit) {
-  const all = [...(fit.occasion_tags || []), ...(fit.style_tags || [])];
-  if (!all.length) return "";
-  return `
-    <div class="flex flex-wrap gap-1.5">
-      ${[...new Set(all)]
-        .map((tag) => `<span class="px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">#${escapeHtml(tag)}</span>`)
-        .join("")}
-    </div>`;
-}
-
-// The "wear it or rethink" verdict. `votes` is everyone's tally; `my_vote` is this
-// viewer's choice, or null. Reuses the .poll-* styles already in styles.css.
-function poll(fit) {
+function tally(fit) {
   const votes = fit.votes || { wear: 0, rethink: 0 };
   const total = votes.wear + votes.rethink;
-  const share = total ? Math.round((votes.wear / total) * 100) : 0;
-  const mine = fit.my_vote || null;
-  const option = (choice, label) => `
-    <button type="button" class="btn-poll-option${mine === choice ? " voted" : ""}"
-      data-fit-vote="${choice}" aria-pressed="${mine === choice}">${label}</button>`;
-  const summary = total
-    ? `<strong>${share}%</strong> say wear it · ${total} vote${total === 1 ? "" : "s"}`
-    : "No votes yet";
-  return `
-    <div class="poll-component" data-fit-poll>
-      <div class="flex items-center justify-between">
-        <span class="poll-question-label">Would you wear it?</span>
-        ${mine ? `<button type="button" class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface underline" data-fit-vote="">Clear</button>` : ""}
-      </div>
-      <div class="poll-buttons-row">
-        ${option("wear", "Wear it")}
-        ${option("rethink", "Rethink")}
-      </div>
-      <div class="poll-results-bar-wrap">
-        <div class="poll-progress-track">
-          <div class="poll-progress-fill" style="width:${share}%"></div>
-        </div>
-        <span class="poll-results-stat">${summary}</span>
-      </div>
-    </div>`;
+  return { total, pct: total ? Math.round((votes.wear * 100) / total) : 0 };
 }
 
-const filled = (on) => `font-variation-settings:'FILL' ${on ? 1 : 0}`;
+function voteSummary(fit) {
+  const { total, pct } = tally(fit);
+  if (!total) return `<div class="of-fit-votes"><div class="of-fit-votes-row"><span class="of-fit-votes-empty">Be the first to vote</span></div></div>`;
+  return `<div class="of-fit-votes">
+    <div class="of-fit-votes-row"><span class="of-fit-votes-pct">${pct}% say wear it</span><span class="of-fit-votes-count">${total} vote${total === 1 ? "" : "s"}</span></div>
+    <div class="of-fit-track"><div class="of-fit-fill" style="width:${pct}%"></div></div>
+  </div>`;
+}
 
-export function renderFitCard(fit, { mine = false } = {}) {
-  const name = fit.author.full_name || fit.author.username;
-  return `
-    <article class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col gap-space-sm" data-fit-id="${fit.id}">
-      <header class="flex items-center justify-between">
-        <div class="flex items-center gap-space-xs min-w-0">
-          ${avatar(fit.author)}
-          <div class="flex flex-col min-w-0">
-            <span class="font-title-ui text-label-md text-on-surface font-semibold truncate">${escapeHtml(name)}</span>
-            <span class="font-label-sm text-label-sm text-on-surface-variant font-normal truncate">@${escapeHtml(fit.author.username)} · ${timeAgo(fit.created_at)}</span>
-          </div>
-        </div>
-        ${
-          mine
-            ? `<div class="flex items-center flex-shrink-0">
-                 <button class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" data-fit-edit aria-label="Edit fit">
-                   <span class="material-symbols-outlined text-[20px]">edit</span>
-                 </button>
-                 <button class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" data-fit-delete aria-label="Delete fit">
-                   <span class="material-symbols-outlined text-[20px]">delete</span>
-                 </button>
-               </div>`
-            : ""
-        }
-      </header>
+function voteButtons(fit) {
+  const mine = fit.my_vote;
+  const state = (choice) => `${mine === choice ? "on" : ""} ${mine && mine !== choice ? "dim" : ""}`;
+  return `<div class="of-fit-buttons">
+    <button type="button" class="of-fit-wear ${state("wear")}" data-fit-vote="wear" aria-pressed="${mine === "wear"}">${CHECK}Wear it</button>
+    <button type="button" class="of-fit-rethink ${state("rethink")}" data-fit-vote="rethink" aria-pressed="${mine === "rethink"}">Rethink</button>
+  </div>`;
+}
 
-      <div class="-mx-space-md">${photos(fit)}</div>
-
-      ${fit.caption ? `<p class="font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-line">${escapeHtml(fit.caption)}</p>` : ""}
-
-      ${tags(fit)}
-
-      ${items(fit, mine)}
-
-      ${poll(fit)}
-
-      <footer class="flex items-center justify-between pt-space-2xs border-t border-surface-container-high">
-        <div class="flex items-center gap-4">
-          <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors pt-space-xs" data-fit-like aria-pressed="${fit.liked_by_me}">
-            <span class="material-symbols-outlined text-[22px] ${fit.liked_by_me ? "text-error" : ""}" style="${filled(fit.liked_by_me)}">favorite</span>
-            <span class="font-label-md text-label-md font-semibold" data-like-count>${fit.like_count}</span>
-          </button>
-          <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors pt-space-xs" data-fit-comments aria-label="Styling takes">
-            <span class="material-symbols-outlined text-[21px]">chat_bubble_outline</span>
-            <span class="font-label-md text-label-md font-semibold" data-comment-count>${fit.comment_count ?? 0}</span>
-          </button>
-        </div>
-        <button type="button" class="flex items-center gap-1 text-secondary bg-secondary-fixed/50 hover:bg-secondary hover:text-on-secondary px-3 py-1 mt-space-xs rounded-full transition-all font-label-md text-label-md font-semibold active:scale-95 shadow-sm" data-ai-mode data-fit-id="${fit.id}">
-          <span class="material-symbols-outlined text-[17px]">auto_awesome</span>
-          <span>Try this look</span>
-        </button>
-        <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors pt-space-xs" data-fit-save aria-pressed="${fit.saved_by_me}">
-          <span class="material-symbols-outlined text-[22px]" style="${filled(fit.saved_by_me)}">bookmark</span>
-          <span class="font-label-md text-label-md">${fit.saved_by_me ? "Saved" : "Save"}</span>
-        </button>
-      </footer>
-    </article>`;
+export function renderFitCard(fit) {
+  return `<article class="of-fitcard" data-fit-id="${fit.id}">
+    ${header(fit)}
+    ${fit.caption ? `<h2 class="of-card-title">${escapeHtml(fit.caption)}</h2>` : ""}
+    ${media(fit)}
+    ${voteSummary(fit)}
+    ${voteButtons(fit)}
+  </article>`;
 }

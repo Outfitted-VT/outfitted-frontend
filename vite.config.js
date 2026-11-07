@@ -15,7 +15,7 @@ export default defineConfig({
     // Forward API and uploaded-media requests to the backend (outfitted-backend), so in the
     // browser the API is same-origin: no CORS setup, and the refresh cookie just works.
     proxy: {
-      "/api": "http://127.0.0.1:8000",
+      "/api": { target: "http://127.0.0.1:8000", ws: true },
       "/media": "http://127.0.0.1:8000",
     },
   },
