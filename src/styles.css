@@ -4,7 +4,45 @@
    ========================================================================== */
 
 :root {
-  --bg: #fcfbf7;
+  --of-ink: #121212;
+  --of-blue: #2340E0;
+  --of-lime: #DCEF63;
+  --of-bg: #F6F5EF;
+  --of-card: #FFFFFF;
+  --of-fill: #EFEDE6;
+  --of-line: #E2E0D7;
+  --of-line-strong: #D6D4CB;
+  --of-muted: #5E5E58;
+  --of-muted-on-dark: #C9C8C1;
+  --of-nav-idle: #A3A39B;
+  --of-blue-tint: #DCE1FF;
+  --of-blue-soft: #AEB8F5;
+  --of-button-soft: #E8E6DE;
+  --of-danger: #C4321F;
+  --of-stage: #E9E6DE;
+  --of-radio: #BDBBB2;
+  --of-lime-edge: #B8C94A;
+  --of-scrim: rgba(18, 18, 18, 0.55);
+  --of-glass: rgba(255, 255, 255, 0.94);
+  --of-ring: rgba(220, 239, 99, 0.45);
+  --of-shadow-tabbar: 0 12px 30px rgba(18, 18, 18, 0.28);
+  --of-shadow-card: 0 1px 0 #E2E0D7;
+  --of-safe-top: env(safe-area-inset-top, 0px);
+  --of-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --of-font-display: 'Playfair Display', Georgia, serif;
+  --of-font-ui: 'Inter Tight', 'Inter', -apple-system, system-ui, sans-serif;
+
+  --of-r-card: 22px;
+  --of-r-card-lg: 28px;
+  --of-r-media: 32px;
+  --of-r-pill: 999px;
+
+  --of-gutter: 20px;
+  --of-tabbar-space: calc(72px + 22px + env(safe-area-inset-bottom, 0px));
+  --of-shadow-float: 0 18px 40px -12px rgba(18, 18, 18, 0.45);
+
+  --bg: var(--of-bg);
   --surface: #ffffff;
   --surface-sunk: #f4f3ed;
   --ink: #101512;
@@ -31,9 +69,9 @@
   --brand-lime: #d7f84a;
 
   /* Typography */
-  --font-serif: "Instrument Serif", Georgia, "Times New Roman", serif;
-  --font-display: "Inter Tight", "Inter", system-ui, sans-serif;
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-serif: var(--of-font-display);
+  --font-display: var(--of-font-ui);
+  --font-sans: var(--of-font-ui);
 
   /* Radii & Shadows */
   --radius-xs: 6px;

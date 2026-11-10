@@ -37,7 +37,7 @@ img[class*="w-"] {
   border-radius: 999px;
   background: rgb(17 17 17 / 0.72);
   color: #fff;
-  font: 600 11px/14px "Inter", system-ui, sans-serif;
+  font: 600 11px/14px var(--of-font-ui);
   letter-spacing: 0.02em;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -113,7 +113,7 @@ img[class*="w-"] {
   border-radius: 999px;
   background: rgb(17 17 17 / 0.6);
   color: #fff;
-  font: 600 12px/18px "Inter", system-ui, sans-serif;
+  font: 600 12px/18px var(--of-font-ui);
   pointer-events: none;
 }
 
@@ -208,7 +208,7 @@ img[class*="w-"] {
   align-items: baseline;
   width: max-content;
   color: rgb(var(--tw-on-surface));
-  font-family: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--of-font-ui);
   font-weight: 900;
   font-size: 1.15rem;
   line-height: 1;
@@ -292,7 +292,7 @@ img[class*="w-"] {
   padding: 32px 16px;
   text-align: center;
   color: rgb(var(--tw-on-surface-variant));
-  font: 400 14px/20px "Inter", system-ui, sans-serif;
+  font: 400 14px/20px var(--of-font-ui);
 }
 .wardrobe-saved-empty[hidden] {
   display: none;
@@ -378,7 +378,7 @@ img[class*="w-"] {
   border-radius: 999px;
   background: rgb(var(--tw-surface-container-low));
   color: rgb(var(--tw-on-surface));
-  font: 500 13px/18px "Inter", system-ui, sans-serif;
+  font: 500 13px/18px var(--of-font-ui);
   transition: background 0.15s, color 0.15s;
 }
 .comments-filter:hover {
@@ -447,7 +447,7 @@ img[class*="w-"] {
   font: 700 9px/14px "JetBrains Mono", ui-monospace, monospace;
 }
 .comments-text {
-  font: 400 14px/21px "Inter", system-ui, sans-serif;
+  font: 400 14px/21px var(--of-font-ui);
   color: rgb(var(--tw-on-surface));
   overflow-wrap: anywhere;
   white-space: pre-line;
@@ -469,7 +469,7 @@ img[class*="w-"] {
   border-radius: 10px;
   background: rgb(var(--tw-surface-container));
   color: rgb(var(--tw-on-surface-variant));
-  font: 400 12px/17px "Inter", system-ui, sans-serif;
+  font: 400 12px/17px var(--of-font-ui);
 }
 .comments-empty {
   flex: 1;
@@ -480,7 +480,7 @@ img[class*="w-"] {
   gap: 4px;
   padding: 24px 0;
   text-align: center;
-  font: 400 13px/18px "Inter", system-ui, sans-serif;
+  font: 400 13px/18px var(--of-font-ui);
   color: rgb(var(--tw-on-surface-variant));
 }
 .comments-retry {
@@ -501,7 +501,7 @@ img[class*="w-"] {
   border-radius: 999px;
   background: rgb(var(--tw-surface-container));
   color: rgb(var(--tw-on-surface));
-  font: 500 12px/16px "Inter", system-ui, sans-serif;
+  font: 500 12px/16px var(--of-font-ui);
 }
 .comments-suggestion:hover {
   background: rgb(var(--tw-surface-container-high));
@@ -532,7 +532,7 @@ img[class*="w-"] {
   border: 0;
   background: transparent;
   color: rgb(var(--tw-on-surface));
-  font: 400 14px/20px "Inter", system-ui, sans-serif;
+  font: 400 14px/20px var(--of-font-ui);
   outline: none;
 }
 .comments-form input::placeholder {
