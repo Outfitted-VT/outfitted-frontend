@@ -38,6 +38,8 @@ export const ofIcons = {
   comment: (s = 22) => stroke('<path d="M20.5 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.4-4.4A8.5 8.5 0 1 1 20.5 11.5z"/>', s, 1.9),
   bookmark: (s = 22) => stroke('<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>', s, 1.9),
   pencil: (s = 18) => stroke('<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/>', s),
+  flame: (s = 16) => stroke('<path d="M12 21c-3.9 0-7-2.8-7-6.6 0-2.6 1.4-4.6 3-6.1.3 1.8 1.2 3 2.5 3.6C10 8.6 11.4 5.4 14 3c.4 3 2 4.6 3.4 6.3 1 1.3 1.6 2.9 1.6 4.8 0 4-3.1 6.9-7 6.9z"/>', s, 2),
+  snowflake: (s = 16) => stroke('<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5M3.7 10.4L7.1 9.6 6.2 6.2M17.8 17.8l-.9-3.4 3.4-.8M3.7 13.6l3.4.8-.9 3.4M17.8 6.2l-.9 3.4 3.4.8"/>', s, 1.8),
   cloudOff: (s = 24) => stroke('<path d="M3 3l18 18M8.5 6.2A6 6 0 0 1 17.7 10H18a4 4 0 0 1 2.6 7M17 19H7a5 5 0 0 1-1.6-9.7"/>', s, 1.9),
 };
 
@@ -92,7 +94,38 @@ export function iconButton({ icon, label, dot = false, cls = "", data = {} }) {
 
 const BELL = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`;
 
-export function appHeader({ user, notificationsUnread = true }) {
+export function storyAvatar(user, { size = 64, ring = "none", cls = "" } = {}) {
+  return `<span class="of-story-ring ${ring} ${cls}">${avatar(user, { size })}</span>`;
+}
+
+export function streakChip(streak) {
+  if (!streak?.current) return "";
+  const pending = !streak.active_today;
+  const label = `${streak.current}-day streak${pending ? ", post today to keep it" : ""}`;
+  return `<button type="button" class="of-streak-chip ${pending ? "pending" : ""}" id="btn-streak" aria-label="${escapeHtml(label)}">${ofIcons.flame(16)}<span>${streak.current}</span></button>`;
+}
+
+export function paintStreakChip(streak) {
+  document.querySelectorAll(".of-header-actions").forEach((actions) => {
+    actions.querySelector("#btn-streak")?.remove();
+    actions.insertAdjacentHTML("afterbegin", streakChip(streak));
+  });
+}
+
+export function setBellDot(on) {
+  document.querySelectorAll("#btn-notifications").forEach((bell) => {
+    const dot = bell.querySelector(".of-bell-dot");
+    if (on && !dot) bell.insertAdjacentHTML("beforeend", '<span class="of-bell-dot"></span>');
+    if (!on && dot) dot.remove();
+    bell.setAttribute("aria-label", on ? "Activity, unread" : "Activity");
+  });
+}
+
+export function switchInput({ on = false, label, data = {} }) {
+  return `<input type="checkbox" role="switch" class="of-switch" aria-label="${escapeHtml(label)}" ${on ? "checked" : ""} ${attrs(data)} />`;
+}
+
+export function appHeader({ user, notificationsUnread = false, streak = null }) {
   return `<header class="of-header">
     <div class="of-header-in">
       <a class="of-header-brand" href="#feed" data-nav="feed" aria-label="Outfitted home">
@@ -100,7 +133,8 @@ export function appHeader({ user, notificationsUnread = true }) {
         <span class="of-wordmark">Outfitted</span>
       </a>
       <div class="of-header-actions">
-        <button type="button" class="of-bell" id="btn-notifications" aria-label="Notifications">${BELL}${notificationsUnread ? '<span class="of-bell-dot"></span>' : ""}</button>
+        ${streakChip(streak)}
+        <button type="button" class="of-bell" id="btn-notifications" aria-label="${notificationsUnread ? "Activity, unread" : "Activity"}">${BELL}${notificationsUnread ? '<span class="of-bell-dot"></span>' : ""}</button>
         <button type="button" class="of-header-avatar" id="account-badge" aria-label="Account menu">${avatar(user, { size: 44 })}</button>
       </div>
     </div>

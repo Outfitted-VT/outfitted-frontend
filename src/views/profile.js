@@ -4,6 +4,8 @@ import { escapeHtml } from "../format.js";
 import { avatar, iconButton, ofIcons, pillCta, stateBlock } from "./components.js";
 import { fitTally, isLive } from "./feed-view.js";
 import { openSheet } from "./sheet.js";
+import { currentStreak, subscribe as onStreakChange } from "../streak-store.js";
+import { mountNotificationSettings, renderNotificationSettings } from "./notification-settings.js";
 
 const TABS = [
   ["history", "Fit history"],
@@ -195,10 +197,20 @@ const SHARE = ICON('<path d="M12 15V4M7 8l5-5 5 5"/><path d="M5 13v6a1 1 0 0 0 1
 const SETTINGS = ICON('<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>');
 const FRIENDS = ICON('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 15c1.6.7 2.6 2.4 3 5"/>', "currentColor", 2);
 
+function streakCount() {
+  return currentStreak()?.current ?? currentUser.currentStreak ?? 0;
+}
+
+function streakSticker(count) {
+  return `<span class="of-sticker white of-sticker-streak" data-streak-sticker>${ofIcons.flame(14)}${count}-day streak</span>`;
+}
+
 function stickers() {
-  const styles = (currentUser.styleTags || []).slice(0, 2).map((tag, i) =>
+  const streak = streakCount();
+  const styles = (currentUser.styleTags || []).slice(0, streak ? 1 : 2).map((tag, i) =>
     `<span class="of-sticker ${STICKER_STYLES[i]}">${escapeHtml(STYLE_LABELS[tag] || capitalize(tag))}</span>`
   );
+  if (streak) styles.push(streakSticker(streak));
   const fit = [currentUser.topSize && `Size ${currentUser.topSize}`, capitalize(currentUser.fitPreference)].filter(Boolean).join(" · ");
   if (fit) styles.push(`<span class="of-sticker ink">${escapeHtml(fit)}</span>`);
   return styles.length ? `<div class="of-stickers">${styles.join("")}</div>` : "";
@@ -220,9 +232,17 @@ function hero() {
 const stat = (id, label, cls = "") => `<div class="of-stat ${cls}"><span class="of-stat-num" id="${id}">–</span><span class="of-stat-label">${label}</span></div>`;
 
 function stats() {
-  return `<div class="of-stats" aria-label="Profile stats">
-    ${stat("profile-fit-count", "FITS")}${stat("profile-following-count", "CIRCLE", "blue")}${stat("profile-follower-count", "FOLLOWERS")}
+  return `<div class="of-stats four" aria-label="Profile stats">
+    ${stat("profile-fit-count", "FITS")}${stat("profile-following-count", "CIRCLE", "blue")}${stat("profile-follower-count", "FOLLOWERS")}${stat("profile-longest-streak", "LONGEST", "streak")}
   </div>`;
+}
+
+function paintStreak(root, streak) {
+  const longest = root.querySelector("#profile-longest-streak");
+  if (longest && streak) longest.textContent = streak.longest;
+  const stickersRow = root.querySelector(".of-stickers");
+  const fresh = stickers();
+  if (stickersRow && fresh) stickersRow.outerHTML = fresh;
 }
 
 function tabs() {
@@ -233,6 +253,7 @@ function tabs() {
 
 export function renderProfileView() {
   if (profile.screen === "settings") return renderSettingsView();
+  if (profile.screen === "notifications") return renderNotificationSettings();
   return `<section class="of-screen of-profile" id="of-profile">
     <header class="of-profile-head">
       <span class="of-handle">@${escapeHtml((currentUser.username || "").toUpperCase())}</span>
@@ -263,6 +284,9 @@ export function renderSettingsView() {
       ${iconButton({ icon: ofIcons.back(20), label: "Back to profile", data: { "data-profile-back": true } })}
       <h1 class="of-display of-settings-title">Settings</h1>
     </header>
+    <section class="of-settings-card" aria-label="Preferences">
+      <button type="button" class="of-menu-row of-nav-row" data-profile-go="notifications"><span class="of-menu-icon">${ofIcons.bell(18)}</span>Notifications${ofIcons.arrow(16)}</button>
+    </section>
     <section class="of-settings-card" role="radiogroup" aria-label="Appearance">
       <p class="of-meta-label">Appearance</p>
       ${THEMES.map(themeOption).join("")}
@@ -438,10 +462,15 @@ export function mountProfile({ toast, rerender }) {
     if (event.target.closest("[data-grid-more]")) return loadMore(root);
     if (event.target.closest("[data-profile-settings]")) return go("settings", rerender);
     if (event.target.closest("[data-profile-back]")) return go("main", rerender);
+    const goTo = event.target.closest("[data-profile-go]");
+    if (goTo) return go(goTo.dataset.profileGo, rerender);
     if (event.target.closest("[data-profile-share]")) return share(toast);
     if (event.target.closest("[data-profile-edit]")) editProfile({ toast, rerender });
   });
+  if (profile.screen === "notifications") return mountNotificationSettings({ toast });
   if (profile.screen !== "main") return;
   profile.pages.clear();
   setTab(root, profile.tab);
+  paintStreak(root, currentStreak());
+  const release = onStreakChange((streak) => (root.isConnected ? paintStreak(root, streak) : release()));
 }

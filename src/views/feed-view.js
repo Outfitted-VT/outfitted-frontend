@@ -4,6 +4,7 @@ import { escapeHtml, timeAgo } from "../format.js";
 import { currentWeather, todayLabel, weatherText } from "../weather.js";
 import { avatar } from "./components.js";
 import { isLiveFit } from "./fit-card.js";
+import { renderStoriesRow } from "./stories-row.js";
 
 const EYE_PREVIEW = 2;
 
@@ -60,6 +61,7 @@ export function renderFeedScreen() {
       <div class="of-feed-context" id="feed-context">${contextLine(null)}</div>
       <h1 class="of-feed-title">What to wear <span>today?</span></h1>
     </div>
+    ${renderStoriesRow()}
     <div class="of-feed-chips" role="group" aria-label="Filter fits">${chips}</div>
     <div class="of-feed-list" id="feed-fits"></div>
     <div class="of-feed-status" id="feed-status"></div>

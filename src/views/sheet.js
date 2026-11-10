@@ -1,7 +1,7 @@
 import { escapeHtml } from "../format.js";
 import { iconButton, ofIcons } from "./components.js";
 
-export function openSheet({ title, body, label = title }) {
+export function openSheet({ title, body, label = title, onClose = () => {} }) {
   const backdrop = document.createElement("div");
   backdrop.className = "of-sheet-backdrop";
   backdrop.innerHTML = `<div class="of-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(label)}">
@@ -14,6 +14,7 @@ export function openSheet({ title, body, label = title }) {
     document.removeEventListener("keydown", onKey);
     backdrop.remove();
     previousFocus?.focus?.();
+    onClose();
   };
   const onKey = (event) => event.key === "Escape" && close();
   backdrop.addEventListener("click", (event) => {

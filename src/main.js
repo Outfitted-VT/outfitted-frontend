@@ -21,11 +21,25 @@ import { renderCreateSheet } from "./views/create-sheet.js";
 import { openDormCloset } from "./dorm-closet.js";
 import { openStyleFriend } from "./style-friend.js";
 import { applyTheme, getThemePreference, isDarkTheme, onThemeChange, setThemePreference } from "./theme.js";
-import { appHeader, setChatUnreadDot, tabBar } from "./views/components.js";
+import { appHeader, paintStreakChip, setBellDot, setChatUnreadDot, tabBar } from "./views/components.js";
 import { mountFeed, renderFeedScreen } from "./views/feed-view.js";
 import { mountRoom, renderRoomScreen } from "./views/room.js";
 import { initKeyboard } from "./keyboard.js";
-import { startMessaging, stopMessaging, subscribe as onMessagesChange, unreadTotal } from "./messages-store.js";
+import { startConversation, startMessaging, stopMessaging, subscribe as onMessagesChange, unreadTotal } from "./messages-store.js";
+import * as stories from "./stories-store.js";
+import * as notifications from "./notifications-store.js";
+import { clearStreak, currentStreak, loadStreak, subscribe as onStreakChange, syncTimezone } from "./streak-store.js";
+import { mountStoriesRow } from "./views/stories-row.js";
+import { openStoryViewer, openViewersSheet } from "./views/story-viewer.js";
+import { openStoryComposer } from "./views/story-composer.js";
+import { celebrateIfMilestone, openStreakSheet } from "./views/streak-sheet.js";
+import { isStreakType, mountActivity, renderActivity, unmountActivity } from "./views/activity.js";
+import { showNotificationToast } from "./views/notification-toast.js";
+import { openFitSheet } from "./views/fit-sheet.js";
+import { openPersonSheet } from "./views/person-sheet.js";
+import { openPushPrompt } from "./views/push-prompt.js";
+import { initPush, shouldAskForPush, syncAppBadge, unregisterPush } from "./push.js";
+import { parseLink } from "./deep-link.js";
 import { mountInbox, renderInbox } from "./views/messages-inbox.js";
 import { mountThread, renderThread, unmountThread } from "./views/messages-thread.js";
 import { openNewChatSheet } from "./views/new-chat-sheet.js";
@@ -254,30 +268,6 @@ function renderCommentsDialog() {
   `;
 }
 
-/* ---------- Notifications Dropdown Drawer ---------- */
-function renderNotificationsDrawer() {
-  return `
-    <dialog class="sheet" id="notifications-dialog" aria-labelledby="notif-heading">
-      <div class="sheet-card">
-        <button type="button" class="icon-button close" id="close-notif-dialog" aria-label="Close">${icons.close}</button>
-        <div>
-          <p class="eyebrow" style="color:var(--brand-coral);">ACTIVITY</p>
-          <h2 id="notif-heading">Notifications</h2>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <div style="display:flex; gap:12px; padding:10px; background:var(--surface-sunk); border-radius:8px;">
-            <span class="avatar-chip micro" style="background:#275038; color:#fff;">MC</span>
-            <div>
-              <p style="font-size:0.85rem;"><strong>Maya Chen</strong> voted <strong>Wear it</strong> on your live fit.</p>
-              <small style="color:var(--muted);">15m ago</small>
-            </div>
-          </div>
-        </div>
-      </div>
-    </dialog>
-  `;
-}
-
 /* ---------- Account Profile & Studio Drawer ---------- */
 function renderAccountDrawer() {
   return `
@@ -433,9 +423,11 @@ function renderAuthDialog() {
 }
 
 /* ---------- Main Render Loop ---------- */
-const OWN_HEADER_TABS = new Set(["room", "profile"]);
+const OWN_HEADER_TABS = new Set(["room", "profile", "activity"]);
 let chatConversationId = null;
 let releaseInbox = () => {};
+let releaseStoriesRow = () => {};
+let returnTab = "feed";
 
 function renderChatScreen() {
   return chatConversationId ? renderThread(chatConversationId) : renderInbox();
@@ -457,12 +449,14 @@ function connectChat() {
         activeTab = "room";
         render();
       },
+      onOpenStory: openUserStories,
     });
     return;
   }
   releaseInbox = mountInbox({
     onOpen: openChat,
     onCompose: () => openNewChatSheet({ onStarted: openChat }),
+    onOpenStory: openUserStories,
     toast: showToast,
   });
 }
@@ -470,14 +464,119 @@ function connectChat() {
 function releaseScreens() {
   releaseInbox();
   releaseInbox = () => {};
+  releaseStoriesRow();
+  releaseStoriesRow = () => {};
   unmountThread();
+  unmountActivity();
+}
+
+/* ---------- Stories, streaks, activity ---------- */
+
+function openStories(userId, storyId = null) {
+  const groups = stories.storyGroups();
+  const index = groups.findIndex((group) => group.user.id === userId);
+  if (index >= 0) return openStoryViewer({ groups, groupIndex: index, storyId, toast: showToast, onOpenFit: openFit });
+  return openUserStories(userId, storyId);
+}
+
+async function openUserStories(userId, storyId = null) {
+  try {
+    const group = await stories.loadUserGroup(userId);
+    const found = !storyId || group.stories.some((story) => story.id === storyId);
+    if (!group.stories.length || !found) return showToast("Story expired");
+    openStoryViewer({ groups: [group], storyId, toast: showToast, onOpenFit: openFit });
+  } catch {
+    showToast("Story expired");
+  }
+}
+
+function openFit(fitId) {
+  openFitSheet(fitId, { toast: showToast });
+}
+
+function openStoryComposerSheet() {
+  openStoryComposer({
+    toast: showToast,
+    onPosted: () => {
+      stories.loadStoryFeed();
+      refreshStreak();
+    },
+  });
+}
+
+async function refreshStreak() {
+  celebrateIfMilestone(await loadStreak());
+}
+
+function openStreak() {
+  openStreakSheet({ onPost: () => openCreate("compose") });
+}
+
+function openActivity() {
+  if (activeTab !== "activity") returnTab = activeTab;
+  activeTab = "activity";
+  render();
+  window.scrollTo({ top: 0 });
+}
+
+async function messageUser(userId) {
+  try {
+    openChat(await startConversation({ memberIds: [userId] }));
+  } catch (err) {
+    showToast(err.message || "Couldn't start the chat.");
+  }
+}
+
+function openStoryById(storyId) {
+  const found = stories.findStory(storyId);
+  if (found) return openStories(found.group.user.id, storyId);
+  showToast("Story expired");
+}
+
+function openLink(link) {
+  document.querySelectorAll(".of-sheet-backdrop, .of-sv").forEach((overlay) => overlay.remove());
+  const target = parseLink(link);
+  if (!target) return;
+  if (target.type === "conversation") return openChat(target.id);
+  if (target.type === "fit") return openFit(target.id);
+  if (target.type === "streak") return openStreak();
+  if (target.type === "story-viewers") return openViewersSheet(target.id);
+  if (target.type === "story") return openStoryById(target.id);
+  if (target.type === "user" && target.username === currentUser.username) {
+    activeTab = "profile";
+    resetProfile();
+    return render();
+  }
+  if (target.type === "user") openPersonSheet(target.username, { toast: showToast, onMessage: messageUser });
+}
+
+function openNotification(item) {
+  notifications.markRead([item.id]);
+  openLink(item.link);
+}
+
+function isShowing(item) {
+  if (activeTab === "activity") return true;
+  const target = parseLink(item.link);
+  return target?.type === "conversation" && activeTab === "messages" && chatConversationId === target.id;
+}
+
+function onNotificationChange(change) {
+  if (change.type === "count") {
+    setBellDot(change.unread > 0);
+    syncAppBadge(change.unread + unreadTotal());
+  }
+  if (change.type !== "new") return;
+  const item = change.notification;
+  if (isStreakType(item.type)) loadStreak().then((streak) => item.type === "streak_milestone" && celebrateIfMilestone(streak, item.data?.count));
+  if (!isShowing(item)) showNotificationToast(item, openNotification);
 }
 
 function render() {
   releaseScreens();
   app.innerHTML = `
     <div id="app-shell" class="${sidebarCollapsed ? "sidebar-collapsed" : ""}">
-      ${OWN_HEADER_TABS.has(activeTab) ? "" : appHeader({ user: currentUser })}
+      ${OWN_HEADER_TABS.has(activeTab) ? "" : appHeader({ user: currentUser, notificationsUnread: notifications.unreadCount() > 0, streak: currentStreak() })}
 
       <div class="app-body-container">
         ${renderSidebar()}
@@ -498,6 +597,8 @@ function render() {
               ? renderStylistAssistant()
               : activeTab === "profile"
               ? renderProfileView()
+              : activeTab === "activity"
+              ? renderActivity()
               : renderFeedScreen()
           }
         </main>
@@ -515,7 +616,6 @@ function render() {
       ${renderBrandingDialog()}
       ${renderCommentsDrawer()}
       ${renderCommentsDialog()}
-      ${renderNotificationsDrawer()}
       ${renderAccountDrawer()}
       ${renderAuthDialog()}
     </div>
@@ -796,6 +896,7 @@ function bindEvents() {
   if (btnSignOut) {
     btnSignOut.onclick = async () => {
       accountSheet?.close();
+      await unregisterPush();
       await logOut().catch(() => {});
       // The app requires signing in (see start()), so go back to the sign-in screen.
       showAuthScreen();
@@ -804,17 +905,7 @@ function bindEvents() {
   }
 
   const btnNotifs = document.querySelector("#btn-notifications");
-  if (btnNotifs) {
-    btnNotifs.onclick = () => {
-      const dialog = document.querySelector("#notifications-dialog");
-      if (dialog) dialog.showModal();
-    };
-  }
-
-  const closeNotif = document.querySelector("#close-notif-dialog");
-  if (closeNotif) {
-    closeNotif.onclick = () => document.querySelector("#notifications-dialog")?.close();
-  }
+  if (btnNotifs) btnNotifs.onclick = openActivity;
 
   const btnAskGroup = document.querySelector("#btn-ask-group-cart");
   if (btnAskGroup) btnAskGroup.onclick = postFitDilemma;
@@ -1147,6 +1238,19 @@ document.addEventListener("click", async (e) => {
 // Called after every render(): mounts whichever backend-connected parts are on screen.
 function connectBackend() {
   loadYourPeople();
+  releaseStoriesRow = mountStoriesRow({ onOpen: openStories, onCompose: openStoryComposerSheet });
+  mountActivity({
+    onBack: () => {
+      activeTab = returnTab;
+      render();
+    },
+    onOpen: openNotification,
+    onFindFriends: () => {
+      activeTab = "friends";
+      render();
+    },
+    toast: showToast,
+  });
   mountFeed({
     listOptions: {
       empty: emptyState("No fits yet", "Be the first: post what you're wearing, or try an outfit on."),
@@ -1174,9 +1278,11 @@ function connectBackend() {
   initCreate({
     toast: showToast,
     onDilemma: postFitDilemma,
+    onStory: openStoryComposerSheet,
     onPosted: () => {
       activeTab = "feed";
       render();
+      refreshStreak();
     },
   });
 
@@ -1184,6 +1290,7 @@ function connectBackend() {
   if (btnSignout) {
     btnSignout.onclick = async () => {
       btnSignout.disabled = true;
+      await unregisterPush();
       await logOut();
       showAuthScreen();
       showToast("Signed out");
@@ -1392,15 +1499,56 @@ function enterApp(user) {
     fitPreference: user.fit_preference || null,
     topSize: user.top_size || null,
     bottomSize: user.bottom_size || null,
+    currentStreak: user.current_streak || 0,
   });
   activeTab = "feed";
   chatConversationId = null;
   resetProfile();
   render();
   startMessaging();
+  if (user.id) startSignedIn();
 }
 
-onMessagesChange(() => setChatUnreadDot(unreadTotal() > 0));
+function startSignedIn() {
+  stories.startStories();
+  notifications.startNotifications();
+  syncTimezone().then(refreshStreak);
+  initPush({ onOpenLink: openLink }).catch(() => {});
+}
+
+function stopSignedIn() {
+  stories.stopStories();
+  notifications.stopNotifications();
+  clearStreak();
+}
+
+function onAppResume() {
+  if (document.visibilityState !== "visible" || !currentUser.id || !document.querySelector(".of-tabbar")) return;
+  syncTimezone().then(refreshStreak);
+  notifications.loadUnreadCount();
+  stories.loadStoryFeed();
+}
+
+function onboardingDone() {
+  try {
+    return localStorage.getItem("of.onboarded") === "1" && !document.querySelector(".ob:not(.ob-out)");
+  } catch {
+    return false;
+  }
+}
+
+async function askForPushLater() {
+  if (onboardingDone() && (await shouldAskForPush().catch(() => false))) openPushPrompt();
+}
+
+onMessagesChange((change) => {
+  setChatUnreadDot(unreadTotal() > 0);
+  if (change.type === "delivered" && change.message.kind === "fit_check") refreshStreak();
+});
+notifications.subscribe(onNotificationChange);
+onStreakChange(paintStreakChip);
+document.addEventListener("visibilitychange", onAppResume);
+document.addEventListener("click", (event) => event.target.closest("#btn-streak") && openStreak());
 initKeyboard();
 
 async function enterAppFromSession() {
@@ -1418,11 +1566,13 @@ window.addEventListener("of:onboarded", async (event) => {
   if (!event.detail?.signedIn) return;
   await enterAppFromSession();
   if (event.detail?.scan) openCreate("tryon");
+  else askForPushLater();
 });
 
 function showAuthScreen(message = "") {
   releaseScreens();
   stopMessaging();
+  stopSignedIn();
   app.innerHTML = renderAuthScreen();
   setAuthMode("login");
   if (message) showAuthErrors(message);
@@ -1488,7 +1638,10 @@ async function start() {
   try {
     if (await restoreSession()) {
       const user = await getMe();
-      if (user) return enterApp(user);
+      if (user) {
+        enterApp(user);
+        return askForPushLater();
+      }
     }
     showAuthScreen();
   } catch (err) {

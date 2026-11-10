@@ -1,7 +1,8 @@
 import { confirmDialog } from "../confirm-dialog.js";
 import { escapeHtml } from "../format.js";
 import * as messages from "../messages-store.js";
-import { avatar, displayName, iconButton, ofIcons, stateBlock } from "./components.js";
+import * as stories from "../stories-store.js";
+import { avatar, displayName, iconButton, ofIcons, stateBlock, storyAvatar } from "./components.js";
 
 const SWIPE_OPEN = -176;
 const SWIPE_THRESHOLD = -60;
@@ -44,6 +45,7 @@ function previewText(message) {
   if (message.deleted_at) return "Message deleted";
   if (message.kind === "image") return "Photo";
   if (message.kind === "product") return `Suggested: ${message.payload?.product?.name || "a piece"}`;
+  if (message.kind === "story_reply") return `Story reply: ${message.body || ""}`;
   return message.body || "";
 }
 
@@ -110,10 +112,21 @@ function listHtml() {
   return `<ul class="of-rows">${shown.map(row).join("")}</ul>`;
 }
 
+function storyState(person) {
+  const group = stories.storyGroups().find((g) => g.user.id === person.user.id);
+  if (group) return group.has_unseen ? "unseen" : "seen";
+  if (person.has_unseen_story) return "unseen";
+  return person.has_active_story ? "seen" : "none";
+}
+
 function circleItem(person) {
-  const ring = person.has_live_fit_check ? "live" : "";
-  return `<button type="button" class="of-circle-person ${ring}" data-circle-user="${person.user.id}" aria-label="Message ${escapeHtml(displayName(person.user))}">
-    ${avatar(person.user, { size: 64 })}${person.online ? '<i class="of-online lg" aria-hidden="true"></i>' : ""}
+  const state = storyState(person);
+  const idle = person.has_live_fit_check ? "unseen" : "seen";
+  const ring = state === "none" ? idle : state;
+  const action = state === "none" ? "data-circle-user" : "data-circle-story";
+  const label = state === "none" ? `Message ${displayName(person.user)}` : `${displayName(person.user)}'s story`;
+  return `<button type="button" class="of-circle-person" ${action}="${person.user.id}" aria-label="${escapeHtml(label)}">
+    ${storyAvatar(person.user, { size: 64, ring })}${person.online ? '<i class="of-online lg" aria-hidden="true"></i>' : ""}
   </button>`;
 }
 
@@ -221,9 +234,11 @@ async function openDirect(userId, onOpen, toast) {
   }
 }
 
-function handleClick(event, root, { onOpen, onCompose, toast }) {
+function handleClick(event, root, { onOpen, onCompose, onOpenStory, toast }) {
   if (event.target.closest("[data-inbox-compose]")) return onCompose();
   if (event.target.closest("[data-inbox-retry]")) return messages.loadConversations();
+  const story = event.target.closest("[data-circle-story]");
+  if (story) return onOpenStory(story.dataset.circleStory);
   const person = event.target.closest("[data-circle-user]");
   if (person) return openDirect(person.dataset.circleUser, onOpen, toast);
   const wrap = event.target.closest("[data-row]");
@@ -235,10 +250,10 @@ function handleClick(event, root, { onOpen, onCompose, toast }) {
   onOpen(open.dataset.openConversation);
 }
 
-export function mountInbox({ onOpen, onCompose, toast }) {
+export function mountInbox({ onOpen, onCompose, onOpenStory, toast }) {
   const root = document.querySelector("#of-inbox");
   if (!root) return () => {};
-  root.addEventListener("click", (event) => handleClick(event, root, { onOpen, onCompose, toast }));
+  root.addEventListener("click", (event) => handleClick(event, root, { onOpen, onCompose, onOpenStory, toast }));
   root.querySelector("[data-inbox-search]").addEventListener("input", (event) => {
     inbox.query = event.target.value;
     paintList(root);
@@ -254,10 +269,19 @@ export function mountInbox({ onOpen, onCompose, toast }) {
   attachSwipe(root);
   messages.loadCircle();
   messages.loadConversations();
-  return messages.subscribe((change) => {
+  const releaseStories = stories.subscribe((change) => {
+    if (!root.isConnected) return;
+    if (change.type === "feed") messages.loadCircle();
+    if (change.type === "seen") paintCircle(root);
+  });
+  const releaseMessages = messages.subscribe((change) => {
     if (!root.isConnected) return;
     if (change.type === "circle") paintCircle(root);
     if (change.type === "presence") paintCircle(root);
     if (["conversations", "presence"].includes(change.type)) paintList(root);
   });
+  return () => {
+    releaseStories();
+    releaseMessages();
+  };
 }

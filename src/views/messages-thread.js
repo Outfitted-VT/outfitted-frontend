@@ -118,8 +118,19 @@ function productBubble(message) {
   </div>`;
 }
 
+function storyQuote(message, mine) {
+  const payload = message.payload || {};
+  const owner = mine ? firstName(messages.otherMembers(messages.getConversation(message.conversation_id))[0]?.user) : "";
+  const label = mine ? `You replied to ${owner ? `${owner}'s` : "their"} story` : "Replied to your story";
+  const thumb = payload.image
+    ? `<button type="button" class="of-story-quote" data-open-story="${escapeHtml(payload.story_id)}" aria-label="Open story"><img src="${escapeHtml(imageUrl(payload.image))}" alt="" /></button>`
+    : `<span class="of-story-quote gone">Story unavailable</span>`;
+  return `<span class="of-story-quote-label">${escapeHtml(label)}</span>${thumb}`;
+}
+
 function content(message, mine) {
   if (message.deleted_at) return `<div class="of-bubble deleted">Message deleted</div>`;
+  if (message.kind === "story_reply") return `${storyQuote(message, mine)}<div class="of-bubble">${escapeHtml(message.body || "")}</div>`;
   if (message.kind === "fit_check") return fitCheckCard(message, mine);
   if (message.kind === "product") return productBubble(message);
   if (message.kind === "image") {
@@ -348,8 +359,16 @@ function attachHold(body, toast) {
   });
 }
 
+function storyOwnerId(messageId) {
+  const message = messages.thread(view.id).messages.find((m) => m.id === messageId);
+  if (!message || !isMine(message)) return messages.myId();
+  return messages.otherMembers(messages.getConversation(view.id))[0]?.user.id;
+}
+
 function handleClick(event, options) {
-  const { toast, onBack, onOpenRoom } = options;
+  const { toast, onBack, onOpenRoom, onOpenStory } = options;
+  const story = event.target.closest("[data-open-story]");
+  if (story) return onOpenStory(storyOwnerId(story.closest("[data-msg]").dataset.msg), story.dataset.openStory);
   if (event.target.closest("[data-thread-back]")) return onBack();
   if (event.target.closest("[data-thread-info]")) {
     const conversation = messages.getConversation(view.id);
@@ -396,12 +415,12 @@ export function unmountThread() {
   messages.closeThread();
 }
 
-export function mountThread({ id, toast, onBack, onOpenRoom }) {
+export function mountThread({ id, toast, onBack, onOpenRoom, onOpenStory }) {
   const root = $("#of-thread");
   if (!root) return;
   unmountThread();
   view.id = id;
-  const options = { toast, onBack, onOpenRoom };
+  const options = { toast, onBack, onOpenRoom, onOpenStory };
   root.addEventListener("click", (event) => handleClick(event, options));
   bindComposer();
   attachHold($("#thread-body"), toast);

@@ -127,6 +127,10 @@ export async function updateFit(fitId, { caption, items, occasionTags, styleTags
   return parse(await apiFetch(`/fits/${fitId}`, json("PATCH", body)));
 }
 
+export async function getFit(fitId) {
+  return parse(await apiFetch(`/fits/${encodeURIComponent(fitId)}`));
+}
+
 export async function deleteFit(fitId) {
   return parse(await apiFetch(`/fits/${fitId}`, { method: "DELETE" }));
 }

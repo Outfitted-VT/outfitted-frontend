@@ -932,11 +932,18 @@ function startDilemma() {
   hooks.onDilemma?.();
 }
 
+function startStory() {
+  closeCreate();
+  hooks.onStory?.();
+}
+
+const MENU_ACTIONS = { dilemma: startDilemma, story: startStory };
+
 // --- wiring ----------------------------------------------------------------------------
 
 // Call after the sheet's markup is in the page.
-export function initCreate({ onPosted, onDilemma, toast }) {
-  hooks = { onPosted, onDilemma, toast };
+export function initCreate({ onPosted, onDilemma, onStory, toast }) {
+  hooks = { onPosted, onDilemma, onStory, toast };
   state = freshState();
 
   $("#create-close").onclick = closeCreate;
@@ -952,7 +959,7 @@ export function initCreate({ onPosted, onDilemma, toast }) {
     if (back) show(back);
   };
   document.querySelectorAll("[data-create-go]").forEach((button) => {
-    button.onclick = () => (button.dataset.createGo === "dilemma" ? startDilemma() : show(button.dataset.createGo));
+    button.onclick = () => (MENU_ACTIONS[button.dataset.createGo] || show)(button.dataset.createGo);
   });
 
   $("#compose-form").onsubmit = submitFit;

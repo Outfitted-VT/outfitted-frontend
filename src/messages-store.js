@@ -255,6 +255,7 @@ async function deliver(local) {
     const saved = await api.sendMessage(local.conversation_id, requestBody(draft, local.client_id));
     mergeMessages(thread(local.conversation_id), [saved]);
     bumpConversation(saved);
+    notify({ type: "delivered", message: saved });
   } catch (err) {
     local.status = "failed";
     local.error = err.message;

@@ -38,6 +38,13 @@ function menuScreen() {
         "bg-surface-container-low text-on-surface border border-surface-container-high"
       )}
       ${option(
+        "story",
+        "auto_stories",
+        "Post a story",
+        "Share a photo with your circle for 24 hours.",
+        "bg-surface-container-low text-on-surface border border-surface-container-high"
+      )}
+      ${option(
         "dilemma",
         "forum",
         "Post a Fit Dilemma",
