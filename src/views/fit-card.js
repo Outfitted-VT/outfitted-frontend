@@ -2,6 +2,7 @@
 
 import { mediaUrl } from "../fits.js";
 import { escapeHtml, timeAgo } from "../format.js";
+import { icons } from "../icons.js";
 
 export const aiBadge = (extra = "") => `
   <span class="ai-badge ${extra}" title="Generated with AI virtual try-on">
@@ -79,12 +80,26 @@ function voteButtons(fit) {
   </div>`;
 }
 
-export function renderFitCard(fit) {
+// Comments and "Try this look". src/feed.js handles both clicks (data-fit-comments, data-ai-mode).
+function actions(fit) {
+  return `<div class="of-fit-actions">
+    <button type="button" class="of-fit-action" data-fit-comments aria-label="Comments">
+      ${icons.comment}<span data-comment-count>${fit.comment_count ?? 0}</span>
+    </button>
+    <button type="button" class="of-fit-try" data-ai-mode data-fit-id="${fit.id}">
+      ${icons.sparkleIcon}Try this look
+    </button>
+  </div>`;
+}
+
+// withActions: false where nothing handles the action buttons (e.g. the single-fit sheet).
+export function renderFitCard(fit, { withActions = true } = {}) {
   return `<article class="of-fitcard" data-fit-id="${fit.id}">
     ${header(fit)}
     ${fit.caption ? `<h2 class="of-card-title">${escapeHtml(fit.caption)}</h2>` : ""}
     ${media(fit)}
     ${voteSummary(fit)}
     ${voteButtons(fit)}
+    ${withActions ? actions(fit) : ""}
   </article>`;
 }
