@@ -3,7 +3,7 @@
 import { confirmDialog } from "./confirm-dialog.js";
 import { currentUser } from "./data.js";
 import { deleteFit, listFits, setLiked, setSaved, setVote } from "./fits.js";
-import { renderFitCard } from "./views/fit-card.js";
+import { bindShopScroll, renderFitCard } from "./views/fit-card.js";
 import { ofIcons, stateBlock } from "./views/components.js";
 
 const errorState = stateBlock({
@@ -55,6 +55,7 @@ export function mountFitList({
   function card(fit) {
     const wrapper = document.createElement("div");
     wrapper.innerHTML = renderFitCard(fit, { mine: isMine(fit) }).trim();
+    bindShopScroll(wrapper.firstElementChild);
     return wrapper.firstElementChild;
   }
 
