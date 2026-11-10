@@ -157,7 +157,8 @@ body {
   position: sticky;
   top: 0;
   z-index: 40;
-  padding: var(--of-safe-top) 20px 0;
+  /* The safe area is 0 in browsers and on phones without a notch, so keep a gap on top of it. */
+  padding: calc(var(--of-safe-top) + 12px) 20px 0;
   background: var(--of-bg);
   color: var(--of-ink);
   font-family: var(--of-font-ui);
@@ -709,6 +710,9 @@ body {
 .of-fit-wear { background: var(--of-blue); color: var(--of-card); }
 .of-fit-rethink { background: var(--of-fill); color: var(--of-ink); }
 .of-fit-buttons .dim { opacity: 0.5; }
+.of-fit-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--of-line); }
+.of-fit-action { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 6px; border: 0; background: none; color: var(--of-muted); font-size: 14px; font-weight: 600; }
+.of-fit-try { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--of-line); border-radius: 18px; background: var(--of-card); color: var(--of-blue); font-size: 14px; font-weight: 700; }
 
 .of-feed-eye { display: flex; flex-direction: column; }
 .of-eye-head { margin-top: 2px; display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; font-weight: 700; letter-spacing: 1.6px; }
@@ -844,7 +848,7 @@ body {
   z-index: 50;
   display: flex;
   flex-direction: column;
-  padding: var(--of-safe-top) 16px calc(22px + 72px + 10px + var(--of-safe-bottom));
+  padding: calc(var(--of-safe-top) + 12px) 16px calc(22px + 72px + 10px + var(--of-safe-bottom));
   background: var(--of-bg);
   color: var(--of-ink);
   font-family: var(--of-font-ui);
@@ -939,7 +943,7 @@ body {
 .of-composer-field input::placeholder { color: var(--of-muted); }
 .of-composer-send { width: 48px; height: 48px; border-radius: 24px; border: 0; background: var(--of-ink); color: var(--of-lime); display: flex; align-items: center; justify-content: center; flex: none; }
 
-.of-room-head, .of-profile-head { position: sticky; top: 0; z-index: 40; margin: 0 -20px; padding: var(--of-safe-top) 20px 0; box-sizing: content-box; background: var(--of-bg); }
+.of-room-head, .of-profile-head { position: sticky; top: 0; z-index: 40; margin: 0 -20px; padding: calc(var(--of-safe-top) + 12px) 20px 0; box-sizing: content-box; background: var(--of-bg); }
 .of-room-tools { display: flex; align-items: center; gap: 8px; }
 .of-msg.mine .of-msg-meta, .of-msg.mine .of-msg-failed { align-self: flex-end; }
 
