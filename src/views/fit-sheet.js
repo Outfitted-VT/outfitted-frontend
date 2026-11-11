@@ -1,5 +1,5 @@
 import { getFit, setVote } from "../fits.js";
-import { renderFitCard } from "./fit-card.js";
+import { bindShopScroll, renderFitCard } from "./fit-card.js";
 import { openSheet } from "./sheet.js";
 
 function withVote(fit, choice) {
@@ -13,7 +13,10 @@ export async function openFitSheet(fitId, { toast }) {
   const { root } = openSheet({ title: "Fit", body: `<div class="of-sheet-body of-fit-sheet" data-fit-sheet><p class="of-muted">Loading…</p></div>` });
   const body = root.querySelector("[data-fit-sheet]");
   let fit = null;
-  const paint = () => (body.innerHTML = renderFitCard(fit, { withActions: false }));
+  const paint = () => {
+    body.innerHTML = renderFitCard(fit, { withActions: false });
+    bindShopScroll(body.querySelector(".of-fitcard"));
+  };
   try {
     fit = await getFit(fitId);
     paint();

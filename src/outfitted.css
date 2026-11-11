@@ -711,7 +711,25 @@ body {
 .of-fit-rethink { background: var(--of-fill); color: var(--of-ink); }
 .of-fit-buttons .dim { opacity: 0.5; }
 .of-fit-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--of-line); }
+.of-fit-action-group { display: flex; align-items: center; gap: 4px; }
 .of-fit-action { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 6px; border: 0; background: none; color: var(--of-muted); font-size: 14px; font-weight: 600; }
+.of-fit-action.liked { color: #e0344b; }
+.of-fit-action.saved { color: var(--of-ink); }
+.of-shop { display: flex; flex-direction: column; gap: 8px; }
+.of-shop-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--of-muted); }
+.of-shop-label svg { width: 14px; height: 14px; }
+.of-shop-scroll { position: relative; }
+.of-shop-arrow { position: absolute; top: 0; z-index: 1; width: 32px; height: 32px; padding: 0; border: 1px solid var(--of-line); border-radius: 16px; background: var(--of-card); color: var(--of-ink); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); display: flex; align-items: center; justify-content: center; }
+.of-shop-arrow[hidden] { display: none; }
+/* A halo of the card colour fades out the chip text the arrow sits on. */
+.of-shop-arrow.prev { left: -6px; box-shadow: 14px 0 12px 2px var(--of-card), 0 2px 8px rgba(0, 0, 0, 0.12); }
+.of-shop-arrow.next { right: -6px; box-shadow: -14px 0 12px 2px var(--of-card), 0 2px 8px rgba(0, 0, 0, 0.12); }
+.of-shop-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+.of-shop-chip { flex: none; display: flex; align-items: center; gap: 5px; max-width: 200px; height: 32px; padding: 0 12px; border: 1px solid var(--of-line); border-radius: 16px; background: var(--of-card); color: var(--of-ink); font-size: 13px; font-weight: 600; text-decoration: none; }
+.of-shop-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.of-shop-chip svg { flex: none; color: var(--of-blue); }
+.of-shop-chip.add { border-style: dashed; color: var(--of-muted); }
+.of-shop-chip.add svg { width: 14px; height: 14px; }
 .of-fit-try { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--of-line); border-radius: 18px; background: var(--of-card); color: var(--of-blue); font-size: 14px; font-weight: 700; }
 
 .of-feed-eye { display: flex; flex-direction: column; }
