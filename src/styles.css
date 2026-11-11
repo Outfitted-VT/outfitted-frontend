@@ -5,6 +5,11 @@
 
 :root {
   --of-ink: #121212;
+  /* Dark pieces (tab bar, ink buttons) and the text on them / on blue / on lime. They stay
+     dark, light and dark in both themes, while --of-ink (text) flips. */
+  --of-ink-surface: #121212;
+  --of-on-dark: #FFFFFF;
+  --of-on-lime: #121212;
   --of-blue: #2340E0;
   --of-lime: #DCEF63;
   --of-bg: #F6F5EF;
@@ -96,6 +101,31 @@
 
 /* Dark theme (data-theme="dark" on <html>, set by src/theme.js). */
 :root[data-theme="dark"] {
+  /* Redesign tokens (src/outfitted.css). */
+  --of-ink: #EEEDE6;
+  --of-ink-surface: #2A2B26;
+  --of-on-dark: #F6F5EF;
+  --of-blue: #5B73F2;
+  --of-bg: #0F100E;
+  --of-card: #1A1B18;
+  --of-fill: #24251F;
+  --of-line: #2E2F29;
+  --of-line-strong: #3B3C35;
+  --of-muted: #A3A39B;
+  --of-muted-on-dark: #C9C8C1;
+  --of-nav-idle: #8C8C84;
+  --of-blue-tint: #1E2650;
+  --of-blue-soft: #3D4C9E;
+  --of-button-soft: #2A2B26;
+  --of-danger: #F0705C;
+  --of-stage: #1E1F1B;
+  --of-radio: #5A5B53;
+  --of-scrim: rgba(0, 0, 0, 0.65);
+  --of-glass: rgba(26, 27, 24, 0.94);
+  --of-shadow-tabbar: 0 12px 30px rgba(0, 0, 0, 0.55);
+  --of-shadow-card: 0 1px 0 #2E2F29;
+  --of-shadow-float: 0 18px 40px -12px rgba(0, 0, 0, 0.7);
+
   --bg: #0f1210;
   --surface: #171b19;
   --surface-sunk: #1d2220;
