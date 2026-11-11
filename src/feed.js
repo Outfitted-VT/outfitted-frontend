@@ -3,7 +3,7 @@
 import { confirmDialog } from "./confirm-dialog.js";
 import { currentUser } from "./data.js";
 import { deleteFit, listFits, setLiked, setSaved, setVote } from "./fits.js";
-import { bindShopScroll, renderFitCard } from "./views/fit-card.js";
+import { bindShopScroll, renderFitCard, withVote } from "./views/fit-card.js";
 import { ofIcons, stateBlock } from "./views/components.js";
 
 const errorState = stateBlock({
@@ -123,17 +123,11 @@ export function mountFitList({
     }
   }
 
-  // Moving the bar before the request lands, so voting feels instant.
-  function withVote(fit, choice) {
-    const votes = { wear: 0, rethink: 0, ...(fit.votes || {}) };
-    if (fit.my_vote) votes[fit.my_vote] = Math.max(0, votes[fit.my_vote] - 1);
-    if (choice) votes[choice] += 1;
-    return { ...fit, votes, my_vote: choice };
-  }
-
-  // Tapping the option you already picked clears your vote.
+  // Tapping the answer you already picked clears your vote. The results move before the
+  // request lands, so voting feels instant.
   async function vote(fit, picked) {
-    const choice = picked && picked !== fit.my_vote ? picked : null;
+    if (!fit.poll) return;
+    const choice = picked === fit.poll.my_vote ? null : picked;
     const before = { ...fit };
     replaceCard(withVote(fit, choice));
     try {
@@ -178,7 +172,7 @@ export function mountFitList({
     const fit = article && fits.get(article.dataset.fitId);
     if (!fit) return;
     const voteButton = event.target.closest("[data-fit-vote]");
-    if (voteButton) vote(fit, voteButton.dataset.fitVote || null);
+    if (voteButton) vote(fit, Number(voteButton.dataset.fitVote));
     else if (event.target.closest("[data-fit-like]")) toggle(fit, "liked_by_me", setLiked);
     else if (event.target.closest("[data-fit-save]")) toggle(fit, "saved_by_me", setSaved);
     else if (event.target.closest("[data-fit-delete]")) remove(fit);

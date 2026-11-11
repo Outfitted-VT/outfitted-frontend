@@ -4,6 +4,7 @@
 import { currentUser } from "../data.js";
 import { addComment, deleteComment, getFollowing, listComments, mediaUrl } from "../fits.js";
 import { escapeHtml, initialOf, timeAgo } from "../format.js";
+import { pollLeader } from "./fit-card.js";
 
 // Quick replies above the input; tapping one fills the box so it can be edited before posting.
 const SUGGESTIONS = ["Proportions work", "Roll the sleeves", "Try white sneakers", "Add a statement bag"];
@@ -93,12 +94,12 @@ function renderTake(comment) {
     </article>`;
 }
 
-// The post being discussed: thumbnail, caption, author, and the real wear-it share.
+// The post being discussed: thumbnail, caption, author, and its poll's leading answer.
 function renderRecap(fit) {
   const image = fit.images?.[0];
-  const votes = fit.votes || { wear: 0, rethink: 0 };
-  const total = votes.wear + votes.rethink;
-  const verdict = total ? `${Math.round((votes.wear / total) * 100)}% Wear` : "No votes yet";
+  const leader = pollLeader(fit);
+  const total = leader?.total || 0;
+  const verdict = total ? `${leader.pct}% ${escapeHtml(leader.label)}` : leader ? "No votes yet" : "No poll";
   return `
     <div class="flex items-center gap-space-xs min-w-0">
       ${image ? `<img class="comments-recap-img" alt="" src="${escapeHtml(mediaUrl(image.url))}" />` : ""}

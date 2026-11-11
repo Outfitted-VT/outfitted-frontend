@@ -109,27 +109,73 @@ function media(fit) {
   return `<div class="of-photo fit-slide"><img src="${escapeHtml(mediaUrl(image.url))}" alt="" loading="lazy" />${image.generated ? aiBadge("absolute top-3 left-3") : ""}</div>`;
 }
 
-function tally(fit) {
-  const votes = fit.votes || { wear: 0, rethink: 0 };
-  const total = votes.wear + votes.rethink;
-  return { total, pct: total ? Math.round((votes.wear * 100) / total) : 0 };
+const share = (votes, total) => (total ? Math.round((votes * 100) / total) : 0);
+
+// The answer with the most votes (the first on a tie): { label, pct, total }, or null when the
+// fit has no poll. Used for one-line summaries (profile, comments).
+export function pollLeader(fit) {
+  const poll = fit.poll;
+  if (!poll) return null;
+  const top = poll.options.reduce((best, option) => (option.votes > best.votes ? option : best), poll.options[0]);
+  return { label: top.label, pct: share(top.votes, poll.total_votes), total: poll.total_votes };
 }
 
-function voteSummary(fit) {
-  const { total, pct } = tally(fit);
-  if (!total) return `<div class="of-fit-votes"><div class="of-fit-votes-row"><span class="of-fit-votes-empty">Be the first to vote</span></div></div>`;
+// The fit after the viewer picks answer `option` (or null to clear), before the server answers.
+export function withVote(fit, option) {
+  const poll = fit.poll;
+  if (!poll) return fit;
+  const options = poll.options.map((answer, i) => ({
+    ...answer,
+    votes: Math.max(0, answer.votes - (poll.my_vote === i ? 1 : 0)) + (option === i ? 1 : 0),
+  }));
+  const total = options.reduce((sum, answer) => sum + answer.votes, 0);
+  return { ...fit, poll: { ...poll, options, total_votes: total, my_vote: option, locked: total > 0 } };
+}
+
+const voteCount = (total) => (total ? `${total} vote${total === 1 ? "" : "s"}` : "Be the first to vote");
+
+// The poster's poll ("Would you wear it?" unless they picked their own). Two answers sit side by
+// side under a bar for the first one, like the classic Wear it / Rethink; three or four are rows
+// that fill with their share. data-fit-vote is the answer's index (src/feed.js, fit-sheet.js).
+function poll(fit) {
+  const p = fit.poll;
+  if (!p) return "";
+  const total = p.total_votes;
+  const mine = p.my_vote;
+  const question = `<span class="of-poll-q">${escapeHtml(p.question)}</span>`;
+  if (p.options.length === 2) {
+    const [first] = p.options;
+    const state = (i) => `${mine === i ? "on" : ""} ${mine !== null && mine !== i ? "dim" : ""}`;
+    const summary = total
+      ? `<span class="of-fit-votes-pct">${share(first.votes, total)}% ${escapeHtml(first.label)}</span><span class="of-fit-votes-count">${voteCount(total)}</span>`
+      : `<span class="of-fit-votes-empty">${voteCount(0)}</span>`;
+    return `<div class="of-fit-votes">
+      ${question}
+      <div class="of-fit-votes-row">${summary}</div>
+      ${total ? `<div class="of-fit-track"><div class="of-fit-fill" style="width:${share(first.votes, total)}%"></div></div>` : ""}
+    </div>
+    <div class="of-fit-buttons">
+      ${p.options
+        .map(
+          (answer, i) => `<button type="button" class="${i === 0 ? "of-fit-wear" : "of-fit-rethink"} ${state(i)}" data-fit-vote="${i}" aria-pressed="${mine === i}">${i === 0 ? CHECK : ""}<span class="of-poll-label">${escapeHtml(answer.label)}</span></button>`
+        )
+        .join("")}
+    </div>`;
+  }
+  const rows = p.options
+    .map((answer, i) => {
+      const pct = share(answer.votes, total);
+      return `<button type="button" class="of-poll-row ${mine === i ? "on" : ""}" data-fit-vote="${i}" aria-pressed="${mine === i}">
+        <span class="of-poll-fill" style="width:${total ? pct : 0}%"></span>
+        <span class="of-poll-label">${mine === i ? CHECK : ""}${escapeHtml(answer.label)}</span>
+        ${total ? `<span class="of-poll-pct">${pct}%</span>` : ""}
+      </button>`;
+    })
+    .join("");
   return `<div class="of-fit-votes">
-    <div class="of-fit-votes-row"><span class="of-fit-votes-pct">${pct}% say wear it</span><span class="of-fit-votes-count">${total} vote${total === 1 ? "" : "s"}</span></div>
-    <div class="of-fit-track"><div class="of-fit-fill" style="width:${pct}%"></div></div>
-  </div>`;
-}
-
-function voteButtons(fit) {
-  const mine = fit.my_vote;
-  const state = (choice) => `${mine === choice ? "on" : ""} ${mine && mine !== choice ? "dim" : ""}`;
-  return `<div class="of-fit-buttons">
-    <button type="button" class="of-fit-wear ${state("wear")}" data-fit-vote="wear" aria-pressed="${mine === "wear"}">${CHECK}Wear it</button>
-    <button type="button" class="of-fit-rethink ${state("rethink")}" data-fit-vote="rethink" aria-pressed="${mine === "rethink"}">Rethink</button>
+    ${question}
+    <div class="of-poll-rows">${rows}</div>
+    <span class="of-fit-votes-count">${voteCount(total)}</span>
   </div>`;
 }
 
@@ -223,8 +269,7 @@ export function renderFitCard(fit, { withActions = true, mine = false } = {}) {
     ${fit.caption ? `<h2 class="of-card-title">${escapeHtml(fit.caption)}</h2>` : ""}
     ${media(fit)}
     ${shopLinks(fit, withActions && mine)}
-    ${voteSummary(fit)}
-    ${voteButtons(fit)}
+    ${poll(fit)}
     ${withActions ? actions(fit) : ""}
   </article>`;
 }

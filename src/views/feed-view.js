@@ -20,10 +20,12 @@ const FILTERS = [
 
 const feed = { filter: "foryou", eye: [], showAllEye: false };
 
+// { total, pct }: the votes on the fit's poll and the first answer's share ("Wear it" on the
+// default poll). A fit without a poll has none.
 export function fitTally(fit) {
-  const votes = fit.votes || { wear: 0, rethink: 0 };
-  const total = votes.wear + votes.rethink;
-  return { total, pct: total ? Math.round((votes.wear * 100) / total) : 0 };
+  const total = fit.poll?.total_votes || 0;
+  const first = fit.poll?.options[0]?.votes || 0;
+  return { total, pct: total ? Math.round((first * 100) / total) : 0 };
 }
 
 function eyeCard(fit) {
@@ -31,7 +33,7 @@ function eyeCard(fit) {
     ${avatar(fit.author, { size: 44 })}
     <div class="of-eyecard-text">
       <span class="of-eyecard-who">${escapeHtml(fit.author.username)} <span>· ${timeAgo(fit.created_at)}</span></span>
-      <span class="of-eyecard-q">${escapeHtml(fit.caption || "Wear it or rethink?")}</span>
+      <span class="of-eyecard-q">${escapeHtml(fit.caption || fit.poll?.question || "What do you think?")}</span>
     </div>
   </button>`;
 }
@@ -84,7 +86,7 @@ function paintEye(root) {
 }
 
 function collectEye(root, fits) {
-  feed.eye = fits.slice(1).filter((fit) => !fit.my_vote && !isMine(fit));
+  feed.eye = fits.slice(1).filter((fit) => fit.poll && fit.poll.my_vote === null && !isMine(fit));
   paintEye(root);
 }
 

@@ -125,6 +125,22 @@ function composeScreen() {
       </div>
 
       <div class="flex flex-col gap-space-xs">
+        <div class="flex items-center justify-between">
+          ${label("Poll")}
+          <span class="font-label-sm text-label-sm text-on-surface-variant" id="compose-poll-note"></span>
+        </div>
+        <div class="flex gap-space-xs overflow-x-auto -mx-margin px-margin pb-1" id="compose-poll-presets"></div>
+        <div class="flex flex-col gap-space-xs" id="compose-poll-fields">
+          <input class="${input}" id="compose-poll-question" maxlength="100" placeholder="Ask your circle something" />
+          <div class="flex flex-col gap-space-xs" id="compose-poll-options"></div>
+          <button type="button" id="compose-poll-add"
+            class="h-10 rounded border border-dashed border-outline-variant text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-container-low transition-colors">
+            <span class="material-symbols-outlined text-[18px]">add</span>Add an answer
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-space-xs">
         ${label("Audience & Closet Privacy")}
         <div class="grid grid-cols-3 gap-space-2xs bg-surface-container-low p-1 rounded-full text-center" id="compose-privacy-tier">
           <button type="button" class="py-2 px-1 rounded-full font-label-sm text-label-sm font-semibold bg-primary text-on-primary transition-all active:scale-95 btn-tier-select" data-tier="public">

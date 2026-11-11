@@ -1,13 +1,6 @@
 import { getFit, setVote } from "../fits.js";
-import { bindShopScroll, renderFitCard } from "./fit-card.js";
+import { bindShopScroll, renderFitCard, withVote } from "./fit-card.js";
 import { openSheet } from "./sheet.js";
-
-function withVote(fit, choice) {
-  const votes = { wear: 0, rethink: 0, ...(fit.votes || {}) };
-  if (fit.my_vote) votes[fit.my_vote] = Math.max(0, votes[fit.my_vote] - 1);
-  if (choice) votes[choice] += 1;
-  return { ...fit, votes, my_vote: choice };
-}
 
 export async function openFitSheet(fitId, { toast }) {
   const { root } = openSheet({ title: "Fit", body: `<div class="of-sheet-body of-fit-sheet" data-fit-sheet><p class="of-muted">Loading…</p></div>` });
@@ -26,9 +19,9 @@ export async function openFitSheet(fitId, { toast }) {
   }
   body.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-fit-vote]");
-    if (!button) return;
-    const picked = button.dataset.fitVote;
-    const choice = picked !== fit.my_vote ? picked : null;
+    if (!button || !fit.poll) return;
+    const picked = Number(button.dataset.fitVote);
+    const choice = picked !== fit.poll.my_vote ? picked : null;
     const before = fit;
     fit = withVote(fit, choice);
     paint();
