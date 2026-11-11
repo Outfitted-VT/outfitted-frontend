@@ -62,7 +62,8 @@ function freshState() {
     tags: { occasion: [], style: [] },
     category: "top",
     editingItem: null, // index of the piece open in the editor, or null when adding
-    detect: { cover: null, run: 0, status: "idle", found: 0 },
+    // checked: the photos the last detection looked at (null before the first one).
+    detect: { checked: null, run: 0, status: "idle", found: 0 },
     // Posting a try-on result: { tryonId, imageId, categories }. tryonId is sent with the post
     // while that photo is in it. categories: the item categories tried on (a promise for an
     // entire fit), so detection on that photo keeps only those; null keeps everything.
@@ -257,45 +258,76 @@ function renderPhotos() {
       renderPhotos();
     };
   });
-  detectCover();
+  photosChanged();
 }
 
-// --- automatic piece detection on the cover photo ---
+// --- piece detection, when the user taps "Find pieces" ---
 
-// Suggestions are marked `auto` until the user edits them; a new cover replaces only those.
-async function detectCover() {
+const samePhotos = (a, b) => a.length === b.length && a.every((photo) => b.includes(photo));
+
+// After adding or removing photos: detection waits for "Find pieces", since more photos may
+// be on the way. A detection still running for other photos is dropped.
+function photosChanged() {
   if (state.editing) return; // keep the pieces the fit was posted with
   const d = state.detect;
-  const cover = state.photos[0] || null;
-  if (cover === d.cover) return;
-  d.cover = cover;
+  if (d.status === "running" && samePhotos(d.checked, state.photos)) return;
+  if (!state.photos.length) {
+    d.run++;
+    d.checked = null;
+    d.status = "idle";
+    dropSuggestions();
+  } else if (d.status === "running" || !d.checked || !samePhotos(d.checked, state.photos)) {
+    d.run++;
+    d.status = d.checked ? "changed" : "ready";
+  }
+  renderDetectStatus();
+}
+
+// Looks at every photo. The first photo's pieces are kept; a later photo adds only kinds of
+// piece not found yet (shoes only that one shows), so one outfit from two angles isn't listed
+// twice. Suggestions are marked `auto` until the user edits them; a new run replaces only those
+// and skips kinds of piece the user already has.
+async function findPieces() {
+  const d = state.detect;
+  const photos = [...state.photos];
+  if (!photos.length) return;
   const run = ++d.run;
   const stale = () => run !== d.run;
-
-  if (!cover) {
-    dropSuggestions();
-    d.status = "idle";
-    renderDetectStatus();
-    return;
-  }
+  d.checked = photos;
   d.status = "running";
   renderDetectStatus();
   try {
-    // Uploading the cover now also means posting won't upload it again.
-    if (!cover.image) cover.image = await uploadImage(cover.file);
+    // Uploading now also means posting won't upload them again.
+    await Promise.all(photos.map(async (photo) => (photo.image ||= await uploadImage(photo.file))));
     if (stale()) return;
-    const result = await detectPieces(cover.image.id);
+    const results = await Promise.all(photos.map((photo) => detectPieces(photo.image.id).catch(() => null)));
     if (stale()) return;
+    if (results.every((result) => !result)) throw new Error("Detection failed on every photo");
     // A pieces try-on: the photo also shows clothes the user didn't try on (their own), so
     // tag only what they tried. A directly uploaded photo keeps everything detected.
-    const tried = state.posting?.imageId === cover.image.id ? await state.posting.categories : null;
+    const tried = await state.posting?.categories;
     if (stale()) return;
-    const items = tried ? result.items.filter((item) => tried.includes(item.category)) : result.items;
-    d.onlyTried = Boolean(tried);
+    // Pieces the user added or edited stay, so a new run doesn't suggest another of those kinds.
+    const kept = state.items.filter((item) => !item.auto).map((item) => item.category);
+    const items = [];
+    let onlyTried = false;
+    results.forEach((result, i) => {
+      if (!result) return;
+      const triedHere = state.posting?.imageId === photos[i].image.id ? tried : null;
+      onlyTried ||= Boolean(triedHere);
+      const known = new Set([...kept, ...items.map((item) => item.category)]);
+      items.push(
+        ...result.items.filter((item) => !known.has(item.category) && (!triedHere || triedHere.includes(item.category)))
+      );
+    });
     dropSuggestions();
     state.items.push(...items.map((item) => ({ ...item, auto: true })));
-    addTags("occasion", result.occasion_tags, true);
-    addTags("style", result.style_tags, true);
+    results.forEach((result) => {
+      if (!result) return;
+      addTags("occasion", result.occasion_tags, true);
+      addTags("style", result.style_tags, true);
+    });
+    d.onlyTried = onlyTried;
     d.status = "done";
     d.found = items.length;
   } catch (err) {
@@ -325,18 +357,32 @@ function renderDetectStatus() {
     return;
   }
   const d = state.detect;
+  const count = state.photos.length;
+  const photos = `${count} photo${count === 1 ? "" : "s"}`;
+  // [icon, text, button label or null]
   const messages = {
-    idle: ["photo_camera", "Add a photo and we'll tag the pieces for you."],
-    running: ["progress_activity", "Finding the pieces…"],
+    idle: ["photo_camera", "Add all your photos, then we'll find the pieces in them.", null],
+    ready: ["photo_library", "Added all your photos?", count > 1 ? `Find pieces in ${photos}` : "Find pieces"],
+    changed: ["photo_library", "Your photos changed.", "Find pieces again"],
+    running: ["progress_activity", `Finding the pieces in ${photos}…`, null],
     done: d.found
-      ? ["auto_awesome", `Found ${d.found} piece${d.found === 1 ? "" : "s"}${d.onlyTried ? " you tried on" : ""}. Tap one to edit it.`]
-      : ["auto_awesome", `We couldn't spot ${d.onlyTried ? "the pieces you tried on" : "any pieces"}. Add them yourself.`],
-    failed: ["info", "Couldn't detect the pieces right now. Add them yourself."],
+      ? ["auto_awesome", `Found ${d.found} piece${d.found === 1 ? "" : "s"}${d.onlyTried ? " you tried on" : ""}. Tap one to edit it.`, null]
+      : ["auto_awesome", `We couldn't spot ${d.onlyTried ? "the pieces you tried on" : "any pieces"}. Add them yourself.`, null],
+    failed: ["info", "Couldn't detect the pieces right now.", "Try again"],
   };
-  const [icon, text] = messages[d.status];
+  const [icon, text, action] = messages[d.status];
   $("#compose-detect").innerHTML = `
     <span class="material-symbols-outlined text-[16px] ${d.status === "running" ? "animate-spin" : "text-secondary"}">${icon}</span>
-    <span>${text}</span>`;
+    <span>${text}</span>
+    ${
+      action
+        ? `<button type="button" id="compose-find" class="ml-auto flex-shrink-0 inline-flex items-center gap-1 h-8 px-3 rounded-full bg-primary text-on-primary font-label-md text-label-md font-semibold active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-[16px]">auto_awesome</span>${action}
+          </button>`
+        : ""
+    }`;
+  const find = $("#compose-find");
+  if (find) find.onclick = findPieces;
 }
 
 // --- pieces ---
@@ -883,6 +929,8 @@ function postTryOn() {
   state.items = [];
   state.tags = { occasion: [], style: [] };
   show("compose");
+  // The one photo is ready, so there's nothing to wait for.
+  findPieces();
 }
 
 // What an entire-fit try-on put on: the pieces in the outfit photo, which may be just a top
