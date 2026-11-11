@@ -47,7 +47,49 @@ function piece(item, fit, i) {
   </figure>`;
 }
 
+// The gallery frame takes the cover photo's shape, kept between portrait 4:5 and landscape
+// 1.91:1. Nothing is cropped: a photo that doesn't match is shown whole over a blurred copy.
+const MIN_RATIO = 4 / 5;
+const MAX_RATIO = 1.91;
+
+function frameRatio(image) {
+  if (!image?.width || !image?.height) return MIN_RATIO;
+  return Math.min(MAX_RATIO, Math.max(MIN_RATIO, image.width / image.height));
+}
+
+// A try-on post shows its photos whole rather than cut into pieces: the whole look is the point.
+// Several photos swipe, or use the arrows; src/feed.js keeps the arrows, counter and dots in step.
+function gallery(fit) {
+  const ratio = frameRatio(fit.images[0]);
+  const count = fit.images.length;
+  const slides = fit.images
+    .map(
+      (image, i) => `<div class="fit-slide" style="aspect-ratio:${ratio}">
+        <img class="fit-slide-backdrop" alt="" aria-hidden="true" loading="lazy" src="${escapeHtml(mediaUrl(image.url))}" />
+        <img class="of-gallery-photo" alt="Photo ${i + 1} of ${count}" loading="lazy" src="${escapeHtml(mediaUrl(image.url))}" />
+        ${image.generated ? aiBadge("absolute top-3 left-3") : ""}
+      </div>`
+    )
+    .join("");
+  if (count < 2) return `<div class="of-gallery"><div class="of-gallery-frame"><div class="fit-slides" data-slides>${slides}</div></div></div>`;
+  const arrow = (step, icon, label, hidden) => `
+    <button type="button" class="fit-arrow ${step < 0 ? "left-2" : "right-2"}" data-slide-step="${step}" aria-label="${label}" ${hidden ? "hidden" : ""}>
+      <span class="material-symbols-outlined text-[20px]">${icon}</span>
+    </button>`;
+  const dots = fit.images.map((_, i) => `<span class="fit-dot ${i === 0 ? "active" : ""}"></span>`).join("");
+  return `<div class="of-gallery">
+    <div class="of-gallery-frame">
+      <div class="fit-slides" data-slides>${slides}</div>
+      ${arrow(-1, "chevron_left", "Previous photo", true)}
+      ${arrow(1, "chevron_right", "Next photo", false)}
+      <span class="fit-count" data-slide-count>1/${count}</span>
+    </div>
+    <div class="of-gallery-dots">${dots}</div>
+  </div>`;
+}
+
 function media(fit) {
+  if (fit.images.some((image) => image.generated)) return gallery(fit);
   if (fit.items.length > 1) {
     return `<div class="of-pieces">${fit.items.slice(0, 3).map((item, i) => piece(item, fit, i)).join("")}</div>`;
   }
