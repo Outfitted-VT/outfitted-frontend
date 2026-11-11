@@ -88,6 +88,7 @@ export async function createFit({
   privacyTier = "public",
   allowFriendTryOn = true,
   tryonId = null, // posting a try-on: the try-on it came from, so others can try the look
+  poll, // { question, options } or null for no poll; left out, the backend uses "Would you wear it?"
 }) {
   return parse(
     await apiFetch(
@@ -101,6 +102,7 @@ export async function createFit({
         privacy_tier: privacyTier,
         allow_friend_try_on: allowFriendTryOn,
         tryon_id: tryonId,
+        ...(poll !== undefined && { poll }),
       })
     )
   );
@@ -114,7 +116,8 @@ export async function detectPieces(imageId) {
 
 // Edit your fit. Only the fields passed change; items and tags replace the whole list.
 // Photos can't be changed after posting.
-export async function updateFit(fitId, { caption, items, occasionTags, styleTags, privacyTier, allowFriendTryOn }) {
+// poll can only change until someone votes (fit.poll.locked).
+export async function updateFit(fitId, { caption, items, occasionTags, styleTags, privacyTier, allowFriendTryOn, poll }) {
   const body = {
     caption,
     items,
@@ -122,6 +125,7 @@ export async function updateFit(fitId, { caption, items, occasionTags, styleTags
     style_tags: styleTags,
     privacy_tier: privacyTier,
     allow_friend_try_on: allowFriendTryOn,
+    poll,
   };
   Object.keys(body).forEach((key) => body[key] === undefined && delete body[key]);
   return parse(await apiFetch(`/fits/${fitId}`, json("PATCH", body)));
@@ -149,13 +153,13 @@ export async function setSaved(fitId, saved) {
   return parse(await apiFetch(`/fits/${fitId}/save`, { method: saved ? "PUT" : "DELETE" }));
 }
 
-// Votes: "wear" or "rethink", or null to retract. One vote per person per fit, so voting
-// again replaces the previous choice. Unlike likes and saves these return the whole fit,
-// with everyone's tallies, so the result bar can be redrawn without a second request.
-export async function setVote(fitId, choice) {
+// Votes: the index of an answer in fit.poll.options, or null to retract. One vote per person
+// per fit, so voting again replaces the previous answer. Unlike likes and saves these return
+// the whole fit, with everyone's tallies, so the results can be redrawn without a second request.
+export async function setVote(fitId, option) {
   const path = `/fits/${fitId}/vote`;
   return parse(
-    await apiFetch(path, choice ? json("PUT", { choice }) : { method: "DELETE" })
+    await apiFetch(path, option === null ? { method: "DELETE" } : json("PUT", { option }))
   );
 }
 

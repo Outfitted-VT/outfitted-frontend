@@ -37,6 +37,21 @@ const SLOT_CATEGORIES = {
   accessory: ["bag", "accessory", "jewelry"],
 };
 
+// One-tap polls. Picking one fills in the question and answers, which stay editable.
+const POLL_PRESETS = [
+  { id: "wear", label: "Wear it?", question: "Would you wear it?", options: ["Wear it", "Rethink"] },
+  { id: "rate", label: "Rate it", question: "Rate this fit", options: ["🔥 Fire", "👍 Solid", "😐 Meh"] },
+  { id: "keep", label: "Keep or return?", question: "Keep it or return it?", options: ["Keep", "Return"] },
+  { id: "where", label: "Where to?", question: "Where should I wear this?", options: ["Class", "Date night", "Going out"] },
+  { id: "custom", label: "Custom", question: "", options: ["", ""] },
+  { id: "none", label: "No poll" },
+];
+const MAX_POLL_OPTIONS = 4;
+const pollFromPreset = (id) => {
+  const preset = POLL_PRESETS.find((p) => p.id === id);
+  return { preset: id, question: preset.question || "", options: [...(preset.options || [])] };
+};
+
 const SCREENS = {
   menu: { kicker: "Create", title: "What are we doing?" },
   compose: { kicker: "New fit", title: "Post a fit", back: "menu" },
@@ -68,6 +83,9 @@ function freshState() {
     // while that photo is in it. categories: the item categories tried on (a promise for an
     // entire fit), so detection on that photo keeps only those; null keeps everything.
     posting: null,
+    // The poll to post: preset (POLL_PRESETS id) plus the question and answers as typed.
+    // locked: editing a fit someone has voted on, so the poll can't change.
+    poll: { ...pollFromPreset("wear"), locked: false },
     // Editing a posted fit: { fit, onSaved }. Its photos can't change, so there's no detection.
     editing: null,
     // mode is "outfit" (one photo of a whole fit) or "pieces" (a photo per slot in `pieces`).
@@ -209,6 +227,7 @@ function renderCompose() {
   renderPhotos();
   renderItems();
   renderTags();
+  renderPoll();
   renderDetectStatus();
   updateCaptionCount();
   showError("#compose-error");
@@ -578,6 +597,77 @@ function updateCaptionCount() {
   $("#compose-caption-count").textContent = `${$("#compose-caption").value.length} / 2200`;
 }
 
+// --- poll ---
+
+function renderPoll() {
+  const poll = state.poll;
+  const none = poll.preset === "none";
+  $("#compose-poll-presets").innerHTML = POLL_PRESETS.map(
+    (preset) => `<button type="button" data-poll-preset="${preset.id}" aria-pressed="${poll.preset === preset.id}" ${poll.locked ? "disabled" : ""}
+        class="item-chip flex-shrink-0 h-9 px-3 rounded-full flex items-center font-label-md text-label-md transition-colors disabled:opacity-50">${escapeHtml(preset.label)}</button>`
+  ).join("");
+  $("#compose-poll-note").textContent = poll.locked ? "Locked: people have voted" : none ? "" : "Up to 4 answers";
+  $("#compose-poll-fields").classList.toggle("hidden", none);
+  const question = $("#compose-poll-question");
+  question.value = poll.question;
+  question.disabled = poll.locked;
+  $("#compose-poll-options").innerHTML = poll.options
+    .map(
+      (option, i) => `<div class="flex items-center gap-space-xs">
+        <input class="h-11 flex-1 min-w-0 px-4 rounded bg-surface-container-low border border-surface-container-high font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-secondary disabled:opacity-60"
+          data-poll-option="${i}" maxlength="30" placeholder="Answer ${i + 1}" value="${escapeHtml(option)}" ${poll.locked ? "disabled" : ""} />
+        ${
+          poll.options.length > 2 && !poll.locked
+            ? `<button type="button" data-poll-remove="${i}" aria-label="Remove answer ${i + 1}" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container"><span class="material-symbols-outlined text-[18px]">close</span></button>`
+            : ""
+        }
+      </div>`
+    )
+    .join("");
+  $("#compose-poll-add").classList.toggle("hidden", poll.locked || poll.options.length >= MAX_POLL_OPTIONS);
+
+  document.querySelectorAll("[data-poll-preset]").forEach((chip) => {
+    chip.onclick = () => {
+      state.poll = { ...pollFromPreset(chip.dataset.pollPreset), locked: false };
+      renderPoll();
+      if (state.poll.preset === "custom") $("#compose-poll-question").focus();
+    };
+  });
+  document.querySelectorAll("[data-poll-option]").forEach((input) => {
+    input.oninput = () => (state.poll.options[Number(input.dataset.pollOption)] = input.value);
+  });
+  document.querySelectorAll("[data-poll-remove]").forEach((button) => {
+    button.onclick = () => {
+      state.poll.options.splice(Number(button.dataset.pollRemove), 1);
+      renderPoll();
+    };
+  });
+}
+
+// The poll to send: { question, options }, null for no poll, or an error message.
+function pollForPost() {
+  const poll = state.poll;
+  if (poll.preset === "none") return { poll: null };
+  const question = poll.question.trim();
+  const options = poll.options.map((option) => option.trim());
+  if (!question) return { error: "Add a question for your poll, or pick No poll." };
+  if (options.some((option) => !option)) return { error: "Fill in every poll answer, or remove the empty one." };
+  if (new Set(options.map((option) => option.toLowerCase())).size !== options.length) {
+    return { error: "Each poll answer needs to be different." };
+  }
+  return { poll: { question, options } };
+}
+
+// A posted fit's poll as compose state: its preset if it matches one, else custom.
+function pollFromFit(fit) {
+  if (!fit.poll) return { ...pollFromPreset("none"), locked: false };
+  const options = fit.poll.options.map((option) => option.label);
+  const preset = POLL_PRESETS.find(
+    (p) => p.question === fit.poll.question && p.options?.join("\n") === options.join("\n")
+  );
+  return { preset: preset?.id || "custom", question: fit.poll.question, options, locked: fit.poll.locked };
+}
+
 // --- posting ---
 
 function itemsForPost(imageIds) {
@@ -593,6 +683,8 @@ async function submitFit(event) {
   event.preventDefault();
   if (state.editing) return saveEdits();
   if (!state.photos.length) return;
+  const { poll, error } = pollForPost();
+  if (error) return showError("#compose-error", error);
   const submit = $("#compose-submit");
   submit.disabled = true;
   showError("#compose-error");
@@ -613,6 +705,7 @@ async function submitFit(event) {
       styleTags: state.tags.style.map((tag) => tag.value),
       privacyTier: selectedPrivacyTier,
       allowFriendTryOn: allowTryOn,
+      poll,
     });
     closeCreate();
     hooks.toast("Fit posted");
@@ -649,6 +742,7 @@ export function openEditFit(fit, { onSaved = () => {}, item = null } = {}) {
       occasion: (fit.occasion_tags || []).map((value) => ({ value, auto: false })),
       style: (fit.style_tags || []).map((value) => ({ value, auto: false })),
     };
+    s.poll = pollFromFit(fit);
   });
   $("#compose-caption").value = fit.caption || "";
   updateCaptionCount();
@@ -659,6 +753,9 @@ export function openEditFit(fit, { onSaved = () => {}, item = null } = {}) {
 
 async function saveEdits() {
   const { fit, onSaved } = state.editing;
+  // A voted-on poll can't change, so it isn't sent.
+  const { poll, error } = state.poll.locked ? {} : pollForPost();
+  if (error) return showError("#compose-error", error);
   const submit = $("#compose-submit");
   submit.disabled = true;
   submit.textContent = "Saving…";
@@ -671,6 +768,7 @@ async function saveEdits() {
       styleTags: state.tags.style.map((tag) => tag.value),
       privacyTier: selectedPrivacyTier,
       allowFriendTryOn: $("#compose-allow-tryon").checked,
+      poll,
     });
     closeCreate();
     hooks.toast("Changes saved");
@@ -1011,6 +1109,13 @@ export function initCreate({ onPosted, onDilemma, onStory, toast }) {
   });
 
   $("#compose-form").onsubmit = submitFit;
+  $("#compose-poll-question").oninput = (e) => (state.poll.question = e.target.value);
+  $("#compose-poll-add").onclick = () => {
+    if (state.poll.options.length >= MAX_POLL_OPTIONS) return;
+    state.poll.options.push("");
+    renderPoll();
+    document.querySelector(`[data-poll-option="${state.poll.options.length - 1}"]`)?.focus();
+  };
   $("#compose-caption").oninput = updateCaptionCount;
 
   document.querySelectorAll(".btn-tier-select").forEach((btn) => {

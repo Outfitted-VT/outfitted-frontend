@@ -2,7 +2,8 @@ import { currentUser } from "../data.js";
 import { listFits, listWardrobeItems, mediaUrl, updateProfile } from "../fits.js";
 import { escapeHtml } from "../format.js";
 import { avatar, iconButton, ofIcons, pillCta, stateBlock } from "./components.js";
-import { fitTally, isLive } from "./feed-view.js";
+import { isLive } from "./feed-view.js";
+import { pollLeader } from "./fit-card.js";
 import { openSheet } from "./sheet.js";
 import { currentStreak, subscribe as onStreakChange } from "../streak-store.js";
 import { mountNotificationSettings, renderNotificationSettings } from "./notification-settings.js";
@@ -313,13 +314,15 @@ function strip(images, tagHtml = "") {
 }
 
 function fitCard(fit) {
-  const { pct, total } = fitTally(fit);
+  const leader = pollLeader(fit);
+  const total = leader?.total || 0;
+  const verdict = total ? `${leader.pct}% ${escapeHtml(leader.label)}` : leader ? "No votes yet" : "No poll";
   const title = (fit.caption || "Untitled fit").split("\n")[0];
   return `<article class="of-histcard">
     ${strip(fit.images, statusTag(fit))}
     <div class="of-hist-body">
       <span class="of-hist-title">${escapeHtml(title)}</span>
-      <span class="of-hist-pct ${total ? "" : "none"}">${total ? `${pct}% wear it` : "No votes yet"}</span>
+      <span class="of-hist-pct ${total ? "" : "none"}">${verdict}</span>
       <span class="of-hist-dots">${colorDots(fit)}</span>
     </div>
   </article>`;
