@@ -31,12 +31,23 @@ function crop(item, fit, index) {
   return `background-image:url('${escapeHtml(mediaUrl(image.url))}');background-position:${position};${zoom ? PHOTO_ZOOM : ""}`;
 }
 
-function header(fit) {
+const PENCIL = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+const TRASH = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>`;
+
+// mine: your own fit, with Edit and Delete (src/feed.js handles data-fit-edit / data-fit-delete).
+function header(fit, mine) {
   const live = isLiveFit(fit) ? `<span class="of-live-tag"><span></span>LIVE</span>` : "";
+  const owner = mine
+    ? `<span class="of-fitcard-owner">
+        <button type="button" class="of-fitcard-icon" data-fit-edit aria-label="Edit fit">${PENCIL}</button>
+        <button type="button" class="of-fitcard-icon" data-fit-delete aria-label="Delete fit">${TRASH}</button>
+      </span>`
+    : "";
   return `<div class="of-fitcard-head">
     ${live}
     <span class="of-fitcard-handle">@${escapeHtml(fit.author.username)}</span>
     <span class="of-fitcard-time">${timeAgo(fit.created_at)}</span>
+    ${owner}
   </div>`;
 }
 
@@ -208,7 +219,7 @@ function actions(fit) {
 // mine: your own fit, whose pieces without a shop link offer to add one.
 export function renderFitCard(fit, { withActions = true, mine = false } = {}) {
   return `<article class="of-fitcard" data-fit-id="${fit.id}">
-    ${header(fit)}
+    ${header(fit, withActions && mine)}
     ${fit.caption ? `<h2 class="of-card-title">${escapeHtml(fit.caption)}</h2>` : ""}
     ${media(fit)}
     ${shopLinks(fit, withActions && mine)}
