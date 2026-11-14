@@ -1,23 +1,17 @@
 import { icons } from "./icons.js";
-import { searchUsers, followUser, unfollowUser, mediaUrl } from "./fits.js";
+import { searchUsers, followUser, unfollowUser } from "./fits.js";
 import { escapeHtml } from "./format.js";
+import { avatar } from "./views/components.js";
 
 function renderUserCard(user) {
   const name = user.full_name || user.username;
-  const initial = (name || "U").charAt(0).toUpperCase();
   const isFollowing = Boolean(user.is_following);
   const bio = user.bio || "Fashion enthusiast on Outfitted.";
 
   return `
     <div class="friend-profile-card" data-username="${escapeHtml(user.username)}">
       <div class="friend-card-top">
-        <span class="avatar-chip lg overflow-hidden" style="background:#0f3728; color:#fff;">
-          ${
-            user.avatar?.url
-              ? `<img src="${escapeHtml(mediaUrl(user.avatar.url))}" alt="${escapeHtml(name)}" class="w-full h-full object-cover rounded-full" />`
-              : escapeHtml(initial)
-          }
-        </span>
+        ${avatar(user, { size: 52 })}
         <div class="friend-card-names">
           <h3>${escapeHtml(name)}</h3>
           <small>@${escapeHtml(user.username)}</small>
