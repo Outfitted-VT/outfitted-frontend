@@ -1,5 +1,6 @@
 import { confirmDialog } from "../confirm-dialog.js";
 import { escapeHtml } from "../format.js";
+import { getDraft } from "../message-drafts.js";
 import * as messages from "../messages-store.js";
 import * as stories from "../stories-store.js";
 import { avatar, displayName, iconButton, ofIcons, stateBlock, storyAvatar } from "./components.js";
@@ -51,6 +52,9 @@ function previewText(message) {
 
 function preview(conversation) {
   const message = conversation.last_message;
+  // Something typed in this chat but not sent yet.
+  const draft = getDraft(conversation.id);
+  if (draft) return `<span class="of-draft-tag">Draft</span>${escapeHtml(draft)}`;
   const author = conversation.type === "circle" && message?.sender && message.sender.id !== messages.myId()
     ? `${escapeHtml(firstName(message.sender))}: `
     : "";
@@ -75,6 +79,7 @@ function row(conversation) {
         <span class="of-row-bottom"><span class="of-row-preview">${preview(conversation)}</span>${unread ? `<span class="of-count">${conversation.unread_count > 99 ? "99+" : conversation.unread_count}</span>` : ""}</span>
       </span>
     </button>
+    <button type="button" class="of-row-hover-delete" data-row-delete aria-label="Delete chat">${ofIcons.trash(18)}</button>
   </li>`;
 }
 
@@ -105,7 +110,8 @@ function errorState() {
 
 function listHtml() {
   if (!messages.isLoaded()) return `<p class="of-muted of-inbox-note">Loading conversations…</p>`;
-  const all = messages.conversations();
+  // A direct chat nobody has written in only shows while you have a draft in it.
+  const all = messages.conversations().filter((c) => c.last_message || c.type !== "direct" || getDraft(c.id));
   if (!all.length) return messages.loadError() ? errorState() : emptyState();
   const shown = all.filter(matches);
   if (!shown.length) return `<p class="of-muted of-inbox-note">No conversations match “${escapeHtml(inbox.query)}”.</p>`;
@@ -146,7 +152,7 @@ export function renderInbox() {
       ${ofIcons.search()}
       <input type="search" placeholder="Search conversations" aria-label="Search conversations" value="${escapeHtml(inbox.query)}" data-inbox-search autocomplete="off" />
     </label>
-    <div class="of-inbox-circle" id="inbox-circle">${circleHtml()}</div>
+    <div class="of-inbox-circle" id="inbox-circle" ${inbox.query.trim() ? "hidden" : ""}>${circleHtml()}</div>
     <div id="inbox-list">${listHtml()}</div>
   </section>`;
 }
@@ -203,12 +209,18 @@ function attachSwipe(root) {
   root.addEventListener("pointercancel", end);
 }
 
+// What deleting a direct chat does, for the confirm dialog (also used by the chat's info sheet).
+export function deleteChatMessage(conversation) {
+  const name = conversation ? conversationTitle(conversation) : "They";
+  return `It's deleted for you only: ${name} keeps the messages. If either of you writes again, the chat comes back without the old messages.`;
+}
+
 async function deleteConversation(id, toast) {
   const conversation = messages.getConversation(id);
   const circle = conversation?.type === "circle";
   const confirmed = await confirmDialog({
     title: circle ? "Leave this circle?" : "Delete this chat?",
-    message: circle ? "You'll stop getting its messages." : "It comes back if they message you again.",
+    message: circle ? "You'll stop getting its messages." : deleteChatMessage(conversation),
     confirmLabel: circle ? "Leave" : "Delete",
     busyLabel: circle ? "Leaving…" : "Deleting…",
     danger: true,
@@ -256,6 +268,8 @@ export function mountInbox({ onOpen, onCompose, onOpenStory, toast }) {
   root.addEventListener("click", (event) => handleClick(event, root, { onOpen, onCompose, onOpenStory, toast }));
   root.querySelector("[data-inbox-search]").addEventListener("input", (event) => {
     inbox.query = event.target.value;
+    // While searching, only the matching conversations show: the circle row steps aside.
+    root.querySelector("#inbox-circle").hidden = Boolean(inbox.query.trim());
     paintList(root);
   });
   root.addEventListener("focusin", (event) => {

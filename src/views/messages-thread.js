@@ -4,7 +4,8 @@ import { escapeHtml, timeAgo } from "../format.js";
 import * as messages from "../messages-store.js";
 import { avatar, displayName, ofIcons } from "./components.js";
 import { openFitCheckSheet, openProductSheet } from "./fit-check-sheet.js";
-import { conversationTitle } from "./messages-inbox.js";
+import { conversationTitle, deleteChatMessage } from "./messages-inbox.js";
+import { getDraft, setDraft } from "../message-drafts.js";
 import { openSheet } from "./sheet.js";
 
 const GROUP_MS = 2 * 60 * 1000;
@@ -45,7 +46,8 @@ function lastSeen(member) {
 function headerStatus(conversation) {
   const others = messages.otherMembers(conversation);
   if (conversation.type !== "circle") return lastSeen(others[0]);
-  const online = others.filter((m) => m.online).length;
+  // You count too: you are online while you are looking at it.
+  const online = others.filter((m) => m.online).length + 1;
   return `${conversation.members.length} members · ${online} online`;
 }
 
@@ -264,6 +266,7 @@ function submit(event) {
   const input = $("#thread-input");
   sendText(input.value);
   input.value = "";
+  setDraft(view.id, "");
 }
 
 function sendPhoto(file) {
@@ -318,7 +321,7 @@ function infoSheet(conversation, { toast, onBack }) {
     close();
     const confirmed = await confirmDialog({
       title: circle ? "Leave this circle?" : "Delete this chat?",
-      message: circle ? "You'll stop getting its messages." : "It comes back if they message you again.",
+      message: circle ? "You'll stop getting its messages." : deleteChatMessage(conversation),
       confirmLabel: circle ? "Leave" : "Delete",
       danger: true,
       onConfirm: () => messages.leave(conversation.id),
@@ -397,8 +400,12 @@ function observeTop() {
 
 function bindComposer() {
   const input = $("#thread-input");
+  input.value = getDraft(view.id);
   $("#thread-composer").addEventListener("submit", submit);
-  input.addEventListener("input", () => messages.sendTyping(view.id, Boolean(input.value.trim())));
+  input.addEventListener("input", () => {
+    messages.sendTyping(view.id, Boolean(input.value.trim()));
+    setDraft(view.id, input.value);
+  });
   input.addEventListener("blur", () => messages.sendTyping(view.id, false));
   $("#thread-photo").addEventListener("change", (event) => {
     sendPhoto(event.target.files?.[0]);

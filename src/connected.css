@@ -671,3 +671,41 @@ img[class*="w-"] {
   font-weight: 600;
 }
 .fit-collage-empty .material-symbols-outlined { font-size: 30px; opacity: 0.7; }
+
+/* Messages inbox (rows are in src/outfitted.css): a chat with no messages yet, and a delete
+   button that shows on hover where there's a mouse (phones swipe the row instead). */
+.of-draft-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px dashed var(--of-line-strong);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--of-muted);
+  vertical-align: 1px;
+}
+.of-row-hover-delete {
+  position: absolute;
+  top: 50%;
+  right: var(--of-gutter);
+  transform: translateY(-50%);
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--of-card);
+  border: 1px solid var(--of-line);
+  color: var(--of-muted);
+}
+.of-row-hover-delete:hover { color: var(--of-danger); border-color: var(--of-danger); }
+@media (hover: hover) and (pointer: fine) {
+  .of-row-wrap:hover .of-row-hover-delete,
+  .of-row-hover-delete:focus-visible { display: flex; }
+  /* Make room for the button so it doesn't cover the time or unread count. */
+  .of-row-wrap:hover .of-row-text,
+  .of-row-wrap:has(.of-row-hover-delete:focus-visible) .of-row-text { padding-right: 48px; }
+}
