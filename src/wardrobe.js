@@ -14,7 +14,7 @@ import {
 import { fitCollage } from "./views/fit-collage.js";
 
 let activeView = "grid"; // 'grid' | 'carousel' | 'calendar'
-let activeCarouselCategory = "clothing"; // 'clothing' | 'shoes' | 'accessories' | 'fits'
+let activeCarouselCategory = "clothing"; // 'clothing' (the grid's fits) | 'shoes' | 'accessories'
 let carouselIndex = 0;
 const savedFits = new Map(); // fit id -> fit, filled by connectWardrobe from GET /users/me/saved
 let selectedCalendarMemory = outfitMemories[0];
@@ -51,16 +51,13 @@ export function renderWardrobePage() {
       <section class="wardrobe-view-container ${activeView === "carousel" ? "" : "hidden"}" id="view-carousel">
         <div class="carousel-category-nav">
           <button class="carousel-cat-pill ${activeCarouselCategory === "clothing" ? "active" : ""}" data-cat="clothing">
-            👕 Clothing (${wardrobeCatalog.clothing.length})
+            👕 Clothing (<span id="carousel-fit-count">${wardrobeOutfits.length}</span>)
           </button>
           <button class="carousel-cat-pill ${activeCarouselCategory === "shoes" ? "active" : ""}" data-cat="shoes">
             👟 Shoes (${wardrobeCatalog.shoes.length})
           </button>
           <button class="carousel-cat-pill ${activeCarouselCategory === "accessories" ? "active" : ""}" data-cat="accessories">
             🕶️ Accessories (${wardrobeCatalog.accessories.length})
-          </button>
-          <button class="carousel-cat-pill ${activeCarouselCategory === "fits" ? "active" : ""}" data-cat="fits">
-            ✨ Full Outfits (<span id="carousel-fit-count">${wardrobeOutfits.length}</span>)
           </button>
         </div>
 
@@ -199,8 +196,9 @@ export function renderWardrobePage() {
   `;
 }
 
+// Clothing shows what the grid shows: saved fits first, then your outfits.
 function getActiveCarouselList() {
-  if (activeCarouselCategory === "fits") {
+  if (activeCarouselCategory === "clothing") {
     // Saved fits have no price or wear count, so they show their pieces instead.
     const saved = [...savedFits.values()].map((fit) => ({
       id: fit.id,
@@ -222,7 +220,7 @@ function getActiveCarouselList() {
       tag: o.vibe,
     })));
   }
-  return wardrobeCatalog[activeCarouselCategory] || wardrobeCatalog.clothing;
+  return wardrobeCatalog[activeCarouselCategory] || [];
 }
 
 function renderCarouselStageItems() {
@@ -782,7 +780,7 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
       grid.insertAdjacentHTML("afterbegin", page.items.map(renderSavedFitCard).join(""));
       updateFitCounts();
       applyFilters();
-      if (activeCarouselCategory === "fits") refreshCarouselStage();
+      if (activeCarouselCategory === "clothing") refreshCarouselStage();
     } catch (err) {
       console.warn("Saved fits skipped (guest/offline mode):", err);
     }
@@ -796,7 +794,7 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
       grid?.querySelector(`[data-saved-fit="${id}"]`)?.remove();
       updateFitCounts();
       applyFilters();
-      if (activeCarouselCategory === "fits") refreshCarouselStage();
+      if (activeCarouselCategory === "clothing") refreshCarouselStage();
       toast("Removed from saved");
     } catch {
       button.disabled = false;
