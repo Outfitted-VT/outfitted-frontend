@@ -9,13 +9,10 @@ import { renderStoriesRow } from "./stories-row.js";
 const EYE_PREVIEW = 2;
 
 export const isLive = isLiveFit;
-const is3dReady = (fit) => Boolean(fit.try_on_source) || fit.images.some((image) => image.generated);
 
 const FILTERS = [
   { id: "foryou", label: "For you", path: "/fits", match: () => true, wide: true },
   { id: "circle", label: "Circle", path: "/fits/following", match: () => true, wide: true },
-  { id: "live", label: "Live", path: "/fits", match: isLive, dot: true },
-  { id: "3d", label: "3D ready", path: "/fits", match: is3dReady },
 ];
 
 const feed = { filter: "foryou", eye: [], showAllEye: false };
