@@ -721,8 +721,17 @@ async function submitFit(event) {
 
 // --- editing a posted fit ---
 
+// Who sees a post on each tier (the backend enforces it: app/repositories/fit.py visible_to).
+const TIER_HINTS = {
+  public: "Anyone on Outfitted can see it.",
+  close_friends: "Only people you follow who also follow you back.",
+  vault: "Only you. It stays out of every feed and off your profile for others.",
+};
+
 function selectTier(tier) {
   selectedPrivacyTier = tier;
+  const hint = $("#compose-tier-hint");
+  if (hint) hint.textContent = TIER_HINTS[tier] || "";
   document.querySelectorAll(".btn-tier-select").forEach((b) => {
     b.className =
       b.dataset.tier === tier
