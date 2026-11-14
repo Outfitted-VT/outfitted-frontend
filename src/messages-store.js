@@ -1,6 +1,7 @@
 import { currentUser } from "./data.js";
 import { uploadImage } from "./fits.js";
 import * as api from "./messages-api.js";
+import { setDraft } from "./message-drafts.js";
 import { connectSocket, disconnectSocket, onSocketEvent, send as socketSend } from "./messages-socket.js";
 
 const TYPING_SHOW_MS = 6000;
@@ -481,6 +482,7 @@ export async function renameCircle(id, title) {
 
 export async function leave(id) {
   await api.leaveConversation(id);
+  setDraft(id, "");
   store.conversations.delete(id);
   store.threads.delete(id);
   notify({ type: "conversations" });
