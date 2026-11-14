@@ -153,6 +153,7 @@ function composeScreen() {
             🛡️ Vault
           </button>
         </div>
+        <p class="font-label-sm text-label-sm text-on-surface-variant px-1" id="compose-tier-hint" aria-live="polite">Anyone on Outfitted can see it.</p>
         <label class="flex items-center justify-between p-2 rounded bg-surface-container-low mt-1 cursor-pointer">
           <span class="font-label-sm text-label-sm text-on-surface">Allow friends to 1-tap try on this look</span>
           <input type="checkbox" id="compose-allow-tryon" checked class="w-4 h-4 accent-secondary rounded" />
