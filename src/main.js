@@ -23,7 +23,6 @@ import { openStyleFriend } from "./style-friend.js";
 import { applyTheme, getThemePreference, isDarkTheme, onThemeChange, setThemePreference } from "./theme.js";
 import { appHeader, paintStreakChip, setBellDot, setChatUnreadDot, tabBar } from "./views/components.js";
 import { mountFeed, renderFeedScreen } from "./views/feed-view.js";
-import { mountRoom, renderRoomScreen } from "./views/room.js";
 import { initKeyboard } from "./keyboard.js";
 import { startConversation, startMessaging, stopMessaging, subscribe as onMessagesChange, unreadTotal } from "./messages-store.js";
 import * as stories from "./stories-store.js";
@@ -44,7 +43,6 @@ import { mountInbox, renderInbox } from "./views/messages-inbox.js";
 import { mountThread, renderThread, unmountThread } from "./views/messages-thread.js";
 import { openNewChatSheet } from "./views/new-chat-sheet.js";
 import { openFitCheckSheet } from "./views/fit-check-sheet.js";
-import { cachedWeather } from "./weather.js";
 
 // Native (iOS/Android) status bar and splash screen. The status bar follows the theme.
 if (Capacitor.isNativePlatform()) {
@@ -61,7 +59,7 @@ applyTheme();
 
 const app = document.querySelector("#app");
 
-let activeTab = "feed"; // 'feed' | 'room' | 'wardrobe' | 'friends' | 'messages' | 'assistant' | 'profile'
+let activeTab = "feed"; // 'feed' | 'wardrobe' | 'friends' | 'messages' | 'assistant' | 'profile'
 let activePostForComments = null;
 
 // Wide screens: the sidebar is either full or collapsed to an icon rail. Remembered per browser.
@@ -94,10 +92,6 @@ function renderSidebar() {
         <a href="#feed" class="nav-item ${activeTab === "feed" ? "active" : ""}" data-nav="feed" title="Feed">
           ${icons.feed}
           <span class="sidebar-label">Feed</span>
-        </a>
-        <a href="#room" class="nav-item ${activeTab === "room" ? "active" : ""}" data-nav="room" title="3D Room">
-          ${icons.cube}
-          <span class="sidebar-label">3D Room</span>
         </a>
         <a href="#wardrobe" class="nav-item ${activeTab === "wardrobe" ? "active" : ""}" data-nav="wardrobe" title="My fits">
           ${icons.hanger}
@@ -423,7 +417,7 @@ function renderAuthDialog() {
 }
 
 /* ---------- Main Render Loop ---------- */
-const OWN_HEADER_TABS = new Set(["room", "profile", "activity"]);
+const OWN_HEADER_TABS = new Set(["profile", "activity"]);
 let chatConversationId = null;
 let releaseInbox = () => {};
 let releaseStoriesRow = () => {};
@@ -445,10 +439,6 @@ function connectChat() {
       id: chatConversationId,
       toast: showToast,
       onBack: () => openChat(null),
-      onOpenRoom: () => {
-        activeTab = "room";
-        render();
-      },
       onOpenStory: openUserStories,
     });
     return;
@@ -585,8 +575,6 @@ function render() {
           ${
             activeTab === "feed"
               ? renderFeedScreen()
-              : activeTab === "room"
-              ? renderRoomScreen()
               : activeTab === "wardrobe"
               ? renderWardrobePage()
               : activeTab === "friends"
@@ -1266,11 +1254,6 @@ function connectBackend() {
     },
   });
 
-  mountRoom({
-    onTryOn: () => openCreate("tryon"),
-    onAskCircle: (fit) => askCircle(fit),
-  });
-
   mountProfile({ toast: showToast, rerender: render });
   if (document.querySelector("#profile-fit-count")) loadProfileCounts();
   if (document.querySelector("#passport-section")) connectProfileIntelligence();
@@ -1463,21 +1446,6 @@ document.addEventListener("click", (e) => {
     openStyleFriend(null, showToast);
   }
 });
-
-function lookContext(fit) {
-  const occasion = fit.occasion_tags?.[0];
-  const weather = cachedWeather();
-  const parts = [occasion && occasion.charAt(0).toUpperCase() + occasion.slice(1), weather && `${weather.temp}°C`];
-  return parts.filter(Boolean).join(" · ") || null;
-}
-
-function askCircle(fit) {
-  const [image] = fit.images;
-  openFitCheckSheet({
-    look: { imageId: image.id, imageUrl: image.url, question: fit.caption || "", context: lookContext(fit), fitId: fit.id },
-    onSent: openChat,
-  });
-}
 
 function postFitDilemma() {
   openFitCheckSheet({ onSent: openChat });
