@@ -1,5 +1,7 @@
 // Full-screen sign in / create account, shown when there's no session.
 
+import { withPasswordToggle } from "../password-toggle.js";
+
 const inputClass =
   "w-full h-12 px-space-sm rounded-DEFAULT bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary transition-all placeholder:text-on-surface-variant/60";
 
@@ -7,7 +9,7 @@ function field({ name, label, type = "text", autocomplete, placeholder, hint, si
   return `
     <label class="flex flex-col gap-space-2xs ${signupOnly ? "auth-signup-only hidden" : ""}" data-field="${name}">
       <span class="font-label-md text-label-md text-on-surface font-semibold">${label}</span>
-      <input class="${inputClass}" name="${name}" type="${type}" autocomplete="${autocomplete}" placeholder="${placeholder}" ${attrs} />
+      ${(type === "password" ? withPasswordToggle : (html) => html)(`<input class="${inputClass}" name="${name}" type="${type}" autocomplete="${autocomplete}" placeholder="${placeholder}" ${attrs} />`)}
       ${hint ? `<span class="auth-hint font-label-sm text-label-sm text-on-surface-variant font-normal">${hint}</span>` : ""}
       <span class="auth-field-error font-label-sm text-label-sm text-error font-normal hidden"></span>
     </label>`;

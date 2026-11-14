@@ -1,6 +1,7 @@
 import { ApiError, logIn, signUp } from './auth.js';
 import { followUser, getSuggestions, mediaUrl, updateStyleProfile } from './fits.js';
 import { escapeHtml } from './format.js';
+import { withPasswordToggle } from './password-toggle.js';
 
 const DONE_KEY = 'of.onboarded';
 const QUIZ_KEY = 'of.quiz';
@@ -105,7 +106,7 @@ function signinView() {
       ${heading(r ? 'SIGN IN' : 'CREATE ACCOUNT', r ? 'Welcome back.' : 'Welcome to your circle.')}
       <div class="ob-stack">
         <input class="ob-field" id="ob-email" type="email" placeholder="Email" autocomplete="email" autocapitalize="off">
-        <input class="ob-field" id="ob-pass" type="password" placeholder="Password" autocomplete="${r ? 'current-password' : 'new-password'}">
+        ${withPasswordToggle(`<input class="ob-field" id="ob-pass" type="password" placeholder="Password" autocomplete="${r ? 'current-password' : 'new-password'}">`)}
       </div>
       ${errorLine()}
     </div>

@@ -14,6 +14,7 @@ import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandle
 import { initCreate, openCreate, openEditFit, openTryOnFrom } from "./create.js";
 import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl, getImpactSummary, getTrueSizePassport, addReferenceGarment, removeReferenceGarment, translateSize } from "./fits.js";
 import { escapeHtml, initialOf } from "./format.js";
+import { withPasswordToggle } from "./password-toggle.js";
 import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
 import { mountProfile, renderProfileView, resetProfile } from "./views/profile.js";
 import { renderCommentsDrawer, openCommentsDrawer } from "./views/comments-drawer.js";
@@ -361,7 +362,7 @@ function renderAuthDialog() {
 
           <label class="field-label" style="margin-top:12px;">
             Password
-            <input type="password" id="auth-input-password" class="field-input" required placeholder="••••••••" autocomplete="current-password" />
+            ${withPasswordToggle(`<input type="password" id="auth-input-password" class="field-input" required placeholder="••••••••" autocomplete="current-password" />`)}
           </label>
 
           <div class="auth-status-banner" id="auth-status-banner" hidden></div>
