@@ -420,11 +420,17 @@ function renderAuthDialog() {
 const OWN_HEADER_TABS = new Set(["profile", "activity"]);
 let chatConversationId = null;
 let releaseInbox = () => {};
+let releaseThreadDialog = () => {};
 let releaseStoriesRow = () => {};
 let returnTab = "feed";
 
+// An open conversation sits over the inbox: full screen on phones, a small dialog from 861px
+// (styles: .of-thread-backdrop in src/outfitted.css).
 function renderChatScreen() {
-  return chatConversationId ? renderThread(chatConversationId) : renderInbox();
+  const thread = chatConversationId
+    ? `<div class="of-thread-backdrop" data-thread-backdrop>${renderThread(chatConversationId)}</div>`
+    : "";
+  return renderInbox() + thread;
 }
 
 function openChat(id) {
@@ -435,13 +441,23 @@ function openChat(id) {
 
 function connectChat() {
   if (chatConversationId) {
+    const close = () => openChat(null);
     mountThread({
       id: chatConversationId,
       toast: showToast,
-      onBack: () => openChat(null),
+      onBack: close,
       onOpenStory: openUserStories,
     });
-    return;
+    // Clicking outside the dialog or pressing Escape closes it.
+    const backdrop = document.querySelector("[data-thread-backdrop]");
+    backdrop.onclick = (event) => {
+      if (event.target === backdrop) close();
+    };
+    const onKey = (event) => {
+      if (event.key === "Escape" && !document.querySelector("dialog[open], .of-sheet-backdrop")) close();
+    };
+    document.addEventListener("keydown", onKey);
+    releaseThreadDialog = () => document.removeEventListener("keydown", onKey);
   }
   releaseInbox = mountInbox({
     onOpen: openChat,
@@ -454,6 +470,8 @@ function connectChat() {
 function releaseScreens() {
   releaseInbox();
   releaseInbox = () => {};
+  releaseThreadDialog();
+  releaseThreadDialog = () => {};
   releaseStoriesRow();
   releaseStoriesRow = () => {};
   unmountThread();

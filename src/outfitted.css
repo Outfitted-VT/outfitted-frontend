@@ -402,7 +402,6 @@ body {
 @keyframes ofTyping { 0%, 60%, 100% { opacity: 0.3; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
 
 @media (min-width: 861px) {
-  .of-thread { position: relative; inset: auto; height: calc(100vh - 96px); margin: 16px 0; padding-bottom: 16px; border-radius: var(--of-r-card-lg); border: 1px solid var(--of-line); }
   .app-sidebar .nav-item.active { background: var(--of-ink-surface); color: var(--of-on-dark); }
   .app-sidebar .nav-item.active svg { color: var(--of-lime); }
   .app-sidebar .btn-sidebar-create { background: var(--of-ink-surface); color: var(--of-on-dark); }
@@ -817,6 +816,7 @@ body {
 
 .of-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
+.of-thread-backdrop { display: contents; }
 .of-thread {
   position: fixed;
   inset: 0;
@@ -832,6 +832,13 @@ body {
 
 .of-kb-open .of-tabbar { display: none; }
 .of-kb-open .of-thread { padding-bottom: calc(var(--of-kb) + 10px); }
+
+/* From 861px an open conversation is a small dialog over the inbox (after the base rules
+   above so it wins). */
+@media (min-width: 861px) {
+  .of-thread-backdrop { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(10, 10, 10, 0.4); }
+  .of-thread { position: relative; inset: auto; width: min(540px, 100%); height: min(760px, 100%); padding: 14px 16px; border-radius: var(--of-r-card-lg); border: 1px solid var(--of-line); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28); }
+}
 
 .of-thread-head { box-sizing: content-box; display: flex; align-items: center; gap: 10px; height: 52px; padding-bottom: 8px; border-bottom: 1px solid var(--of-line); flex: none; }
 .of-thread-back { width: 44px; height: 44px; border-radius: 22px; background: var(--of-card); border: 1px solid var(--of-line); display: flex; align-items: center; justify-content: center; color: var(--of-ink); flex: none; }
