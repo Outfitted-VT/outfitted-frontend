@@ -222,13 +222,13 @@ function tryonScreen() {
       </span>
       <span class="slot-filled hidden absolute bottom-2 inset-x-2 justify-between items-center">
         <span class="px-2 py-1 rounded-full bg-black/55 text-white font-label-sm text-label-sm backdrop-blur" data-slot-label>${title}</span>
-        <span class="px-2 py-1 rounded-full bg-white/85 text-[#1a1c1b] font-label-sm text-label-sm">Change</span>
+        <span class="px-2 py-1 rounded-full bg-white/85 text-[#1a1c1b] font-label-sm text-label-sm" data-slot-change>Change</span>
       </span>
     </button>`;
 
   return `
     <section data-screen="tryon" class="hidden flex flex-col gap-space-md px-margin pb-space-xl">
-      <div class="grid grid-cols-2 p-1 rounded-full bg-surface-container" role="tablist" aria-label="What to try on">
+      <div class="grid grid-cols-2 p-1 rounded-full bg-surface-container" role="tablist" aria-label="What to try on" id="tryon-mode-tabs">
         <button type="button" role="tab" data-tryon-mode="outfit" aria-selected="true" class="compare-tab h-9 rounded-full font-label-md text-label-md font-semibold">Entire fit</button>
         <button type="button" role="tab" data-tryon-mode="pieces" aria-selected="false" class="compare-tab h-9 rounded-full font-label-md text-label-md font-semibold">Pieces</button>
       </div>
