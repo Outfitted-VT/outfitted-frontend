@@ -132,7 +132,7 @@ function circleItem(person) {
   const action = state === "none" ? "data-circle-user" : "data-circle-story";
   const label = state === "none" ? `Message ${displayName(person.user)}` : `${displayName(person.user)}'s story`;
   return `<button type="button" class="of-circle-person" ${action}="${person.user.id}" aria-label="${escapeHtml(label)}">
-    ${storyAvatar(person.user, { size: 64, ring })}${person.online ? '<i class="of-online lg" aria-hidden="true"></i>' : ""}
+    ${storyAvatar(person.user, { size: 52, ring })}${person.online ? '<i class="of-online lg" aria-hidden="true"></i>' : ""}
   </button>`;
 }
 
