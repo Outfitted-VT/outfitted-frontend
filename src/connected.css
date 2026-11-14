@@ -711,7 +711,7 @@ img[class*="w-"] {
 }
 
 /* Friends page (src/friends.js): a slim list, one person per row, on the app theme. */
-.of-friends { width: 100%; max-width: 720px; margin: 0 auto; padding-top: 28px; gap: 0; }
+.of-friends { width: 100%; padding-top: 28px; gap: 0; }
 .of-friends-head { display: flex; flex-direction: column; margin-bottom: 22px; }
 .of-friends-head .of-display { margin: 10px 0 10px; font-size: 36px; line-height: 1.05; letter-spacing: -0.6px; }
 .of-friends-kicker { font-size: 11px; font-weight: 700; letter-spacing: 2px; line-height: 1; color: var(--of-blue); }
@@ -727,7 +727,7 @@ img[class*="w-"] {
 .of-friends-card:last-child { border-bottom: 0; }
 .of-friends-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .of-friends-text b { font-size: 15px; font-weight: 600; color: var(--of-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.of-friends-text small { font-size: 12px; color: var(--of-muted); }
+.of-friends-text small { font-size: 13px; color: var(--of-muted); }
 .of-friends-text p { margin: 3px 0 0; font-size: 13px; color: var(--of-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .of-friends-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 

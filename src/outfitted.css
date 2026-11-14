@@ -264,8 +264,10 @@ body {
 .of-btn:disabled { opacity: 0.4; cursor: default; }
 
 .of-inbox { gap: 16px; }
-.of-inbox-head { display: flex; align-items: center; gap: 12px; }
-.of-inbox-head h1 { flex: 1; font-size: 28px; font-weight: 700; letter-spacing: -0.4px; }
+.of-inbox-head { display: flex; align-items: center; gap: 12px; margin-top: 18px; } /* title level with Friends, which has a label above it */
+/* Same heading as Friends (.of-friends-head .of-display in src/connected.css). */
+.of-inbox-head h1 { flex: 1; font-family: var(--of-font-display); font-size: 36px; font-weight: 600; line-height: 1.05; letter-spacing: -0.6px; }
+.of-inbox .of-search input { font-size: 14px; }
 
 .of-search {
   display: flex;
@@ -292,7 +294,7 @@ body {
 .of-search input::placeholder { color: var(--of-muted); }
 .of-search input::-webkit-search-cancel-button { display: none; }
 
-.of-inbox-label { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.of-inbox-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--of-muted); margin-bottom: 10px; }
 .of-inbox-circle:empty { display: none; }
 .of-circle-row {
   display: flex;
@@ -376,10 +378,10 @@ body {
 }
 
 .of-row-top, .of-row-bottom { display: flex; align-items: center; gap: 8px; }
-.of-row-top b { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-row-top b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .of-row-top svg { color: var(--of-muted); flex: none; }
 .of-row-top time { margin-left: auto; font-size: 12px; color: var(--of-muted); flex: none; }
-.of-row-preview { flex: 1; min-width: 0; font-size: 14px; color: var(--of-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-row-preview { flex: 1; min-width: 0; font-size: 13px; color: var(--of-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .of-row.unread .of-row-preview { color: var(--of-ink); font-weight: 500; }
 .of-fit-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--of-blue); margin-right: 6px; vertical-align: 1px; }
 
