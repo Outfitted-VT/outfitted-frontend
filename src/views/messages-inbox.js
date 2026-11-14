@@ -46,6 +46,7 @@ function previewText(message) {
   if (message.deleted_at) return "Message deleted";
   if (message.kind === "image") return "Photo";
   if (message.kind === "product") return `Suggested: ${message.payload?.product?.name || "a piece"}`;
+  if (message.kind === "fit") return "Shared a fit";
   if (message.kind === "story_reply") return `Story reply: ${message.body || ""}`;
   return message.body || "";
 }

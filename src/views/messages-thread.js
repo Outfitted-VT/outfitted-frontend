@@ -119,6 +119,21 @@ function productBubble(message) {
   </div>`;
 }
 
+// A fit shared from the feed or Saved (kind "fit"): its photo, caption and poster. Tapping it
+// opens the post.
+function fitShareCard(message) {
+  const fit = message.payload?.fit;
+  if (!fit) return `<div class="of-bubble of-fit-share gone">This fit is no longer available</div>`;
+  const photo = fit.image ? `<img src="${escapeHtml(imageUrl(fit.image))}" alt="" />` : "";
+  return `<button type="button" class="of-fit-share" data-open-fit="${escapeHtml(fit.id)}" aria-label="Open fit by @${escapeHtml(fit.author?.username || "")}">
+    <span class="of-fit-share-photo">${photo}</span>
+    <span class="of-fit-share-text">
+      <b>${escapeHtml((fit.caption || "").split("\n")[0] || "A fit")}</b>
+      <small>@${escapeHtml(fit.author?.username || "")}</small>
+    </span>
+  </button>`;
+}
+
 function storyQuote(message, mine) {
   const payload = message.payload || {};
   const owner = mine ? firstName(messages.otherMembers(messages.getConversation(message.conversation_id))[0]?.user) : "";
@@ -134,6 +149,7 @@ function content(message, mine) {
   if (message.kind === "story_reply") return `${storyQuote(message, mine)}<div class="of-bubble">${escapeHtml(message.body || "")}</div>`;
   if (message.kind === "fit_check") return fitCheckCard(message, mine);
   if (message.kind === "product") return productBubble(message);
+  if (message.kind === "fit") return fitShareCard(message);
   if (message.kind === "image") {
     const caption = message.body ? `<div class="of-bubble">${escapeHtml(message.body)}</div>` : "";
     return `<img class="of-msg-photo" src="${escapeHtml(imageUrl(message.payload?.image))}" alt="Photo" />${caption}`;
@@ -368,7 +384,9 @@ function storyOwnerId(messageId) {
 }
 
 function handleClick(event, options) {
-  const { toast, onBack, onOpenStory } = options;
+  const { toast, onBack, onOpenStory, onOpenFit } = options;
+  const fit = event.target.closest("[data-open-fit]");
+  if (fit) return onOpenFit?.(fit.dataset.openFit);
   const story = event.target.closest("[data-open-story]");
   if (story) return onOpenStory(storyOwnerId(story.closest("[data-msg]").dataset.msg), story.dataset.openStory);
   if (event.target.closest("[data-thread-back]")) return onBack();
@@ -420,12 +438,12 @@ export function unmountThread() {
   messages.closeThread();
 }
 
-export function mountThread({ id, toast, onBack, onOpenStory }) {
+export function mountThread({ id, toast, onBack, onOpenStory, onOpenFit }) {
   const root = $("#of-thread");
   if (!root) return;
   unmountThread();
   view.id = id;
-  const options = { toast, onBack, onOpenStory };
+  const options = { toast, onBack, onOpenStory, onOpenFit };
   root.addEventListener("click", (event) => handleClick(event, options));
   bindComposer();
   attachHold($("#thread-body"), toast);
