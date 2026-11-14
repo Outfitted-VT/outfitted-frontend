@@ -146,7 +146,6 @@ const tabIcon = (paths, size = 22) =>
 
 const TABS = [
   ["feed", "FEED", tabIcon('<path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>')],
-  ["room", "3D ROOM", tabIcon('<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>')],
   ["post"],
   ["messages", "CHAT", tabIcon('<path d="M4 5h16v11H9l-5 4z"/>')],
   ["profile", "PROFILE", tabIcon('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>')],

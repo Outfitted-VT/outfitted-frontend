@@ -96,7 +96,6 @@ function fitCheckCard(message, mine) {
       <div class="of-check-foot">
         <div class="of-check-votes">${voteLabel("wear", "Wear it", votes.wear_pct)}${voteLabel("rethink", "Rethink", votes.rethink_pct)}</div>
         <div class="of-check-track"><div style="width:${votes.wear_pct}%"></div></div>
-        ${mine ? `<button type="button" class="of-check-link" data-open-room>Open in 3D Room</button>` : ""}
       </div>
     </div>
   </div>`;
@@ -366,7 +365,7 @@ function storyOwnerId(messageId) {
 }
 
 function handleClick(event, options) {
-  const { toast, onBack, onOpenRoom, onOpenStory } = options;
+  const { toast, onBack, onOpenStory } = options;
   const story = event.target.closest("[data-open-story]");
   if (story) return onOpenStory(storyOwnerId(story.closest("[data-msg]").dataset.msg), story.dataset.openStory);
   if (event.target.closest("[data-thread-back]")) return onBack();
@@ -376,7 +375,6 @@ function handleClick(event, options) {
   }
   if (event.target.closest("[data-attach]")) return attachMenu();
   if (event.target.closest("#thread-new")) return scrollToBottom($("#thread-body"));
-  if (event.target.closest("[data-open-room]")) return onOpenRoom();
   const retry = event.target.closest("[data-retry]");
   if (retry) return messages.retry(retry.dataset.retry);
   const cue = event.target.closest("[data-cue]");
@@ -415,12 +413,12 @@ export function unmountThread() {
   messages.closeThread();
 }
 
-export function mountThread({ id, toast, onBack, onOpenRoom, onOpenStory }) {
+export function mountThread({ id, toast, onBack, onOpenStory }) {
   const root = $("#of-thread");
   if (!root) return;
   unmountThread();
   view.id = id;
-  const options = { toast, onBack, onOpenRoom, onOpenStory };
+  const options = { toast, onBack, onOpenStory };
   root.addEventListener("click", (event) => handleClick(event, options));
   bindComposer();
   attachHold($("#thread-body"), toast);
