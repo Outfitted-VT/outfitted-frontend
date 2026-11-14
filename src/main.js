@@ -682,10 +682,10 @@ function bindEvents() {
     );
   } else if (activeTab === "friends") {
     connectFriends(
-      (friendName) => {
-        activeTab = "messages";
-        render();
-      },
+      (userId) =>
+        startConversation({ memberIds: [userId] })
+          .then(openChat)
+          .catch((err) => showToast(err.message || "Couldn't open the chat.")),
       { toast: showToast, onFollowChanged: loadProfileCounts }
     );
   }
