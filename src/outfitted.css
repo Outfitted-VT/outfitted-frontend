@@ -711,7 +711,7 @@ body {
 .of-fit-votes { display: flex; flex-direction: column; gap: 5px; }
 .of-fit-votes-row { display: flex; justify-content: space-between; font-size: 12px; }
 .of-fit-votes-pct { font-weight: 700; }
-.of-fit-votes-count, .of-fit-votes-empty { color: var(--of-muted); }
+.of-fit-votes-count, .of-fit-votes-empty { color: var(--of-muted); font-size: 11px; font-weight: 500; }
 .of-fit-track { height: 6px; border-radius: 3px; background: var(--of-fill); overflow: hidden; }
 .of-fit-fill { height: 6px; border-radius: 3px; background: var(--of-blue); transition: width 0.3s ease; }
 .of-fit-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
