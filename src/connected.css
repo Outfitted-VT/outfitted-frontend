@@ -748,6 +748,61 @@ img[class*="w-"] {
 .of-friends-empty-title { font-size: 16px; font-weight: 600; color: var(--of-ink); }
 .of-friends-empty .of-friends-follow { margin-top: 10px; }
 
+/* Account menu: the header avatar's dropdown (renderAccountDrawer in src/main.js). */
+.of-account-menu {
+  position: fixed;
+  inset: calc(var(--of-safe-top) + 68px) 16px auto auto;
+  margin: 0;
+  padding: 0;
+  width: min(320px, calc(100vw - 32px));
+  max-height: calc(100vh - var(--of-safe-top) - 84px);
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--of-ink);
+  font-family: var(--of-font-ui);
+  overflow: visible;
+}
+.of-account-menu::backdrop { background: rgba(18, 18, 18, 0.18); }
+.of-account-menu[open] { animation: ofMenuIn 0.16s ease; }
+@keyframes ofMenuIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.of-account-card {
+  max-height: inherit;
+  overflow-y: auto;
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid var(--of-line);
+  background: var(--of-card);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+}
+.of-account-head { display: flex; align-items: center; gap: 12px; padding: 2px 2px 12px; border-bottom: 1px solid var(--of-line); }
+.of-account-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.of-account-who b { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-account-who small { font-size: 12px; color: var(--of-muted); }
+.of-account-close { width: 32px; height: 32px; flex: none; border-radius: 16px; border: 0; background: var(--of-fill); color: var(--of-ink); display: flex; align-items: center; justify-content: center; }
+.of-account-close svg { width: 16px; height: 16px; }
+
+.of-account-rows { display: flex; flex-direction: column; padding: 6px 0; border-bottom: 1px solid var(--of-line); }
+.of-account-row { display: flex; align-items: center; gap: 12px; width: 100%; height: 44px; padding: 0 8px; border: 0; border-radius: 12px; background: transparent; color: var(--of-ink); font-size: 14px; font-weight: 600; text-align: left; }
+.of-account-row:hover, .of-account-row:focus-visible { background: var(--of-fill); }
+.of-account-row-icon { width: 30px; height: 30px; flex: none; border-radius: 15px; background: var(--of-fill); color: var(--of-ink); display: flex; align-items: center; justify-content: center; }
+.of-account-row-icon svg { width: 16px; height: 16px; }
+.of-account-row:hover .of-account-row-icon { background: var(--of-card); }
+.of-account-row-label { flex: 1; }
+.of-account-row > svg { color: var(--of-muted); }
+
+.of-account-section { padding: 12px 2px; border-bottom: 1px solid var(--of-line); display: flex; flex-direction: column; gap: 8px; }
+.of-account-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--of-muted); }
+.of-account-theme { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px; border-radius: 999px; background: var(--of-fill); }
+.of-account-theme button { height: 32px; border: 0; border-radius: 999px; background: transparent; color: var(--of-muted); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.of-account-theme button .material-symbols-outlined { font-size: 15px; }
+.of-account-theme button[aria-checked="true"] { background: var(--of-card); color: var(--of-ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+
+.of-account-foot { display: flex; justify-content: space-between; padding: 10px 2px 0; }
+.of-account-link { height: 34px; padding: 0 12px; border: 0; border-radius: 17px; background: transparent; color: var(--of-ink); font-size: 13px; font-weight: 600; }
+.of-account-link:hover { background: var(--of-fill); }
+.of-account-link.danger { color: var(--of-danger); }
+
 /* openSheet({ variant: "dialog" }) (src/views/sheet.js): a centered card instead of a bottom
    sheet. Used by Edit profile (.of-edit-*, src/views/profile.js). */
 .of-sheet-backdrop.of-dialog-backdrop { align-items: center; padding: 16px; }

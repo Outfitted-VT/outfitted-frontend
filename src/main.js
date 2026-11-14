@@ -1,5 +1,5 @@
 import "./onboarding.js";
-import { currentUser, posts, friendsList, wardrobeOutfits, history } from "./data.js";
+import { currentUser, posts, wardrobeOutfits, history } from "./data.js";
 import { icons } from "./icons.js";
 import { renderStylistAssistant, connectStylistAssistant } from "./assistant.js";
 import { renderWardrobePage, connectWardrobe } from "./wardrobe.js";
@@ -21,7 +21,7 @@ import { renderCreateSheet } from "./views/create-sheet.js";
 import { openDormCloset } from "./dorm-closet.js";
 import { openStyleFriend } from "./style-friend.js";
 import { applyTheme, getThemePreference, isDarkTheme, onThemeChange, setThemePreference } from "./theme.js";
-import { appHeader, paintStreakChip, setBellDot, setChatUnreadDot, tabBar } from "./views/components.js";
+import { appHeader, avatar as ofAvatar, paintStreakChip, setBellDot, setChatUnreadDot, tabBar } from "./views/components.js";
 import { mountFeed, renderFeedScreen } from "./views/feed-view.js";
 import { initKeyboard } from "./keyboard.js";
 import { startConversation, startMessaging, stopMessaging, subscribe as onMessagesChange, unreadTotal } from "./messages-store.js";
@@ -262,63 +262,43 @@ function renderCommentsDialog() {
   `;
 }
 
-/* ---------- Account Profile & Studio Drawer ---------- */
+/* ---------- Account menu (the header avatar) ---------- */
+// A small dropdown under the avatar (styles: .of-account-* in src/connected.css). The ids and
+// data attributes are the ones the handlers in connectApp use.
+const MENU_CHEVRON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>`;
+
+function accountMenuRow({ attrs, icon, label }) {
+  return `<button type="button" class="of-account-row" ${attrs}>
+    <span class="of-account-row-icon">${icon}</span>
+    <span class="of-account-row-label">${label}</span>
+    ${MENU_CHEVRON}
+  </button>`;
+}
+
 function renderAccountDrawer() {
+  const user = { full_name: currentUser.name, username: currentUser.username, avatarUrl: currentUser.avatarUrl };
   return `
-    <dialog class="sheet sheet-account" id="account-sheet-dialog" aria-labelledby="account-sheet-title">
-      <div class="sheet-card account-card">
-        <div class="sheet-drag-handle"></div>
-        <button type="button" class="icon-button close" id="close-account-sheet" aria-label="Close">${icons.close}</button>
-        
-        <div class="account-profile-header">
-          <span class="avatar-chip lg overflow-hidden" style="background:#0f3728; color:#fff;">${currentUser.avatarUrl ? `<img src="${escapeHtml(mediaUrl(currentUser.avatarUrl))}" alt="" class="w-full h-full object-cover rounded-full" />` : escapeHtml(currentUser.initial || "HI")}</span>
-          <div class="account-profile-info">
-            <h3 id="account-sheet-title">${escapeHtml(currentUser.name)}</h3>
-            <p class="account-handle">${escapeHtml(currentUser.handle)} · <span class="account-tier-badge">Stylist Circle</span></p>
+    <dialog class="of-account-menu" id="account-sheet-dialog" aria-labelledby="account-sheet-title">
+      <div class="of-account-card">
+        <div class="of-account-head">
+          ${ofAvatar(user, { size: 44 })}
+          <div class="of-account-who">
+            <b id="account-sheet-title">${escapeHtml(currentUser.name)}</b>
+            <small>${escapeHtml(currentUser.handle)}</small>
           </div>
+          <button type="button" class="of-account-close" id="close-account-sheet" aria-label="Close">${icons.close}</button>
         </div>
 
-        <div class="account-nav-grid">
-          <button class="account-nav-tile" data-nav="friends">
-            <span class="tile-icon" style="background:#ebf7f0; color:#0f3728;">${icons.users}</span>
-            <div class="tile-text">
-              <strong>Friends & Followers</strong>
-              <small>Taste you trust · ${friendsList.length} ${friendsList.length === 1 ? "person" : "people"}</small>
-            </div>
-            <span class="tile-arrow">${icons.arrowRight}</span>
-          </button>
+        <nav class="of-account-rows" aria-label="Account">
+          ${accountMenuRow({ attrs: 'data-nav="profile"', icon: icons.hanger, label: "Your profile" })}
+          ${accountMenuRow({ attrs: 'data-nav="friends"', icon: icons.users, label: "Friends" })}
+          ${accountMenuRow({ attrs: 'data-nav="assistant"', icon: icons.wand, label: "Stylist AI" })}
+          ${accountMenuRow({ attrs: 'id="account-open-branding"', icon: icons.sparkleIcon, label: "Brand & splash" })}
+        </nav>
 
-          <button class="account-nav-tile" data-nav="profile">
-            <span class="tile-icon" style="background:#fef8e2; color:#b07800;">${icons.hanger}</span>
-            <div class="tile-text">
-              <strong>Your profile</strong>
-              <small>Your posted fits, followers & sign out</small>
-            </div>
-            <span class="tile-arrow">${icons.arrowRight}</span>
-          </button>
-
-          <button class="account-nav-tile" data-nav="assistant">
-            <span class="tile-icon" style="background:#ebf7f0; color:#0f3728;">${icons.wand}</span>
-            <div class="tile-text">
-              <strong>Stylist AI Assistant</strong>
-              <small>Chat, outfit generator, screenshot search</small>
-            </div>
-            <span class="tile-arrow">${icons.arrowRight}</span>
-          </button>
-
-          <button class="account-nav-tile" id="account-open-branding">
-            <span class="tile-icon" style="background:#fcedea; color:#e26250;">${icons.sparkleIcon}</span>
-            <div class="tile-text">
-              <strong>Brand Suite & Splash</strong>
-              <small>Marks, Didot startup sequence</small>
-            </div>
-            <span class="tile-arrow">${icons.arrowRight}</span>
-          </button>
-        </div>
-
-        <div class="account-appearance">
-          <span class="account-appearance-label" id="appearance-label">Appearance</span>
-          <div class="grid grid-cols-3 p-1 rounded-full bg-surface-container" role="radiogroup" aria-labelledby="appearance-label">
+        <div class="of-account-section">
+          <span class="of-account-label" id="appearance-label">Appearance</span>
+          <div class="of-account-theme" role="radiogroup" aria-labelledby="appearance-label">
             ${[
               ["light", "light_mode", "Light"],
               ["dark", "dark_mode", "Dark"],
@@ -326,22 +306,17 @@ function renderAccountDrawer() {
             ]
               .map(
                 ([value, icon, label]) => `
-              <button type="button" role="radio" data-theme-option="${value}" aria-checked="false"
-                class="compare-tab h-9 rounded-full font-label-md text-label-md font-semibold flex items-center justify-center gap-1">
-                <span class="material-symbols-outlined text-[16px]">${icon}</span>${label}
+              <button type="button" role="radio" data-theme-option="${value}" aria-checked="false">
+                <span class="material-symbols-outlined">${icon}</span>${label}
               </button>`
               )
               .join("")}
           </div>
         </div>
 
-        <div class="account-sheet-footer" style="display:flex; flex-direction:column; gap:8px;">
-          <button class="button button-primary button-block" id="btn-open-signin">
-            <span>Switch account</span>
-          </button>
-          <button class="button button-outline button-block" id="btn-signout-demo">
-            <span>Sign Out (${escapeHtml(currentUser.handle)})</span>
-          </button>
+        <div class="of-account-foot">
+          <button type="button" class="of-account-link" id="btn-open-signin">Switch account</button>
+          <button type="button" class="of-account-link danger" id="btn-signout-demo">Sign out</button>
         </div>
       </div>
     </dialog>
@@ -757,6 +732,10 @@ function bindEvents() {
 
   if (btnAccountBadge && accountSheet) {
     btnAccountBadge.onclick = () => accountSheet.showModal();
+    // Clicking outside the card (on the dialog's backdrop) closes it.
+    accountSheet.onclick = (event) => {
+      if (event.target === accountSheet) accountSheet.close();
+    };
   }
   if (closeAccount && accountSheet) {
     closeAccount.onclick = () => accountSheet.close();
