@@ -10,8 +10,8 @@ import {
   createOutfitMemory,
   listFits,
   setSaved,
-  mediaUrl,
 } from "./fits.js";
+import { fitCollage } from "./views/fit-collage.js";
 
 let activeView = "grid"; // 'grid' | 'carousel' | 'calendar'
 let activeCarouselCategory = "clothing"; // 'clothing' | 'shoes' | 'accessories' | 'fits'
@@ -207,7 +207,7 @@ function getActiveCarouselList() {
       saved: true,
       name: savedFitTitle(fit),
       brand: `@${fit.author.username}`,
-      image: fit.images[0] ? mediaUrl(fit.images[0].url) : "",
+      media: fitCollage(fit),
       pieces: savedFitPieces(fit),
     }));
     return saved.concat(wardrobeOutfits.map((o) => ({
@@ -261,7 +261,7 @@ function renderCarouselStageItems() {
       return `
         <div class="carousel-3d-card ${isCenter ? "active" : ""}" style="${transformStyle}" data-index="${idx}">
           <div class="carousel-card-img-wrap">
-            <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" />
+            ${item.saved ? item.media : `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" />`}
             <span class="carousel-badge-pill">${escapeHtml(item.brand)}</span>
             <span class="carousel-cpw-pill">${item.saved ? "Saved" : `$${costPerWear}/wear`}</span>
           </div>
@@ -475,15 +475,14 @@ function renderSavedFitDetails(item) {
   `;
 }
 
-// A fit the user saved from the feed: its first photo and the pieces tagged in it.
+// A fit the user saved from the feed: its pieces laid out flat (or a placeholder) and their names.
 function renderSavedFitCard(fit) {
-  const image = fit.images[0];
   const title = savedFitTitle(fit);
   const pieces = savedFitPieces(fit);
   return `
     <article class="wardrobe-card" data-category="" data-status="Saved" data-saved-fit="${fit.id}">
       <div class="wardrobe-card-media">
-        ${image ? `<img src="${escapeHtml(mediaUrl(image.url))}" alt="${escapeHtml(title)}" loading="lazy" />` : ""}
+        ${fitCollage(fit)}
         <span class="status-pill">Saved</span>
       </div>
       <div class="wardrobe-card-meta">
