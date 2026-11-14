@@ -1,7 +1,7 @@
 import { currentUser } from "../data.js";
 import { listFits, listWardrobeItems, mediaUrl, updateProfile } from "../fits.js";
 import { escapeHtml } from "../format.js";
-import { avatar, iconButton, ofIcons, pillCta, stateBlock } from "./components.js";
+import { avatar, iconButton, ofIcons, stateBlock } from "./components.js";
 import { isLive } from "./feed-view.js";
 import { pollLeader } from "./fit-card.js";
 import { openSheet } from "./sheet.js";
@@ -412,23 +412,51 @@ async function share(toast) {
   } catch {}
 }
 
+// A centered dialog: photo, name and bio, with Cancel / Save.
 function editProfile({ toast, rerender }) {
+  const name = currentUser.name || "";
+  const bio = currentUser.bio || "";
   const { root, close } = openSheet({
     title: "Edit profile",
-    body: `<div class="of-sheet-body of-form">
-      <label class="of-field-label">Name<input class="of-field" maxlength="100" data-edit-name value="${escapeHtml(currentUser.name || "")}" /></label>
-      <label class="of-field-label">Bio<input class="of-field" maxlength="160" data-edit-bio value="${escapeHtml(currentUser.bio || "")}" /></label>
-      <button type="button" class="of-menu-row" data-edit-photo><span class="of-menu-icon">${ofIcons.image()}</span>Change photo</button>
-    </div>
-    <p class="of-toast-error" data-error hidden></p>
-    ${pillCta({ label: "Save", data: { "data-edit-save": true } })}`,
+    variant: "dialog",
+    body: `<form class="of-edit-profile" data-edit-form novalidate>
+      <div class="of-edit-photo-row">
+        ${avatar(currentUser, { size: 72 })}
+        <div class="of-edit-who">
+          <b>@${escapeHtml(currentUser.username || "")}</b>
+          <button type="button" class="of-edit-photo" data-edit-photo>${ofIcons.image(16)}Change photo</button>
+        </div>
+      </div>
+      <label class="of-edit-field">
+        <span>Name <em data-count="name">${name.length}/100</em></span>
+        <input class="of-field" maxlength="100" data-edit-name value="${escapeHtml(name)}" placeholder="Your name" autocomplete="name" />
+      </label>
+      <label class="of-edit-field">
+        <span>Bio <em data-count="bio">${bio.length}/160</em></span>
+        <textarea class="of-field of-edit-bio" maxlength="160" rows="3" data-edit-bio placeholder="A line about your style">${escapeHtml(bio)}</textarea>
+      </label>
+      <p class="of-toast-error" data-error hidden></p>
+      <div class="of-edit-actions">
+        <button type="button" class="of-btn of-btn-soft" data-sheet-close>Cancel</button>
+        <button type="submit" class="of-btn of-btn-ink" data-edit-save>Save</button>
+      </div>
+    </form>`,
   });
+  for (const [field, max] of [["name", 100], ["bio", 160]]) {
+    const input = root.querySelector(`[data-edit-${field}]`);
+    input.addEventListener("input", () => {
+      root.querySelector(`[data-count="${field}"]`).textContent = `${input.value.length}/${max}`;
+    });
+  }
+  root.querySelector("[data-edit-name]").focus({ preventScroll: true });
   root.querySelector("[data-edit-photo]").addEventListener("click", () => {
     close();
     document.querySelector("#profile-avatar-input")?.click();
   });
-  root.querySelector("[data-edit-save]").addEventListener("click", async (event) => {
-    event.currentTarget.disabled = true;
+  root.querySelector("[data-edit-form]").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const save = root.querySelector("[data-edit-save]");
+    save.disabled = true;
     const fullName = root.querySelector("[data-edit-name]").value.trim() || null;
     const bio = root.querySelector("[data-edit-bio]").value.trim() || null;
     try {
@@ -441,7 +469,7 @@ function editProfile({ toast, rerender }) {
       const error = root.querySelector("[data-error]");
       error.hidden = false;
       error.textContent = err.message || "Couldn't save your profile.";
-      event.currentTarget.disabled = false;
+      save.disabled = false;
     }
   });
 }
