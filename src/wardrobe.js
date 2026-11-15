@@ -1,5 +1,5 @@
 import { icons } from "./icons.js";
-import { history, outfitMemories, wardrobeCatalog, wardrobeOutfits } from "./data.js";
+import { outfitMemories, wardrobeCatalog } from "./data.js";
 import { escapeHtml } from "./format.js";
 import { openVirtualDressingRoom } from "./tryon-modal.js";
 import { openTryOnFrom } from "./create.js";
@@ -10,6 +10,7 @@ import {
   createOutfitMemory,
   listFits,
   setSaved,
+  mediaUrl,
 } from "./fits.js";
 import { fitCollage } from "./views/fit-collage.js";
 
@@ -51,7 +52,7 @@ export function renderWardrobePage() {
       <section class="wardrobe-view-container ${activeView === "carousel" ? "" : "hidden"}" id="view-carousel">
         <div class="carousel-category-nav">
           <button class="carousel-cat-pill ${activeCarouselCategory === "clothing" ? "active" : ""}" data-cat="clothing">
-            👕 Clothing (<span id="carousel-fit-count">${wardrobeOutfits.length}</span>)
+            👕 Clothing (<span id="carousel-fit-count">0</span>)
           </button>
           <button class="carousel-cat-pill ${activeCarouselCategory === "shoes" ? "active" : ""}" data-cat="shoes">
             👟 Shoes (${wardrobeCatalog.shoes.length})
@@ -145,12 +146,7 @@ export function renderWardrobePage() {
         <!-- Filter and Search Bar -->
         <div class="wardrobe-controls-bar">
           <div class="category-filters" id="wardrobe-filters">
-            <button class="category-pill active" data-filter="all">All Fits (<span id="wardrobe-fit-count">${wardrobeOutfits.length}</span>)</button>
-            <button class="category-pill" data-filter="Campus">Campus</button>
-            <button class="category-pill" data-filter="Night Out">Night Out</button>
-            <button class="category-pill" data-filter="Weekend">Weekend</button>
-            <button class="category-pill" data-filter="Saved">Saved</button>
-            <button class="category-pill" data-filter="Live">Live Fit</button>
+            <button class="category-pill active" data-filter="all">Saved fits (<span id="wardrobe-fit-count">0</span>)</button>
           </div>
           <div class="wardrobe-search">
             <span class="search-icon">${icons.search}</span>
@@ -159,44 +155,17 @@ export function renderWardrobePage() {
         </div>
 
         <!-- Outfits Grid -->
-        <div class="wardrobe-grid" id="wardrobe-grid-box">
-          ${wardrobeOutfits.map((outfit) => renderWardrobeCard(outfit)).join("")}
-        </div>
+        <div class="wardrobe-grid" id="wardrobe-grid-box"></div>
         <p class="wardrobe-saved-empty" id="wardrobe-saved-empty" hidden>
           Nothing saved yet. Tap <strong>Save</strong> on a post in the feed and it shows up here.
         </p>
 
-        <!-- Shared History Timeline -->
-        <section class="wardrobe-history-section">
-          <div class="history-head">
-            <div>
-              <h3>Shared Fit History</h3>
-              <p>Chronological record of looks shared with your circle.</p>
-            </div>
-          </div>
-          <div class="history-cards-row">
-            ${history
-              .map(
-                (item) => `
-                <div class="history-item-card">
-                  <div class="history-item-header">
-                    <strong>${escapeHtml(item.name)}</strong>
-                    <span class="tag ${item.status === "Live" ? "tag-live" : ""}">${escapeHtml(item.status)}</span>
-                  </div>
-                  <p class="history-item-pieces">${escapeHtml(item.pieces)}</p>
-                  <small class="history-item-date">${escapeHtml(item.date)}</small>
-                </div>
-              `
-              )
-              .join("")}
-          </div>
-        </section>
       </section>
     </div>
   `;
 }
 
-// Clothing shows what the grid shows: saved fits first, then your outfits.
+// Clothing shows what the grid shows: your saved fits.
 function getActiveCarouselList() {
   if (activeCarouselCategory === "clothing") {
     // Saved fits have no price or wear count, so they show their pieces instead.
@@ -208,17 +177,7 @@ function getActiveCarouselList() {
       media: fitCollage(fit),
       pieces: savedFitPieces(fit),
     }));
-    return saved.concat(wardrobeOutfits.map((o) => ({
-      id: o.id,
-      name: o.title,
-      brand: "Outfitted Wardrobe",
-      category: o.category,
-      price: 180,
-      timesWorn: 6,
-      lastWorn: o.date,
-      image: o.image,
-      tag: o.vibe,
-    })));
+    return saved;
   }
   return wardrobeCatalog[activeCarouselCategory] || [];
 }
@@ -409,33 +368,6 @@ function renderMemoryDetailCard(memory) {
   `;
 }
 
-function renderWardrobeCard(outfit) {
-  return `
-    <article class="wardrobe-card" data-category="${outfit.category}" data-status="${outfit.status}" data-id="${outfit.id}">
-      <div class="wardrobe-card-media">
-        <img src="${outfit.image}" alt="${escapeHtml(outfit.title)}" loading="lazy" />
-        <span class="status-pill status-${outfit.status.toLowerCase().replace(" ", "-")}">${escapeHtml(outfit.status)}</span>
-        <button class="card-expand-btn" title="Inspect pieces" data-outfit-id="${outfit.id}">${icons.sparkleIcon}</button>
-      </div>
-      <div class="wardrobe-card-meta">
-        <div class="meta-top">
-          <h4>${escapeHtml(outfit.title)}</h4>
-          <span class="vibe-badge">${escapeHtml(outfit.vibe)}</span>
-        </div>
-        <p class="pieces-preview">${escapeHtml(outfit.pieces.join(" · "))}</p>
-        <div class="wardrobe-card-footer">
-          <button class="button button-ghost button-sm btn-wardrobe-tryon" data-outfit-id="${outfit.id}">
-            ${icons.wand}<span>Try on</span>
-          </button>
-          <button class="button button-dark button-sm btn-wardrobe-share" data-outfit-id="${outfit.id}">
-            ${icons.share}<span>Share</span>
-          </button>
-        </div>
-      </div>
-    </article>
-  `;
-}
-
 const savedFitTitle = (fit) =>
   fit.caption?.split("\n")[0] || `${fit.author.full_name || fit.author.username}'s fit`;
 const savedFitPieces = (fit) => fit.items.map((item) => [item.brand, item.name].filter(Boolean).join(" "));
@@ -459,14 +391,16 @@ function renderSavedFitDetails(item) {
             : `<span class="font-label-sm text-on-surface-variant">No pieces tagged</span>`
         }
       </div>
-      <div class="grid grid-cols-2 gap-space-xs pt-1">
-        <button type="button" class="h-10 rounded-full bg-primary text-on-primary font-label-md font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all" data-saved-tryon>
-          <span class="material-symbols-outlined text-[17px] text-tertiary-fixed">auto_awesome</span>
-          <span>Try this look</span>
+      <!-- The same three buttons as the grid card (renderSavedFitCard). -->
+      <div class="wardrobe-card-footer">
+        <button type="button" class="button button-ghost button-sm flex-1" data-saved-tryon>
+          ${icons.wand}<span>Try this look</span>
         </button>
-        <button type="button" class="h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all" data-saved-remove>
-          <span class="material-symbols-outlined text-[17px] text-secondary">bookmark_remove</span>
-          <span>Unsave</span>
+        <button type="button" class="button button-dark button-sm flex-1" data-saved-share>
+          ${icons.share}<span>Share</span>
+        </button>
+        <button type="button" class="button button-ghost button-sm wardrobe-unsave" data-saved-remove aria-label="Unsave" title="Unsave">
+          <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">bookmark_remove</span>
         </button>
       </div>
     </div>
@@ -493,8 +427,11 @@ function renderSavedFitCard(fit) {
           <button class="button button-ghost button-sm" data-saved-tryon>
             ${icons.wand}<span>Try this look</span>
           </button>
-          <button class="button button-dark button-sm" data-saved-remove>
-            <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1">bookmark_remove</span><span>Unsave</span>
+          <button class="button button-dark button-sm" data-saved-share>
+            ${icons.share}<span>Share</span>
+          </button>
+          <button class="button button-ghost button-sm wardrobe-unsave" data-saved-remove aria-label="Unsave" title="Unsave">
+            <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">bookmark_remove</span>
           </button>
         </div>
       </div>
@@ -758,7 +695,7 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
       card.hidden = !(matchesFilter && matchesSearch);
     });
     const empty = container.querySelector("#wardrobe-saved-empty");
-    if (empty) empty.hidden = !(activeFilter === "Saved" && !query && !container.querySelector("[data-saved-fit]"));
+    if (empty) empty.hidden = Boolean(query) || Boolean(container.querySelector("[data-saved-fit]"));
   }
 
   // Fits the user saved from the feed go first in the grid and the carousel's Full Outfits
@@ -766,7 +703,7 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
   savedFits.clear();
   const grid = container.querySelector("#wardrobe-grid-box");
   const updateFitCounts = () => {
-    const total = String(wardrobeOutfits.length + savedFits.size);
+    const total = String(savedFits.size);
     container.querySelectorAll("#wardrobe-fit-count, #carousel-fit-count").forEach((count) => {
       count.textContent = total;
     });
@@ -804,12 +741,22 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
 
   // Grid cards and the carousel's details panel use the same buttons.
   container.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-saved-tryon], [data-saved-remove]");
+    const button = event.target.closest("[data-saved-tryon], [data-saved-share], [data-saved-remove]");
     const id = button?.closest("[data-saved-fit]")?.dataset.savedFit;
     const fit = savedFits.get(id);
     if (!fit) return;
     if (button.matches("[data-saved-tryon]")) {
       openTryOnFrom(fit);
+    } else if (button.matches("[data-saved-share]")) {
+      // The same Share this look window as the outfits below (src/share-modal.js).
+      onShareRequest?.({
+        id: fit.id,
+        fitId: fit.id,
+        image: fit.images[0] ? mediaUrl(fit.images[0].url) : "",
+        fileTag: `SAVED FROM @${fit.author.username}`,
+        title: savedFitTitle(fit),
+        question: fit.poll?.question || savedFitPieces(fit).join(" · ") || "",
+      });
     } else {
       unsaveFit(id, button);
     }
@@ -824,21 +771,4 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
   });
 
   if (searchInput) searchInput.oninput = applyFilters;
-
-  // Try on & Share in Grid view
-  container.querySelectorAll(".btn-wardrobe-tryon").forEach((btn) => {
-    btn.onclick = () => {
-      const id = btn.dataset.outfitId;
-      const outfit = wardrobeOutfits.find((o) => o.id === id);
-      if (outfit && onTryOnRequest) onTryOnRequest(outfit);
-    };
-  });
-
-  container.querySelectorAll(".btn-wardrobe-share").forEach((btn) => {
-    btn.onclick = () => {
-      const id = btn.dataset.outfitId;
-      const outfit = wardrobeOutfits.find((o) => o.id === id);
-      if (outfit && onShareRequest) onShareRequest(outfit);
-    };
-  });
 }

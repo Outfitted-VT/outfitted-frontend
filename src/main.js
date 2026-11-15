@@ -1,5 +1,5 @@
 import "./onboarding.js";
-import { currentUser, posts, wardrobeOutfits, history } from "./data.js";
+import { currentUser, posts } from "./data.js";
 import { icons } from "./icons.js";
 import { renderStylistAssistant, connectStylistAssistant } from "./assistant.js";
 import { renderWardrobePage, connectWardrobe } from "./wardrobe.js";
@@ -423,6 +423,7 @@ function connectChat() {
       toast: showToast,
       onBack: close,
       onOpenStory: openUserStories,
+      onOpenFit: openFit,
     });
     // Clicking outside the dialog or pressing Escape closes it.
     const backdrop = document.querySelector("[data-thread-backdrop]");
@@ -693,9 +694,7 @@ function bindEvents() {
     showToast("Virtual try-on posted to your Circle!");
   });
 
-  connectShareModal((recipient) => {
-    showToast(`Shared fit with ${recipient}!`);
-  });
+  connectShareModal({ toast: showToast });
 
   connectBrandingDialog();
 
