@@ -12,41 +12,38 @@ const share = { fitId: null, query: "", people: [], sent: new Set(), request: 0 
 
 export function renderShareModal() {
   return `
-    <dialog class="sheet sheet-share" id="share-fit-dialog" aria-labelledby="share-fit-heading">
-      <div class="sheet-card share-card">
-        <button type="button" class="icon-button close" id="close-share-dialog" aria-label="Close">${icons.close}</button>
-        <div class="share-head">
+    <dialog class="of-share" id="share-fit-dialog" aria-labelledby="share-fit-heading">
+      <div class="of-share-card">
+        <div class="of-share-head">
           <h2 id="share-fit-heading">Share this look</h2>
-          <p class="sheet-lede">Send it to someone in your circle, or copy a link.</p>
+          <button type="button" class="of-share-close" id="close-share-dialog" aria-label="Close">${icons.close}</button>
         </div>
 
-        <div class="share-preview-card" id="share-preview-card">
+        <div class="of-share-preview">
           <img src="" alt="" id="share-modal-img" />
-          <div class="share-preview-meta">
-            <span class="file-tag" id="share-modal-tag"></span>
-            <strong id="share-modal-title"></strong>
+          <div class="of-share-preview-text">
+            <span class="of-share-tag" id="share-modal-tag"></span>
+            <b id="share-modal-title"></b>
             <p id="share-modal-question"></p>
           </div>
         </div>
 
-        <div class="direct-share-section" id="share-direct">
-          <h4>Send to</h4>
+        <section class="of-share-section" id="share-direct">
+          <p class="of-share-label">Send to</p>
           <label class="of-search share-search">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
             <input type="search" id="share-search" placeholder="Search your circle" aria-label="Search your circle" autocomplete="off" />
           </label>
           <ul class="share-people" id="share-people"></ul>
-        </div>
+        </section>
 
-        <div class="share-link-section">
-          <h4>Copy Direct Link</h4>
-          <div class="link-input-row">
-            <input type="text" id="share-link-url" readonly value="" />
-            <button class="button button-dark" id="btn-copy-share-link">
-              ${icons.link}<span>Copy link</span>
-            </button>
+        <section class="of-share-section">
+          <p class="of-share-label">Copy link</p>
+          <div class="of-share-link">
+            <input type="text" id="share-link-url" readonly value="" aria-label="Link to this fit" />
+            <button type="button" class="of-share-copy" id="btn-copy-share-link">${icons.link}<span>Copy link</span></button>
           </div>
-        </div>
+        </section>
       </div>
     </dialog>
   `;
