@@ -22,31 +22,18 @@ let selectedCalendarMemory = outfitMemories[0];
 
 export function renderWardrobePage() {
   return `
-    <div class="wardrobe-page" id="wardrobe-page">
-      <div class="wardrobe-hero">
-        <div>
-          <p class="eyebrow" style="color:var(--brand-coral);"><span class="coral-bullet">•</span> DIGITAL WARDROBE & FIT ARCHIVE</p>
-          <h1 class="wardrobe-title">Your Wardrobe Studio</h1>
-          <p class="wardrobe-subtitle">Curate your closet, browse in 3D, calculate cost-per-wear, and log daily outfit memories.</p>
-        </div>
-        <div class="wardrobe-hero-actions">
-          <!-- View Mode Switcher -->
-          <div class="view-mode-toggle" id="wardrobe-view-toggle">
-            <button class="view-toggle-btn ${activeView === "grid" ? "active" : ""}" data-view="grid" title="Standard Grid View">
-              <span class="material-symbols-outlined text-[18px]">grid_view</span>
-              <span>Grid</span>
-            </button>
-            <button class="view-toggle-btn ${activeView === "carousel" ? "active" : ""}" data-view="carousel" title="3D Carousel Experience">
-              <span class="material-symbols-outlined text-[18px]">view_in_ar</span>
-              <span>3D Carousel</span>
-            </button>
-            <button class="view-toggle-btn ${activeView === "calendar" ? "active" : ""}" data-view="calendar" title="Daily Outfit Calendar">
-              <span class="material-symbols-outlined text-[18px]">calendar_month</span>
-              <span>Calendar</span>
-            </button>
-          </div>
-        </div>
-      </div>
+    <section class="of-screen of-myfits" id="wardrobe-page">
+      <!-- Same header as Friends and Messages (styles: .of-myfits in src/connected.css). -->
+      <header class="of-myfits-head">
+        <span class="of-friends-kicker">YOUR WARDROBE</span>
+        <h1 class="of-display">My fits</h1>
+        <p class="of-friends-sub">The looks you've saved, in a grid, in 3D, or day by day.</p>
+      </header>
+      <nav class="of-friends-tabs" id="wardrobe-view-toggle" aria-label="View">
+        <button type="button" class="of-chip view-toggle-btn ${activeView === "grid" ? "active" : ""}" data-view="grid">Grid</button>
+        <button type="button" class="of-chip view-toggle-btn ${activeView === "carousel" ? "active" : ""}" data-view="carousel">3D Carousel</button>
+        <button type="button" class="of-chip view-toggle-btn ${activeView === "calendar" ? "active" : ""}" data-view="calendar">Calendar</button>
+      </nav>
 
       <!-- VIEW 1: 3D CAROUSEL COVERFLOW -->
       <section class="wardrobe-view-container ${activeView === "carousel" ? "" : "hidden"}" id="view-carousel">
@@ -143,16 +130,11 @@ export function renderWardrobePage() {
 
       <!-- VIEW 3: STANDARD WARDROBE GRID -->
       <section class="wardrobe-view-container ${activeView === "grid" ? "" : "hidden"}" id="view-grid">
-        <!-- Filter and Search Bar -->
-        <div class="wardrobe-controls-bar">
-          <div class="category-filters" id="wardrobe-filters">
-            <button class="category-pill active" data-filter="all">Saved fits (<span id="wardrobe-fit-count">0</span>)</button>
-          </div>
-          <div class="wardrobe-search">
-            <span class="search-icon">${icons.search}</span>
-            <input type="text" id="wardrobe-search-input" placeholder="Search outfits, pieces, colors..." />
-          </div>
-        </div>
+        <label class="of-search of-friends-search">
+          ${icons.search}
+          <input type="search" id="wardrobe-search-input" placeholder="Search your saved fits" aria-label="Search your saved fits" autocomplete="off" />
+        </label>
+        <p class="of-friends-label">Saved fits · <span id="wardrobe-fit-count">0</span></p>
 
         <!-- Outfits Grid -->
         <div class="wardrobe-grid" id="wardrobe-grid-box"></div>
@@ -161,7 +143,7 @@ export function renderWardrobePage() {
         </p>
 
       </section>
-    </div>
+    </section>
   `;
 }
 
