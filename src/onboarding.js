@@ -62,7 +62,7 @@ const pressed = on => `aria-pressed="${on}"`;
 function loadingView() {
   return `<section class="ob-screen ob-load">
     <div class="ob-load-center">
-      <div class="ob-mark"><span>Outf</span><span class="ob-i">ı<span class="ob-i-dot"></span></span><span>tted</span></div>
+      <span class="wordmark splash-wordmark" role="img" aria-label="Outfitted">OUTFITTED<span class="wordmark-dot">.</span></span>
       <div class="ob-bar"><div class="ob-bar-fill"></div></div>
     </div>
     <div class="ob-load-foot">
