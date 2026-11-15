@@ -42,7 +42,7 @@ export function renderBrandingDialog() {
     <!-- Fullscreen Loading Splash Screen Overlay -->
     <div class="splash-screen-overlay" id="splash-overlay" hidden>
       <div class="splash-inner">
-        <img src="./assets/branding/loading_screen.png" alt="Outfitted Loading" class="splash-logo-img" />
+        <span class="wordmark splash-wordmark" role="img" aria-label="Outfitted">OUTFITTED<span class="wordmark-dot">.</span></span>
         <div class="splash-progress-track">
           <div class="splash-progress-fill" id="splash-fill"></div>
         </div>

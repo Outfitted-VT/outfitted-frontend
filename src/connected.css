@@ -899,3 +899,8 @@ img[class*="w-"] {
 .of-myfits .wardrobe-card-footer .button-dark { flex: 1; background: var(--of-ink-surface); color: var(--of-on-dark); border: 0; }
 .of-myfits .wardrobe-card-footer .button-dark svg { color: var(--of-lime); }
 .of-myfits .wardrobe-card-footer .wardrobe-unsave { flex: none; width: 34px; padding: 0; }
+
+/* The app header uses the same OUTFITTED. wordmark as the sign-in screen. */
+.of-header-wordmark { font-size: 1.6rem; color: var(--of-ink); }
+/* The loading screen (src/branding-dialog.js) uses it too. */
+.splash-wordmark { font-size: 2.6rem; color: var(--of-ink); }

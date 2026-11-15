@@ -129,8 +129,7 @@ export function appHeader({ user, notificationsUnread = false, streak = null }) 
   return `<header class="of-header">
     <div class="of-header-in">
       <a class="of-header-brand" href="#feed" data-nav="feed" aria-label="Outfitted home">
-        <span class="of-badge" aria-hidden="true">OF<span class="of-badge-dot"></span></span>
-        <span class="of-wordmark">Outfitted</span>
+        <span class="wordmark of-header-wordmark">OUTFITTED<span class="wordmark-dot">.</span></span>
       </a>
       <div class="of-header-actions">
         ${streakChip(streak)}
