@@ -865,3 +865,37 @@ img[class*="w-"] {
 .of-fit-share-text b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .of-fit-share-text small { font-size: 12px; color: var(--of-muted); }
 .of-bubble.of-fit-share.gone { width: auto; padding: 10px 14px; color: var(--of-muted); font-style: italic; }
+
+/* ===== My fits on the app theme (src/wardrobe.js). Everything for the rework is scoped to
+   .of-myfits in this block; the old .wardrobe-* styles in styles.css are untouched. ===== */
+.of-myfits { width: 100%; padding-top: 28px; gap: 0; }
+.of-myfits-head { display: flex; flex-direction: column; margin-bottom: 22px; }
+.of-myfits-head .of-display { margin: 10px 0; font-size: 36px; line-height: 1.05; letter-spacing: -0.6px; }
+.of-myfits .of-friends-tabs { margin-bottom: 18px; }
+.of-myfits .view-toggle-btn.active { border: 0; background: var(--of-ink-surface); color: var(--of-on-dark); font-weight: 700; }
+.of-myfits .of-search svg { width: 18px; height: 18px; flex: none; }
+.of-myfits .of-friends-label { margin-bottom: 10px; }
+.of-myfits .wardrobe-view-container.hidden { display: none; }
+
+/* Saved fit cards */
+.of-myfits .wardrobe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.of-myfits .wardrobe-card { border: 1px solid var(--of-line); border-radius: var(--of-r-card); background: var(--of-card); box-shadow: none; overflow: hidden; color: var(--of-ink); }
+.of-myfits .wardrobe-card:hover { transform: none; box-shadow: none; border-color: var(--of-line-strong); }
+.of-myfits .wardrobe-card-media { aspect-ratio: 4 / 5; background: var(--of-fill); }
+.of-myfits .status-pill { background: var(--of-card); color: var(--of-ink); font-size: 11px; font-weight: 700; padding: 3px 9px; }
+.of-myfits .wardrobe-card-meta { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 4px; }
+.of-myfits .meta-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.of-myfits .meta-top h4 { margin: 0; font-family: var(--of-font-ui); font-size: 15px; font-weight: 600; color: var(--of-ink); }
+.of-myfits .vibe-badge { flex: none; background: none; padding: 0; font-size: 12px; font-weight: 500; color: var(--of-muted); }
+.of-myfits .pieces-preview { margin: 0; font-size: 13px; color: var(--of-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-myfits .wardrobe-saved-empty { padding: 40px 12px; text-align: center; font-size: 14px; color: var(--of-muted); }
+
+/* Card buttons (grid and the carousel's panel): outlined, dark, icon. */
+.of-myfits .wardrobe-card-footer { display: flex; flex-direction: row; gap: 8px; margin-top: 8px; }
+.of-myfits .wardrobe-card-footer .button { width: auto; }
+.of-myfits .wardrobe-card-footer .button { min-width: 0; height: 34px; border-radius: 17px; padding: 0 10px; font-size: 13px; font-weight: 600; gap: 6px; white-space: nowrap; }
+.of-myfits .wardrobe-card-footer .button svg { width: 15px; height: 15px; }
+.of-myfits .wardrobe-card-footer .button-ghost { flex: 1; background: transparent; color: var(--of-ink); border: 0; box-shadow: inset 0 0 0 1px var(--of-line-strong); }
+.of-myfits .wardrobe-card-footer .button-dark { flex: 1; background: var(--of-ink-surface); color: var(--of-on-dark); border: 0; }
+.of-myfits .wardrobe-card-footer .button-dark svg { color: var(--of-lime); }
+.of-myfits .wardrobe-card-footer .wardrobe-unsave { flex: none; width: 34px; padding: 0; }
