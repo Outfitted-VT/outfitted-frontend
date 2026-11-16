@@ -303,7 +303,7 @@ function colorDots(fit) {
 }
 
 function statusTag(fit) {
-  if (isLive(fit)) return `<span class="of-hist-tag live">LIVE</span>`;
+  if (isLive(fit)) return `<span class="of-hist-tag live">NEW</span>`;
   const date = new Date(fit.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `<span class="of-hist-tag">${escapeHtml(date.toUpperCase())}</span>`;
 }

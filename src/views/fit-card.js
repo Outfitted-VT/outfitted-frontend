@@ -9,6 +9,7 @@ export const aiBadge = (extra = "") => `
     <span class="material-symbols-outlined text-[13px]">auto_awesome</span>AI try-on
   </span>`;
 
+// Fits posted in the last 24 hours get a NEW tag (on the card and on profile tiles).
 const LIVE_MS = 24 * 60 * 60 * 1000;
 const PHOTO_ZOOM = "background-size:260%;";
 const CHECK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
@@ -36,7 +37,7 @@ const TRASH = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" strok
 
 // mine: your own fit, with Edit and Delete (src/feed.js handles data-fit-edit / data-fit-delete).
 function header(fit, mine) {
-  const live = isLiveFit(fit) ? `<span class="of-live-tag"><span></span>LIVE</span>` : "";
+  const live = isLiveFit(fit) ? `<span class="of-live-tag">NEW</span>` : "";
   const owner = mine
     ? `<span class="of-fitcard-owner">
         <button type="button" class="of-fitcard-icon" data-fit-edit aria-label="Edit fit">${PENCIL}</button>
