@@ -41,10 +41,13 @@ const icon = {
 
 const state = {
   step: 0, returning: false, styles: new Set(), fit: 'Relaxed', top: 'S', bottom: 'M', tone: 'Kind but real',
-  busy: false, error: '', scan: false, people: null, added: new Set(), signedIn: false
+  busy: false, error: '', scan: false, people: null, added: new Set(), signedIn: false,
+  email: '', password: '', name: '', username: ''
 };
+const USERNAME = /^[a-z0-9_.]{3,30}$/;
 let root;
 let current = 'loading';
+let fromLanding = false; // opened by Get started / Log in on the landing page
 
 const cta = (label, act, variant = 'dark', extra = '') =>
   `<button type="button" class="ob-cta ob-cta-${variant}" data-act="${act}" ${extra}>${label}<span class="ob-cta-chip">${icon.arrow}</span></button>`;
@@ -95,7 +98,8 @@ function head(back, count = '') {
   const prog = count
     ? `<div class="ob-prog">${[0, 1, 2].map(i => `<span class="${i <= state.step ? 'on' : ''}"></span>`).join('')}</div><div class="ob-count">${count}</div>`
     : '';
-  return `<div class="ob-head"><button type="button" class="ob-back" data-act="${back}" aria-label="Back">${icon.back}</button>${prog}</div>`;
+  const button = back ? `<button type="button" class="ob-back" data-act="${back}" aria-label="Back">${icon.back}</button>` : "";
+  return `<div class="ob-head">${button}${prog}</div>`;
 }
 
 function signinView() {
@@ -103,14 +107,34 @@ function signinView() {
   return `<section class="ob-screen ob-quiz">
     ${head('toWelcome')}
     <div class="ob-body">
-      ${heading(r ? 'SIGN IN' : 'CREATE ACCOUNT', r ? 'Welcome back.' : 'Welcome to your circle.')}
+      ${heading(r ? 'SIGN IN' : 'CREATE ACCOUNT · 1 / 2', r ? 'Welcome back.' : 'Welcome to your circle.', r ? '' : 'Start with your email and a password (at least 8 characters).')}
       <div class="ob-stack">
-        <input class="ob-field" id="ob-email" type="email" placeholder="Email" autocomplete="email" autocapitalize="off">
+        <input class="ob-field" id="ob-email" type="email" placeholder="Email" autocomplete="email" autocapitalize="off" value="${escapeHtml(state.email)}">
         ${withPasswordToggle(`<input class="ob-field" id="ob-pass" type="password" placeholder="Password" autocomplete="${r ? 'current-password' : 'new-password'}">`)}
       </div>
       ${errorLine()}
     </div>
-    <div class="ob-foot">${cta(state.busy ? 'Signing in…' : 'Continue', 'auth', 'dark', 'disabled')}</div>
+    <div class="ob-foot">
+      ${cta(state.busy ? 'Signing in…' : r ? 'Log in' : 'Continue', 'auth', 'dark', 'disabled')}
+      <button type="button" class="ob-switch" data-act="${r ? 'start' : 'signin'}">${r ? 'New here? <b>Create an account</b>' : 'Have an account? <b>Log in</b>'}</button>
+    </div>
+  </section>`;
+}
+
+// Sign-up step 2: the name and @username friends will see. The username starts from the email.
+function profileView() {
+  return `<section class="ob-screen ob-quiz">
+    ${head('toAccount')}
+    <div class="ob-body">
+      ${heading('CREATE ACCOUNT · 2 / 2', 'How should we call you?', 'Your name and @username show on your fits. Friends search by username.')}
+      <div class="ob-stack">
+        <input class="ob-field" id="ob-name" type="text" placeholder="Name" autocomplete="name" maxlength="100" value="${escapeHtml(state.name)}">
+        <label class="ob-handle"><span>@</span><input class="ob-field" id="ob-username" type="text" placeholder="username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="30" value="${escapeHtml(state.username)}"></label>
+        <p class="ob-hint">3–30 characters: lowercase letters, numbers, _ and .</p>
+      </div>
+      ${errorLine()}
+    </div>
+    <div class="ob-foot">${cta(state.busy ? 'Creating your account…' : 'Create account', 'create', 'dark', 'disabled')}</div>
   </section>`;
 }
 
@@ -202,13 +226,13 @@ function quizView() {
   const last = s === 2;
   const label = last ? 'Finish and open my feed' : s === 0 ? `Continue · ${state.styles.size} picked` : 'Continue';
   return `<section class="ob-screen ob-quiz">
-    ${head('back', `${s + 1} / 3`)}
+    ${head(s === 0 && state.signedIn ? '' : 'back', `${s + 1} / 3`)}
     <div class="ob-body">${[styleStep, fitStep, toneStep][s]()}</div>
     <div class="ob-foot">${last ? errorLine() : ''}${cta(state.busy ? 'Saving…' : label, 'next', last ? 'lime' : 'dark', state.busy ? 'disabled' : '')}</div>
   </section>`;
 }
 
-const views = { loading: loadingView, welcome: welcomeView, signin: signinView, quiz: quizView };
+const views = { loading: loadingView, welcome: welcomeView, signin: signinView, profile: profileView, quiz: quizView };
 
 function fieldValues() {
   return [...root.querySelectorAll('.ob-field')].map(field => [field.id, field.value]);
@@ -223,9 +247,19 @@ function render(animate = false) {
   values.forEach(([id, value]) => { const field = root.querySelector(`#${id}`); if (field) field.value = value; });
   const next = root.querySelector('.ob-body');
   if (next) next.scrollTop = scroll;
+  const pass = root.querySelector('#ob-pass');
+  if (pass && !pass.value) pass.value = state.password;
+  refreshButtons();
+}
+
+function refreshButtons() {
   const auth = root.querySelector('[data-act="auth"]');
   if (auth) auth.disabled = !authReady();
+  const create = root.querySelector('[data-act="create"]');
+  if (create) create.disabled = state.busy || !USERNAME.test(handle());
 }
+
+const handle = () => (root.querySelector('#ob-username')?.value || '').trim().toLowerCase();
 
 function go(screen) {
   current = screen;
@@ -253,7 +287,7 @@ function credentials() {
 
 function authReady() {
   const { email, password } = credentials();
-  return !state.busy && email.includes('@') && password.length >= 6;
+  return !state.busy && email.includes('@') && password.length >= (state.returning ? 1 : 8);
 }
 
 function usernameFrom(email, suffix = '') {
@@ -262,16 +296,50 @@ function usernameFrom(email, suffix = '') {
   return `${padded.slice(0, 30 - suffix.length)}${suffix}`;
 }
 
-async function createAccount(email, password) {
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const suffix = attempt ? String(Math.floor(1000 + Math.random() * 9000)) : '';
-    try {
-      return await signUp({ email, username: usernameFrom(email, suffix), password });
-    } catch (err) {
-      if (!(err instanceof ApiError && err.status === 409 && /username/i.test(err.message))) throw err;
+// Sign-up step 1 done: keep the email and password, suggest a username from the email.
+function toProfile() {
+  Object.assign(state, credentials(), { error: '' });
+  if (!state.username) state.username = usernameFrom(state.email);
+  go('profile');
+}
+
+function profileMessage(err) {
+  if (!(err instanceof ApiError)) return 'Something went wrong. Please try again.';
+  if (err.status === 409 && /username/i.test(err.message)) return 'That username is taken. Try another one.';
+  if (err.fields.username) return escapeHtml(err.fields.username);
+  if (err.fields.full_name) return escapeHtml(err.fields.full_name);
+  return escapeHtml(err.message);
+}
+
+// Sign-up step 2: create the account with the chosen name and username, sign in, then the quiz.
+async function createAccount() {
+  state.name = (root.querySelector('#ob-name')?.value || '').trim();
+  state.username = handle();
+  state.error = '';
+  setBusy(true);
+  try {
+    await signUp({ email: state.email, username: state.username, password: state.password, fullName: state.name || undefined });
+  } catch (err) {
+    state.busy = false;
+    // A taken email belongs on the first step.
+    if (err instanceof ApiError && (err.status === 409 && !/username/i.test(err.message) || err.fields.email || err.fields.password)) {
+      state.error = authMessage(err);
+      return go('signin');
     }
+    state.error = profileMessage(err);
+    return render();
   }
-  throw new ApiError(409, 'Could not pick a username. Please try again.');
+  try {
+    await logIn(state.email, state.password);
+    state.signedIn = true;
+    state.password = '';
+    window.dispatchEvent(new CustomEvent('of:signed-in'));
+    state.busy = false;
+    go('quiz');
+  } catch (err) {
+    state.error = authMessage(err);
+    setBusy(false);
+  }
 }
 
 function authMessage(err) {
@@ -290,10 +358,10 @@ function setBusy(busy) {
 
 async function authenticate() {
   const { email, password } = credentials();
+  if (!state.returning) return toProfile();
   state.error = '';
   setBusy(true);
   try {
-    if (!state.returning) await createAccount(email, password);
     await logIn(email, password);
     state.signedIn = true;
     window.dispatchEvent(new CustomEvent('of:signed-in'));
@@ -335,8 +403,9 @@ async function loadPeople() {
 }
 
 function close() {
-  root.classList.add('ob-out');
-  setTimeout(() => root.remove(), 350);
+  const closing = root;
+  closing.classList.add('ob-out');
+  setTimeout(() => closing.remove(), 350);
 }
 
 function finish() {
@@ -375,10 +444,12 @@ function nextStep() {
 const actions = {
   start() { state.returning = false; state.error = ''; go('signin'); },
   signin() { state.returning = true; state.error = ''; go('signin'); },
-  toWelcome() { go('welcome'); },
+  toWelcome() { if (fromLanding) close(); else go('welcome'); },
+  toAccount() { state.error = ''; state.name = (root.querySelector('#ob-name')?.value || '').trim(); state.username = handle(); go('signin'); },
+  create() { if (USERNAME.test(handle()) && !state.busy) createAccount(); },
   skip: finish,
   auth() { if (authReady()) authenticate(); },
-  back() { if (state.step === 0) go('signin'); else { state.step--; state.error = ''; render(); } },
+  back() { if (state.step === 0) { if (!state.signedIn) go('signin'); } else { state.step--; state.error = ''; render(); } },
   next: nextStep,
   scan() { state.scan = !state.scan; render(); },
   friend: toggleFriend,
@@ -396,28 +467,58 @@ function onClick(e) {
 
 function onInput(e) {
   if (!e.target?.classList.contains('ob-field')) return;
-  const btn = root.querySelector('[data-act="auth"]');
-  if (btn) btn.disabled = !authReady();
+  if (e.target.id === 'ob-username') {
+    const clean = e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, '');
+    if (clean !== e.target.value) e.target.value = clean;
+  }
+  refreshButtons();
 }
 
 function onEnter(e) {
-  if (e.key === 'Enter' && e.target.classList?.contains('ob-field') && authReady()) authenticate();
+  if (e.key !== 'Enter' || !e.target.classList?.contains('ob-field')) return;
+  if (current === 'profile') actions.create();
+  else if (authReady()) authenticate();
 }
 
-function onboarded() {
-  return localStorage.getItem(DONE_KEY) === '1' && !new URLSearchParams(location.search).has('onboard');
+// Over the landing page, the account steps can be dismissed (nothing is created yet).
+const dismissible = () => fromLanding && (current === 'signin' || current === 'profile') && !state.busy;
+
+function onBackdrop(e) {
+  if (e.target === root && dismissible()) close();
 }
 
-function boot() {
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && root?.isConnected && !root.classList.contains('ob-out') && dismissible()) close();
+});
+
+function mount() {
   root = document.createElement('div');
   root.className = 'ob';
   document.body.append(root);
   root.addEventListener('click', onClick);
   root.addEventListener('input', onInput);
   root.addEventListener('keydown', onEnter);
-  go('loading');
-  setTimeout(() => (onboarded() ? close() : go('welcome')), 1900);
+  root.addEventListener('click', onBackdrop);
 }
+
+// The splash, then the app (or the landing page when signed out). ?onboard shows the old welcome.
+function boot() {
+  mount();
+  go('loading');
+  const welcome = new URLSearchParams(location.search).has('onboard');
+  setTimeout(() => (welcome ? go('welcome') : close()), 1900);
+}
+
+// Get started (mode "signup": create an account, then the style quiz) or Log in ("login").
+window.addEventListener('of:start-onboarding', (event) => {
+  if (!root?.isConnected || root.classList.contains('ob-out')) mount();
+  root.classList.add('ob-modal');
+  fromLanding = true;
+  state.returning = event.detail?.mode === 'login';
+  state.error = event.detail?.message ? escapeHtml(event.detail.message) : '';
+  state.step = 0;
+  go('signin');
+});
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();

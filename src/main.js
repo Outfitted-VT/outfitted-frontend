@@ -15,7 +15,7 @@ import { initCreate, openCreate, openEditFit, openTryOnFrom } from "./create.js"
 import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl, getImpactSummary, getTrueSizePassport, addReferenceGarment, removeReferenceGarment, translateSize } from "./fits.js";
 import { escapeHtml, initialOf } from "./format.js";
 import { withPasswordToggle } from "./password-toggle.js";
-import { renderAuthScreen, setAuthMode, showAuthErrors } from "./views/auth-screen.js";
+import { mountLanding, renderLanding } from "./views/landing.js";
 import { mountProfile, renderProfileView, resetProfile } from "./views/profile.js";
 import { renderCommentsDrawer, openCommentsDrawer } from "./views/comments-drawer.js";
 import { renderCreateSheet } from "./views/create-sheet.js";
@@ -930,8 +930,7 @@ function bindEvents() {
       accountSheet?.close();
       await unregisterPush();
       await logOut().catch(() => {});
-      // The app requires signing in (see start()), so go back to the sign-in screen.
-      showAuthScreen();
+      showLanding();
       showToast("Signed out");
     };
   }
@@ -1319,7 +1318,7 @@ function connectBackend() {
       btnSignout.disabled = true;
       await unregisterPush();
       await logOut();
-      showAuthScreen();
+      showLanding();
       showToast("Signed out");
     };
   }
@@ -1581,72 +1580,19 @@ window.addEventListener("of:onboarded", async (event) => {
   else askForPushLater();
 });
 
-function showAuthScreen(message = "") {
+// Signed out: what Outfitted is, with Get started / Log in (src/views/landing.js). With a
+// message (session expired, couldn't start), Log in opens over it with that message.
+function showLanding(message = "") {
   releaseScreens();
   stopMessaging();
   stopSignedIn();
-  app.innerHTML = renderAuthScreen();
-  setAuthMode("login");
-  if (message) showAuthErrors(message);
-
-  document.querySelectorAll("[data-auth-mode]").forEach((tab) => {
-    tab.onclick = () => setAuthMode(tab.dataset.authMode);
-  });
-
-  // Demo mode: explore the app without an account (backend features fall back to samples).
-  const btnDemo = document.querySelector("#btn-auth-demo");
-  if (btnDemo) {
-    btnDemo.onclick = () => {
-      enterApp({ username: "sofoniyas", full_name: "Sofoniyas Alemayehu", bio: "Building Outfitted · CS @ Virginia Tech" });
-      showToast("Welcome to Outfitted Demo Mode!");
-    };
-  }
-
-  const form = document.querySelector("#auth-form");
-  const submit = document.querySelector("#auth-submit");
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    const signup = form.dataset.mode === "signup";
-    const values = Object.fromEntries(new FormData(form));
-    const email = values.email.trim();
-    const { password } = values;
-
-    if (!email || !password) {
-      return showAuthErrors("", {
-        ...(!email && { email: "Enter your email." }),
-        ...(!password && { password: "Enter your password." }),
-      });
-    }
-
-    const label = submit.textContent;
-    submit.disabled = true;
-    submit.textContent = signup ? "Creating account…" : "Signing in…";
-    showAuthErrors();
-    try {
-      if (signup) {
-        await signUp({ email, username: values.username.trim(), password, fullName: values.full_name.trim() });
-      }
-      await logIn(email, password);
-      enterApp(await getMe());
-      showToast(signup ? "Welcome to Outfitted!" : "Signed in");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        // 409s name the field that's taken; 422s come back as per-field errors.
-        const fields = { ...err.fields };
-        if (err.status === 409) fields[/username/i.test(err.message) ? "username" : "email"] = err.message;
-        showAuthErrors(err.status === 409 ? "" : err.message, fields);
-      } else {
-        console.error(err);
-        showAuthErrors("Something went wrong. Please try again.");
-      }
-      submit.disabled = false;
-      submit.textContent = label;
-    }
-  };
+  app.innerHTML = renderLanding();
+  mountLanding();
+  if (message) window.dispatchEvent(new CustomEvent("of:start-onboarding", { detail: { mode: "login", message } }));
 }
 
 async function start() {
-  setSessionExpiredHandler(() => showAuthScreen("Your session expired. Please sign in again."));
+  setSessionExpiredHandler(() => showLanding("Your session expired. Please log in again."));
   try {
     if (await restoreSession()) {
       const user = await getMe();
@@ -1655,9 +1601,9 @@ async function start() {
         return askForPushLater();
       }
     }
-    showAuthScreen();
+    showLanding();
   } catch (err) {
-    showAuthScreen(err.message);
+    showLanding(err.message);
   }
 }
 
