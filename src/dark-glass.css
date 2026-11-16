@@ -1,0 +1,154 @@
+/* ==========================================================================
+   Dark theme: deep near-black with glass on the floating layers.
+   Everything here applies only with data-theme="dark" on <html> (src/theme.js), and this file
+   loads last (index.html). Light mode is untouched; removing the <link> brings back the old
+   dark theme.
+   - A cooler, deeper base with a faint blue/lime glow at the top.
+   - Content (cards, photos) stays solid, with a thin light edge for depth.
+   - Glass (blur) only on what floats above the content: header, tab bar, dialogs and sheets,
+     menus, toasts and chips over photos.
+   ========================================================================== */
+
+:root[data-theme="dark"] {
+  --of-ink: #F1F1EE;
+  --of-ink-surface: #23252D;
+  --of-on-dark: #F6F5EF;
+  --of-blue: #7088FF;
+  --of-bg: #0B0C10;
+  --of-card: #15161B;
+  --of-fill: #1E2027;
+  --of-line: #24262E;
+  --of-line-strong: #31343D;
+  --of-muted: #9A9CA6;
+  --of-muted-on-dark: #C4C6CE;
+  --of-nav-idle: #8A8D98;
+  --of-blue-tint: #1C2350;
+  --of-blue-soft: #44529F;
+  --of-button-soft: #23252D;
+  --of-stage: #13141A;
+  --of-radio: #4A4D57;
+  --of-scrim: rgba(5, 6, 9, 0.6);
+  --of-glass: rgba(21, 22, 27, 0.72);
+  --of-shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --of-shadow-float: 0 24px 60px -12px rgba(0, 0, 0, 0.75);
+
+  /* Older screens (styles.css) use these names. */
+  --bg: #0B0C10;
+  --surface: #15161B;
+  --surface-sunk: #1E2027;
+  --line: #24262E;
+  --line-strong: #31343D;
+
+  /* The old green and mustard accents (rail and sidebar cards, some buttons) move to the
+     blue / lime palette. */
+  --brand-green: #4A5FE0;
+  --brand-green-hover: #5A6EF0;
+  --brand-green-light: #7088FF;
+  --brand-green-text: #AEB8FF;
+  --brand-sage: #19203F;
+  --brand-sage-hover: #20284D;
+  --brand-sage-subtle: #12162B;
+  --brand-mustard: #23270F;
+  --brand-mustard-subtle: #1A1D0C;
+
+  /* The glass recipe, used below. */
+  --glass-bg: rgba(24, 26, 33, 0.62);
+  --glass-bg-strong: rgba(24, 26, 33, 0.78);
+  --glass-blur: blur(22px) saturate(160%);
+  --glass-edge: rgba(255, 255, 255, 0.09);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* ---------- Base: near-black with a faint glow at the top ---------- */
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(112, 136, 255, 0.16), transparent 62%),
+    radial-gradient(760px 460px at 100% -4%, rgba(220, 239, 99, 0.06), transparent 58%),
+    var(--of-bg);
+  background-attachment: fixed;
+}
+
+/* ---------- Content: solid cards with a thin light edge and a top highlight ---------- */
+:root[data-theme="dark"] :is(.of-fitcard, .of-histcard, .of-stats, .of-myfits .wardrobe-card, .of-share-preview, .lp-card-white, .lp-poll) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+:root[data-theme="dark"] .of-myfits .wardrobe-card { border-color: transparent; }
+
+/* ---------- Glass: things that float above the content ---------- */
+:root[data-theme="dark"] :is(
+  .of-tabbar,
+  .of-sheet,
+  .of-account-card,
+  .of-share-card,
+  .comments-dialog,
+  .of-note-toast,
+  .toast-notice,
+  .ob.ob-modal > .ob-screen
+) {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-highlight), var(--of-shadow-float);
+}
+
+/* Sheets and dialogs carry forms and lists: a little more solid so text stays crisp. */
+:root[data-theme="dark"] :is(.of-sheet, .of-account-card, .of-share-card, .comments-dialog, .ob.ob-modal > .ob-screen) {
+  background: var(--glass-bg-strong);
+}
+:root[data-theme="dark"] .of-sheet:not(.of-dialog) { border-bottom: 0; }
+
+/* The backdrop behind a dialog: dim and soften the page so the glass reads. */
+:root[data-theme="dark"] :is(.of-sheet-backdrop, .comments-backdrop) {
+  background: rgba(5, 6, 9, 0.5);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+:root[data-theme="dark"] :is(.of-share, .of-account-menu)::backdrop {
+  background: rgba(5, 6, 9, 0.45);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+/* Header: see-through over the page as it scrolls. */
+:root[data-theme="dark"] .of-header {
+  background: rgba(11, 12, 16, 0.55);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 1px 0 var(--glass-edge);
+}
+:root[data-theme="dark"] .lp-nav { background: rgba(11, 12, 16, 0.55); border-bottom-color: var(--glass-edge); }
+
+/* Tab bar (phones): the active tab and the + keep their colors. */
+:root[data-theme="dark"] .of-tabbar { border-radius: 36px; }
+:root[data-theme="dark"] .of-tab-dot { border-color: transparent; }
+
+/* Round header buttons (bell, settings, back): glass circles. */
+:root[data-theme="dark"] :is(.of-bell, .of-icon-btn:not(.plain), .of-thread-back) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--glass-edge);
+}
+
+/* Toast: glass with light text instead of the old green pill. */
+:root[data-theme="dark"] .toast-notice { color: var(--of-ink); border-radius: 999px; }
+
+/* Chips over photos (dates, status): frosted so the photo shows through. */
+:root[data-theme="dark"] :is(.of-hist-tag:not(.live), .of-myfits .status-pill) {
+  background: rgba(11, 12, 16, 0.5);
+  color: #F1F1EE;
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Without blur support, the glass falls back to the solid card color. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-theme="dark"] :is(.of-tabbar, .of-sheet, .of-account-card, .of-share-card, .comments-dialog, .of-note-toast, .toast-notice, .ob.ob-modal > .ob-screen) {
+    background: var(--of-card);
+  }
+  :root[data-theme="dark"] .of-header { background: var(--of-bg); }
+}
+
+/* Text that was hardcoded for light mode. */
+:root[data-theme="dark"] .fitcheck-body { color: var(--of-muted-on-dark); }
+:root[data-theme="dark"] .of-hero { background: #3249D9; }
