@@ -120,16 +120,6 @@ function renderSidebar() {
         <span>+<span class="sidebar-label"> Create a fit</span></span>
         <span class="sidebar-create-arrow">${icons.arrowRight}</span>
       </button>
-
-      <div class="sidebar-bottom-card">
-        <span class="mustard-sparkle">✱</span>
-        <div class="mustard-title">Your style, your circle.</div>
-        <p class="mustard-desc">Looks worth sharing. Opinions worth hearing.</p>
-        <button type="button" class="mustard-link" id="link-sidebar-auth">
-          <span>Join Outfitted</span>
-          <span>${icons.arrowRight}</span>
-        </button>
-      </div>
     </aside>
   `;
 }
@@ -769,7 +759,6 @@ function bindEvents() {
   const authDialog = document.querySelector("#auth-sheet-dialog");
   const closeAuth = document.querySelector("#close-auth-sheet");
   const openAuthBtn = document.querySelector("#btn-open-signin");
-  const linkSidebarAuth = document.querySelector("#link-sidebar-auth");
 
   const openAuth = (mode = "login") => {
     accountSheet?.close();
@@ -804,12 +793,6 @@ function bindEvents() {
   });
   markTheme();
   if (openAuthBtn) openAuthBtn.onclick = () => openAuth("login");
-  if (linkSidebarAuth) {
-    linkSidebarAuth.onclick = (e) => {
-      e.preventDefault();
-      openAuth("signup");
-    };
-  }
   if (closeAuth) closeAuth.onclick = () => authDialog?.close();
 
   function setAuthSheetMode(mode) {
