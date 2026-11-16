@@ -1004,3 +1004,9 @@ html.comments-open #comments-drawer-backdrop { z-index: 96; }
 .of-set-theme button { height: 40px; font-size: 14px; gap: 6px; }
 .of-set-theme button .material-symbols-outlined { font-size: 18px; }
 @media (min-width: 861px) { .of-settings { max-width: 640px; } }
+
+/* Try-on: which photos of you work best (src/views/create-sheet.js). */
+.tryon-tip { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px; background: var(--of-blue-tint); color: var(--of-ink); }
+.tryon-tip .material-symbols-outlined { flex: none; font-size: 20px; color: var(--of-blue); }
+.tryon-tip p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--of-ink); }
+.tryon-tip b { font-weight: 700; }
