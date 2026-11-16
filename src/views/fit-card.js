@@ -45,7 +45,7 @@ function header(fit, mine) {
     : "";
   return `<div class="of-fitcard-head">
     ${live}
-    <span class="of-fitcard-handle">@${escapeHtml(fit.author.username)}</span>
+    <span class="of-fitcard-handle" data-open-user="${escapeHtml(fit.author.username)}" role="link" tabindex="0">@${escapeHtml(fit.author.username)}</span>
     <span class="of-fitcard-time">${timeAgo(fit.created_at)}</span>
     ${owner}
   </div>`;
@@ -261,7 +261,7 @@ function actions(fit) {
   </div>`;
 }
 
-// withActions: false where nothing handles the action buttons (e.g. the single-fit sheet).
+// withActions: false where nothing handles the action buttons.
 // mine: your own fit, whose pieces without a shop link offer to add one.
 export function renderFitCard(fit, { withActions = true, mine = false } = {}) {
   return `<article class="of-fitcard" data-fit-id="${fit.id}">

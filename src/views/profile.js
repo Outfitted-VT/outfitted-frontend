@@ -313,7 +313,7 @@ function strip(images, tagHtml = "") {
   return `<div class="of-hist-strip ${shown.length === 1 ? "single" : ""}">${shown.join("")}${tagHtml}</div>`;
 }
 
-function fitCard(fit) {
+export function fitCard(fit) {
   const leader = pollLeader(fit);
   const total = leader?.total || 0;
   const verdict = total ? `${leader.pct}% ${escapeHtml(leader.label)}` : leader ? "No votes yet" : "No poll";

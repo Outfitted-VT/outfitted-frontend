@@ -36,7 +36,7 @@ import { celebrateIfMilestone, openStreakSheet } from "./views/streak-sheet.js";
 import { isStreakType, mountActivity, renderActivity, unmountActivity } from "./views/activity.js";
 import { showNotificationToast } from "./views/notification-toast.js";
 import { openFitSheet } from "./views/fit-sheet.js";
-import { openPersonSheet } from "./views/person-sheet.js";
+import { mountUserProfile, renderUserProfile, setPerson } from "./views/user-profile.js";
 import { openPushPrompt } from "./views/push-prompt.js";
 import { initPush, shouldAskForPush, syncAppBadge, unregisterPush } from "./push.js";
 import { parseLink } from "./deep-link.js";
@@ -393,12 +393,13 @@ function renderAuthDialog() {
 }
 
 /* ---------- Main Render Loop ---------- */
-const OWN_HEADER_TABS = new Set(["profile", "activity"]);
+const OWN_HEADER_TABS = new Set(["profile", "activity", "person"]);
 let chatConversationId = null;
 let releaseInbox = () => {};
 let releaseThreadDialog = () => {};
 let releaseStoriesRow = () => {};
 let returnTab = "feed";
+let personReturnTab = "feed";
 
 // An open conversation sits over the inbox: full screen on phones, a small dialog from 861px
 // (styles: .of-thread-backdrop in src/outfitted.css).
@@ -476,7 +477,11 @@ async function openUserStories(userId, storyId = null) {
 }
 
 function openFit(fitId) {
-  openFitSheet(fitId, { toast: showToast });
+  openFitSheet(fitId, {
+    toast: showToast,
+    onOpenComments: (fit, onUpdated) => openCommentsDrawer(fit, { toast: showToast, onCommentAdded: onUpdated }),
+    onOpenTryOn: openTryOnFrom,
+  });
 }
 
 function openStoryComposerSheet() {
@@ -518,6 +523,40 @@ function openStoryById(storyId) {
   showToast("Story expired");
 }
 
+// Someone's profile page (src/views/user-profile.js); your own name opens your profile. Back
+// returns to where you came from.
+function openUser(username) {
+  if (!username) return;
+  document.querySelectorAll(".of-sheet-backdrop, .of-sv").forEach((overlay) => overlay.remove());
+  document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
+  if (username === currentUser.username) {
+    activeTab = "profile";
+    resetProfile();
+  } else {
+    if (activeTab !== "person") personReturnTab = activeTab;
+    setPerson(username);
+    activeTab = "person";
+  }
+  render();
+  window.scrollTo({ top: 0 });
+}
+
+// Any element with data-open-user="username" opens that profile, unless the click was on a
+// button or link inside it (Follow, Message, ...).
+document.addEventListener(
+  "click",
+  (event) => {
+    const el = event.target.closest?.("[data-open-user]");
+    if (!el) return;
+    const inner = event.target.closest("button, a, input, textarea, select, label");
+    if (inner && inner !== el && el.contains(inner)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openUser(el.dataset.openUser);
+  },
+  true
+);
+
 function openLink(link) {
   document.querySelectorAll(".of-sheet-backdrop, .of-sv").forEach((overlay) => overlay.remove());
   const target = parseLink(link);
@@ -527,12 +566,7 @@ function openLink(link) {
   if (target.type === "streak") return openStreak();
   if (target.type === "story-viewers") return openViewersSheet(target.id);
   if (target.type === "story") return openStoryById(target.id);
-  if (target.type === "user" && target.username === currentUser.username) {
-    activeTab = "profile";
-    resetProfile();
-    return render();
-  }
-  if (target.type === "user") openPersonSheet(target.username, { toast: showToast, onMessage: messageUser });
+  if (target.type === "user") openUser(target.username);
 }
 
 function openNotification(item) {
@@ -582,6 +616,8 @@ function render() {
               ? renderProfileView()
               : activeTab === "activity"
               ? renderActivity()
+              : activeTab === "person"
+              ? renderUserProfile()
               : renderFeedScreen()
           }
         </main>
@@ -657,6 +693,17 @@ function bindEvents() {
       (outfit) => openShareModalForPost(outfit),
       showToast
     );
+  } else if (activeTab === "person") {
+    mountUserProfile({
+      toast: showToast,
+      onBack: () => {
+        activeTab = personReturnTab;
+        render();
+      },
+      onMessage: messageUser,
+      onOpenFit: openFit,
+      onFollowChanged: loadProfileCounts,
+    });
   } else if (activeTab === "friends") {
     connectFriends(
       (userId) =>

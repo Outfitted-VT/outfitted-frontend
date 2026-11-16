@@ -957,3 +957,19 @@ img[class*="w-"] {
 :root[data-theme="dark"] .of-share .share-send:not(.sent),
 :root[data-theme="dark"] .of-share-copy { background: var(--of-lime); color: var(--of-on-lime); }
 :root[data-theme="dark"] .of-share-copy svg { color: var(--of-on-lime); }
+
+/* Someone else's profile (src/views/user-profile.js), and names/photos that open it. */
+[data-open-user] { cursor: pointer; }
+.of-fitcard-handle[data-open-user]:hover { text-decoration: underline; }
+.of-person-head { gap: 10px; }
+.of-person-head .of-handle { flex: 1; text-align: center; }
+.of-person-head-gap { width: 40px; flex: none; }
+.of-person-page .of-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.of-person-page .of-profile-btn svg { width: 18px; height: 18px; }
+.of-person-page .of-profile-btn:disabled { opacity: 0.6; }
+.of-person-label { margin: 22px 0 10px; }
+.of-person-fit { cursor: pointer; border-radius: var(--of-r-card); }
+.of-person-fit:focus-visible { outline: 2px solid var(--of-blue); outline-offset: 2px; }
+
+/* Comments opened from a fit sheet (src/views/fit-sheet.js) sit above it (sheets are z-index 90). */
+html.comments-open #comments-drawer-backdrop { z-index: 96; }
