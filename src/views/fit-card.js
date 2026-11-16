@@ -191,17 +191,15 @@ const CHEVRON_RIGHT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="non
 const BOOKMARK = (on) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="${on ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
 
 // Every piece, as a chip that opens the piece bubble (Shop when it has a link, and Save). On
-// your own fit, a piece without a link offers to add one instead (data-fit-add-link).
+// your own fit the bubble also has Edit, or Add shop link for a piece without one.
 function shopLinks(fit, mine) {
   const chips = fit.items
     .map((item, i) => {
       const name = escapeHtml(item.name);
-      if (!item.url && mine) {
-        return `<button type="button" class="of-shop-chip add" data-fit-add-link="${i}" aria-label="Add a shop link for ${name}">${icons.plus}<span>${name}</span></button>`;
-      }
       // Opens the piece bubble instead of leaving right away. Without a link only Save works.
       const saved = item.saved_piece_id ? " saved" : "";
-      const nolink = item.url ? "" : " nolink";
+      // Your own piece without a link is dashed, as a reminder to add one.
+      const nolink = item.url ? "" : mine ? " add" : " nolink";
       return `<button type="button" class="of-shop-chip${saved}${nolink}" data-piece-open="${i}">${saved ? BOOKMARK(true) : ""}<span>${name}</span>${item.url ? ARROW : ""}</button>`;
     })
     .filter(Boolean);

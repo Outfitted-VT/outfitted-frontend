@@ -21,6 +21,9 @@ const BOOKMARK = (on) =>
   `<svg width="18" height="18" viewBox="0 0 24 24" fill="${on ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
 const OUT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/></svg>`;
 
+const PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
+const PENCIL = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+
 export const categoryLabel = (category) => CATEGORY[category] || "Piece";
 
 export function shopHost(url) {
@@ -73,8 +76,9 @@ function place(pop, anchor) {
 
 // A small bubble next to the piece: thumbnail, name, details, Shop and Save. fit: the fit (as
 // from the API); index: which of fit.items; anchor: the chip or photo that was tapped.
-// onChange(fit) gets the fit with that item's saved_piece_id updated.
-export function openPieceSheet({ fit, index, toast, onChange, anchor }) {
+// onChange(fit) gets the fit with that item's saved_piece_id updated. onEdit(): your own post,
+// opens the editor at this piece (Edit, or Add shop link when it has none).
+export function openPieceSheet({ fit, index, toast, onChange, anchor, onEdit }) {
   openBubble?.close();
   let current = fit;
   const item = () => current.items[index];
@@ -99,10 +103,13 @@ export function openPieceSheet({ fit, index, toast, onChange, anchor }) {
       ${
         it.url
           ? `<a class="of-piece-pop-shop" href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer">${OUT}<span>Shop</span></a>`
+          : onEdit
+          ? `<button type="button" class="of-piece-pop-shop" data-piece-edit>${PLUS}<span>Add shop link</span></button>`
           : `<button type="button" class="of-piece-pop-shop" disabled title="The poster didn't add a shop link">${OUT}<span>No shop link</span></button>`
       }
       <span data-piece-save-slot>${saveButton(Boolean(it.saved_piece_id))}</span>
-    </div>`;
+    </div>
+    ${onEdit && it.url ? `<button type="button" class="of-piece-pop-edit" data-piece-edit>${PENCIL}<span>Edit piece</span></button>` : ""}`;
   document.body.append(pop);
   place(pop, anchor);
 
@@ -126,6 +133,13 @@ export function openPieceSheet({ fit, index, toast, onChange, anchor }) {
   document.addEventListener("keydown", onKey);
   window.addEventListener("scroll", onMove, true);
   window.addEventListener("resize", onMove);
+
+  pop.querySelectorAll("[data-piece-edit]").forEach((button) =>
+    button.addEventListener("click", () => {
+      close();
+      onEdit?.();
+    })
+  );
 
   const slot = pop.querySelector("[data-piece-save-slot]");
   let busy = false;
