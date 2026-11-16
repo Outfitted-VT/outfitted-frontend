@@ -978,3 +978,27 @@ html.comments-open #comments-drawer-backdrop { z-index: 96; }
 .of-fit-tried { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--of-muted); }
 .of-fit-tried svg { width: 14px; height: 14px; flex: none; color: var(--of-blue); }
 .of-fit-tried b { color: var(--of-ink); font-weight: 700; }
+
+/* ===== Settings (renderSettingsView in src/views/profile.js), on the app theme like Friends and
+   My fits: page header, uppercase group labels, rounded cards of rows. ===== */
+.of-settings { gap: 0; padding-top: 12px; }
+.of-settings .of-profile-head { margin-top: 0; }
+.of-settings-intro { display: flex; flex-direction: column; margin: 14px 0 22px; }
+.of-settings-intro .of-display { margin: 10px 0 6px; font-size: 36px; line-height: 1.05; letter-spacing: -0.6px; }
+.of-settings .of-friends-label { margin: 0 0 8px 4px; }
+.of-set-card { display: flex; flex-direction: column; margin-bottom: 22px; border-radius: var(--of-r-card); border: 1px solid var(--of-line); background: var(--of-card); overflow: hidden; }
+.of-set-pad { padding: 10px; }
+.of-set-row { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 10px 16px; border: 0; background: transparent; color: var(--of-ink); text-align: left; font-family: var(--of-font-ui); }
+.of-set-row + .of-set-row { border-top: 1px solid var(--of-line); }
+.of-set-row:hover { background: var(--of-fill); }
+.of-set-icon { width: 40px; height: 40px; flex: none; border-radius: 20px; background: var(--of-fill); color: var(--of-ink); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.of-set-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.of-set-text b { font-size: 15px; font-weight: 600; }
+.of-set-text small { font-size: 13px; color: var(--of-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-set-chevron { flex: none; font-size: 20px; color: var(--of-muted); }
+.of-set-row.danger, .of-set-row.danger .of-set-icon { color: var(--of-danger); }
+.of-set-row.danger .of-set-icon { background: color-mix(in srgb, var(--of-danger) 12%, transparent); }
+.of-set-theme { gap: 4px; padding: 4px; }
+.of-set-theme button { height: 40px; font-size: 14px; gap: 6px; }
+.of-set-theme button .material-symbols-outlined { font-size: 18px; }
+@media (min-width: 861px) { .of-settings { max-width: 640px; } }

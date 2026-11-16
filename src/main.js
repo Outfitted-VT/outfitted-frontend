@@ -12,7 +12,7 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
 import { initCreate, openCreate, openEditFit, openTryOnFrom } from "./create.js";
-import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl, getImpactSummary, getTrueSizePassport, addReferenceGarment, removeReferenceGarment, translateSize } from "./fits.js";
+import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl } from "./fits.js";
 import { escapeHtml, initialOf } from "./format.js";
 import { withPasswordToggle } from "./password-toggle.js";
 import { mountLanding, renderLanding } from "./views/landing.js";
@@ -1299,7 +1299,6 @@ function connectBackend() {
 
   mountProfile({ toast: showToast, rerender: render });
   if (document.querySelector("#profile-fit-count")) loadProfileCounts();
-  if (document.querySelector("#passport-section")) connectProfileIntelligence();
 
   initCreate({
     toast: showToast,
@@ -1349,124 +1348,6 @@ function connectBackend() {
       render();
     };
   });
-}
-
-async function connectProfileIntelligence() {
-  // 1. Returns Saved & Impact Counter
-  try {
-    const impact = await getImpactSummary();
-    const dollars = document.querySelector("#impact-dollars-saved");
-    const trips = document.querySelector("#impact-trips-avoided");
-    const co2 = document.querySelector("#impact-co2-saved");
-    const badge = document.querySelector("#impact-badge-label");
-
-    if (dollars) dollars.textContent = `$${Math.round(impact.estimated_dollars_saved)}`;
-    if (trips) trips.textContent = impact.trips_to_post_office_prevented;
-    if (co2) co2.textContent = `${impact.carbon_kg_eliminated.toFixed(1)} kg`;
-    if (badge && impact.badge_level) badge.textContent = impact.badge_level;
-  } catch {}
-
-  // 2. TrueSize Passport List & Adding/Removing
-  async function loadPassport() {
-    const list = document.querySelector("#passport-garments-list");
-    if (!list) return;
-    try {
-      const passport = await getTrueSizePassport();
-      if (passport.reference_garments?.length) {
-        list.innerHTML = passport.reference_garments
-          .map(
-            (g) => `
-          <div class="flex items-center justify-between p-2 rounded bg-surface-container-low text-label-sm" data-ref-id="${g.id}">
-            <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-secondary"></span>
-              <strong>${escapeHtml(g.brand)}</strong>
-              <span class="text-on-surface-variant">${escapeHtml(g.category)} · ${escapeHtml(g.size)}</span>
-            </div>
-            <button type="button" class="text-on-surface-variant hover:text-error btn-remove-ref" data-id="${g.id}">
-              <span class="material-symbols-outlined text-[16px]">close</span>
-            </button>
-          </div>
-        `
-          )
-          .join("");
-
-        list.querySelectorAll(".btn-remove-ref").forEach((btn) => {
-          btn.onclick = async () => {
-            await removeReferenceGarment(btn.dataset.id);
-            loadPassport();
-            showToast("Benchmark piece removed");
-          };
-        });
-      }
-    } catch {}
-  }
-  loadPassport();
-
-  const btnToggleAdd = document.querySelector("#btn-toggle-add-reference");
-  const formAddRef = document.querySelector("#add-reference-form");
-  const btnCancelAddRef = document.querySelector("#btn-cancel-add-ref");
-  const btnSaveRef = document.querySelector("#btn-save-reference");
-
-  if (btnToggleAdd && formAddRef) {
-    btnToggleAdd.onclick = () => formAddRef.classList.toggle("hidden");
-  }
-  if (btnCancelAddRef && formAddRef) {
-    btnCancelAddRef.onclick = () => formAddRef.classList.add("hidden");
-  }
-  if (btnSaveRef) {
-    btnSaveRef.onclick = async () => {
-      const brand = document.querySelector("#ref-brand")?.value.trim();
-      const itemName = document.querySelector("#ref-item-name")?.value.trim();
-      const category = document.querySelector("#ref-category")?.value;
-      const size = document.querySelector("#ref-size")?.value.trim();
-      if (!brand || !itemName || !size) {
-        showToast("Please enter brand, item name, and size");
-        return;
-      }
-      try {
-        await addReferenceGarment({ brand, itemName, category, size });
-        showToast(`Added ${brand} benchmark piece!`);
-        formAddRef.classList.add("hidden");
-        loadPassport();
-      } catch {
-        showToast("Couldn't add benchmark piece");
-      }
-    };
-  }
-
-  // 3. Cross-Brand Size Translation
-  const btnRunTranslate = document.querySelector("#btn-run-translation");
-  const resultBox = document.querySelector("#translate-result-box");
-  const recSizeOut = document.querySelector("#rec-size-output");
-  const recConfOut = document.querySelector("#rec-confidence-output");
-  const recNotesOut = document.querySelector("#rec-notes-output");
-
-  if (btnRunTranslate && resultBox) {
-    btnRunTranslate.onclick = async () => {
-      const targetBrand = document.querySelector("#translate-brand")?.value;
-      const category = document.querySelector("#translate-category")?.value;
-
-      btnRunTranslate.disabled = true;
-      btnRunTranslate.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span><span>Calculating fit…</span>`;
-
-      try {
-        const res = await translateSize({ targetBrand, category });
-        resultBox.classList.remove("hidden");
-        if (recSizeOut) recSizeOut.textContent = res.recommended_size;
-        if (recConfOut) recConfOut.textContent = `${Math.round(res.confidence_score * 100)}% Confidence`;
-        if (recNotesOut) recNotesOut.textContent = res.fit_notes;
-        showToast(`Calculated size: ${res.recommended_size} for ${targetBrand}`);
-      } catch {
-        resultBox.classList.remove("hidden");
-        if (recSizeOut) recSizeOut.textContent = "Size M / Medium";
-        if (recConfOut) recConfOut.textContent = "88% Match";
-        if (recNotesOut) recNotesOut.textContent = `Based on your anchored wardrobe specs, ${targetBrand} fits true to size for ${category}.`;
-      } finally {
-        btnRunTranslate.disabled = false;
-        btnRunTranslate.innerHTML = `<span class="material-symbols-outlined text-[16px]">psychology</span><span>Translate Size</span>`;
-      }
-    };
-  }
 }
 
 // Try this look, Dorm Closets, and Style a Friend (also inside cards that load later).
