@@ -973,3 +973,8 @@ img[class*="w-"] {
 
 /* Comments opened from a fit sheet (src/views/fit-sheet.js) sit above it (sheets are z-index 90). */
 html.comments-open #comments-drawer-backdrop { z-index: 96; }
+
+/* "N people tried this look" above a fit card's actions (src/views/fit-card.js). */
+.of-fit-tried { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--of-muted); }
+.of-fit-tried svg { width: 14px; height: 14px; flex: none; color: var(--of-blue); }
+.of-fit-tried b { color: var(--of-ink); font-weight: 700; }

@@ -242,8 +242,15 @@ export function bindShopScroll(card) {
 
 // Like, comments, save and "Try this look". src/feed.js handles the clicks (data-fit-like,
 // data-fit-comments, data-fit-save, data-ai-mode) and re-renders the card with the new state.
+// How many people tried this look on with "Try this look" (tried_count from the API). Hidden at 0.
+function triedLine(fit) {
+  const n = fit.tried_count || 0;
+  if (!n) return "";
+  return `<p class="of-fit-tried">${icons.sparkleIcon}<span><b>${n}</b> ${n === 1 ? "person" : "people"} tried this look</span></p>`;
+}
+
 function actions(fit) {
-  return `<div class="of-fit-actions">
+  return `${triedLine(fit)}<div class="of-fit-actions">
     <div class="of-fit-action-group">
       <button type="button" class="of-fit-action ${fit.liked_by_me ? "liked" : ""}" data-fit-like aria-pressed="${Boolean(fit.liked_by_me)}" aria-label="Like">
         ${fit.liked_by_me ? icons.heart.replace('fill="none"', 'fill="currentColor"') : icons.heart}<span>${fit.like_count ?? 0}</span>
