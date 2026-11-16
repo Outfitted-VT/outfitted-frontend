@@ -4,6 +4,7 @@ import { confirmDialog } from "./confirm-dialog.js";
 import { currentUser } from "./data.js";
 import { deleteFit, listFits, setLiked, setSaved, setVote } from "./fits.js";
 import { bindShopScroll, renderFitCard, withVote } from "./views/fit-card.js";
+import { openPieceSheet } from "./views/piece-sheet.js";
 import { ofIcons, stateBlock } from "./views/components.js";
 
 const errorState = stateBlock({
@@ -171,6 +172,8 @@ export function mountFitList({
     const article = event.target.closest("[data-fit-id]");
     const fit = article && fits.get(article.dataset.fitId);
     if (!fit) return;
+    const piece = event.target.closest("[data-piece-open]");
+    if (piece) return openPieceSheet({ fit, index: Number(piece.dataset.pieceOpen), toast, onChange: replaceCard, anchor: piece });
     const voteButton = event.target.closest("[data-fit-vote]");
     if (voteButton) vote(fit, Number(voteButton.dataset.fitVote));
     else if (event.target.closest("[data-fit-like]")) toggle(fit, "liked_by_me", setLiked);

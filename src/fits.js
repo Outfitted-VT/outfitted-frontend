@@ -149,6 +149,22 @@ export async function setLiked(fitId, liked) {
   return parse(await apiFetch(`/fits/${fitId}/like`, { method: liked ? "PUT" : "DELETE" }));
 }
 
+// Saving one piece of a fit (a shoe, a sweater). Returns the saved piece; its id is what
+// unsavePiece takes, and the fit's item shows it as saved_piece_id.
+export async function savePiece(fitId, itemId) {
+  return parse(await apiFetch(`/fits/${fitId}/items/${itemId}/save`, { method: "POST" }));
+}
+
+export async function unsavePiece(pieceId) {
+  return parse(await apiFetch(`/users/me/saved-pieces/${pieceId}`, { method: "DELETE" }));
+}
+
+export async function listSavedPieces(cursor = null, limit = 50) {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (cursor) query.set("cursor", cursor);
+  return parse(await apiFetch(`/users/me/saved-pieces?${query}`));
+}
+
 export async function setSaved(fitId, saved) {
   return parse(await apiFetch(`/fits/${fitId}/save`, { method: saved ? "PUT" : "DELETE" }));
 }
