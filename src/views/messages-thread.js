@@ -309,7 +309,7 @@ function attachMenu() {
 
 function memberRow(member) {
   const status = member.online ? "Online" : member.last_seen_at ? `Last seen ${timeAgo(member.last_seen_at)}` : "Offline";
-  return `<div class="of-person-row">${avatar(member.user, { size: 44 })}
+  return `<div class="of-person-row" data-open-user="${escapeHtml(member.user.username)}">${avatar(member.user, { size: 44 })}
     <span class="of-person-text"><b>${escapeHtml(displayName(member.user))}</b><small>@${escapeHtml(member.user.username)} · ${status}</small></span></div>`;
 }
 

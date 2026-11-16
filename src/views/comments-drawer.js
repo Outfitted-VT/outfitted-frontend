@@ -72,7 +72,7 @@ function renderTake(comment) {
   return `
     <article class="comments-take" data-comment-id="${comment.id}">
       <div class="flex items-center justify-between gap-space-xs">
-        <div class="flex items-center gap-space-xs min-w-0">
+        <div class="flex items-center gap-space-xs min-w-0 cursor-pointer" data-open-user="${escapeHtml(comment.author.username)}">
           ${avatar(comment.author)}
           <div class="flex flex-col min-w-0">
             <div class="flex items-center gap-1.5 min-w-0">

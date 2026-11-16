@@ -23,7 +23,7 @@ function followButton(user, following) {
 
 function personCard(user, { following, note = "" }) {
   const line = note || user.bio || "";
-  return `<li class="of-friends-card" data-user-id="${escapeHtml(user.id)}">
+  return `<li class="of-friends-card" data-user-id="${escapeHtml(user.id)}" data-open-user="${escapeHtml(user.username)}">
     ${avatar(user, { size: 52 })}
     <div class="of-friends-text">
       <b>${escapeHtml(displayName(user))}</b>
@@ -39,7 +39,7 @@ function personCard(user, { following, note = "" }) {
 
 function suggestionCard(user) {
   const mutual = user.mutual_count ? `${user.mutual_count} mutual` : "New on Outfitted";
-  return `<li class="of-friends-suggest" data-user-id="${escapeHtml(user.id)}">
+  return `<li class="of-friends-suggest" data-user-id="${escapeHtml(user.id)}" data-open-user="${escapeHtml(user.username)}">
     ${avatar(user, { size: 56 })}
     <b>${escapeHtml(displayName(user))}</b>
     <small>${escapeHtml(mutual)}</small>
