@@ -1,5 +1,6 @@
 import { getFit, setLiked, setSaved, setVote } from "../fits.js";
 import { bindShopScroll, renderFitCard, withVote } from "./fit-card.js";
+import { openPieceSheet } from "./piece-sheet.js";
 import { openSheet } from "./sheet.js";
 
 // One fit in a sheet (from a profile, a chat, a story or a notification), with Like, Comments,
@@ -38,6 +39,19 @@ export async function openFitSheet(fitId, { toast, onOpenComments, onOpenTryOn }
   };
 
   body.addEventListener("click", async (event) => {
+    const piece = event.target.closest("[data-piece-open]");
+    if (piece) {
+      return openPieceSheet({
+        fit,
+        index: Number(piece.dataset.pieceOpen),
+        toast,
+        anchor: piece,
+        onChange: (next) => {
+          fit = next;
+          paint();
+        },
+      });
+    }
     if (event.target.closest("[data-fit-like]")) return toggle("liked_by_me", setLiked);
     if (event.target.closest("[data-fit-save]")) return toggle("saved_by_me", setSaved);
     if (event.target.closest("[data-fit-comments]")) {

@@ -25,12 +25,17 @@ function sharesPhoto(item, fit) {
 }
 
 function crop(item, fit, index) {
+  // Its own photo (a try-on's clothing photo), shown whole.
+  if (item.image) return `background-image:url('${escapeHtml(mediaUrl(item.image.url))}');background-position:center;`;
   const image = imageFor(item, fit, index);
   if (!image) return "";
   const zoom = sharesPhoto(item, fit);
   const position = zoom ? `${Math.round(item.pin.x * 100)}% ${Math.round(item.pin.y * 100)}%` : "center";
   return `background-image:url('${escapeHtml(mediaUrl(image.url))}');background-position:${position};${zoom ? PHOTO_ZOOM : ""}`;
 }
+
+// The piece popup (src/views/piece-sheet.js) shows a piece the same way.
+export const pieceStyle = crop;
 
 const PENCIL = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
 const TRASH = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>`;
@@ -53,7 +58,7 @@ function header(fit, mine) {
 }
 
 function piece(item, fit, i) {
-  return `<figure class="of-piece">
+  return `<figure class="of-piece" data-piece-open="${i}" role="button" tabindex="0" aria-label="${escapeHtml(item.name)}: shop or save">
     <span class="of-piece-photo" style="${crop(item, fit, i)}" role="img" aria-label="${escapeHtml(item.name)}"></span>
     <figcaption><span class="of-piece-name">${escapeHtml(item.name)}</span><span class="of-piece-color">${escapeHtml(item.color || item.brand || "")}</span></figcaption>
   </figure>`;
@@ -185,18 +190,19 @@ const CHEVRON_LEFT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none
 const CHEVRON_RIGHT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>`;
 const BOOKMARK = (on) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="${on ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
 
-// Pieces with a shop link, and on your own fit, pieces that could use one (data-fit-add-link).
+// Every piece, as a chip that opens the piece bubble (Shop when it has a link, and Save). On
+// your own fit, a piece without a link offers to add one instead (data-fit-add-link).
 function shopLinks(fit, mine) {
   const chips = fit.items
     .map((item, i) => {
       const name = escapeHtml(item.name);
-      if (item.url) {
-        return `<a class="of-shop-chip" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer"><span>${name}</span>${ARROW}</a>`;
-      }
-      if (mine) {
+      if (!item.url && mine) {
         return `<button type="button" class="of-shop-chip add" data-fit-add-link="${i}" aria-label="Add a shop link for ${name}">${icons.plus}<span>${name}</span></button>`;
       }
-      return "";
+      // Opens the piece bubble instead of leaving right away. Without a link only Save works.
+      const saved = item.saved_piece_id ? " saved" : "";
+      const nolink = item.url ? "" : " nolink";
+      return `<button type="button" class="of-shop-chip${saved}${nolink}" data-piece-open="${i}">${saved ? BOOKMARK(true) : ""}<span>${name}</span>${item.url ? ARROW : ""}</button>`;
     })
     .filter(Boolean);
   if (!chips.length) return "";

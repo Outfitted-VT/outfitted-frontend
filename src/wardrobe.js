@@ -11,7 +11,10 @@ import {
   listFits,
   setSaved,
   mediaUrl,
+  listSavedPieces,
+  unsavePiece,
 } from "./fits.js";
+import { categoryLabel, savedPieceStyle } from "./views/piece-sheet.js";
 import { fitCollage } from "./views/fit-collage.js";
 
 let activeView = "grid"; // 'grid' | 'carousel' | 'calendar'
@@ -132,15 +135,29 @@ export function renderWardrobePage() {
       <section class="wardrobe-view-container ${activeView === "grid" ? "" : "hidden"}" id="view-grid">
         <label class="of-search of-friends-search">
           ${icons.search}
-          <input type="search" id="wardrobe-search-input" placeholder="Search your saved fits" aria-label="Search your saved fits" autocomplete="off" />
+          <input type="search" id="wardrobe-search-input" placeholder="Search what you saved" aria-label="Search what you saved" autocomplete="off" />
         </label>
-        <p class="of-friends-label">Saved fits · <span id="wardrobe-fit-count">0</span></p>
+        <!-- Whole fits, or single pieces saved from a fit's shop links (src/views/piece-sheet.js). -->
+        <div class="of-saved-kind" role="tablist" aria-label="Saved">
+          <button type="button" role="tab" class="of-chip active" data-saved-kind="fits" aria-selected="true">Fits</button>
+          <button type="button" role="tab" class="of-chip" data-saved-kind="pieces" aria-selected="false">Pieces</button>
+        </div>
 
-        <!-- Outfits Grid -->
-        <div class="wardrobe-grid" id="wardrobe-grid-box"></div>
-        <p class="wardrobe-saved-empty" id="wardrobe-saved-empty" hidden>
-          Nothing saved yet. Tap <strong>Save</strong> on a post in the feed and it shows up here.
-        </p>
+        <div id="wardrobe-fits-panel">
+          <p class="of-friends-label">Saved fits · <span id="wardrobe-fit-count">0</span></p>
+          <div class="wardrobe-grid" id="wardrobe-grid-box"></div>
+          <p class="wardrobe-saved-empty" id="wardrobe-saved-empty" hidden>
+            Nothing saved yet. Tap <strong>Save</strong> on a post in the feed and it shows up here.
+          </p>
+        </div>
+
+        <div id="wardrobe-pieces-panel" hidden>
+          <p class="of-friends-label">Saved pieces · <span id="wardrobe-piece-count">0</span></p>
+          <div class="wardrobe-grid" id="wardrobe-pieces-box"></div>
+          <p class="wardrobe-saved-empty" id="wardrobe-pieces-empty" hidden>
+            No pieces yet. Tap a piece's shop link on a post and choose <strong>Save piece</strong>.
+          </p>
+        </div>
 
       </section>
     </section>
@@ -386,6 +403,35 @@ function renderSavedFitDetails(item) {
         </button>
       </div>
     </div>
+  `;
+}
+
+// A single saved piece: its photo, name, where it came from, Shop and Unsave.
+function renderSavedPieceCard(piece) {
+  const details = [piece.brand, piece.color].filter(Boolean).join(" · ") || categoryLabel(piece.category);
+  const shop = piece.url
+    ? `<a class="button button-dark button-sm" href="${escapeHtml(piece.url)}" target="_blank" rel="noopener noreferrer">${icons.bag || ""}<span>Shop</span></a>`
+    : `<span class="button button-ghost button-sm of-piece-nolink">No shop link</span>`;
+  return `
+    <article class="wardrobe-card of-piece-card" data-saved-piece="${escapeHtml(piece.id)}">
+      <div class="wardrobe-card-media">
+        <span class="of-piece-card-photo" style="${savedPieceStyle(piece)}" role="img" aria-label="${escapeHtml(piece.name)}"></span>
+        <span class="status-pill">${escapeHtml(categoryLabel(piece.category))}</span>
+      </div>
+      <div class="wardrobe-card-meta">
+        <div class="meta-top">
+          <h4 class="truncate">${escapeHtml(piece.name)}</h4>
+          ${piece.source_username ? `<span class="vibe-badge">@${escapeHtml(piece.source_username)}</span>` : ""}
+        </div>
+        <p class="pieces-preview">${escapeHtml(details)}</p>
+        <div class="wardrobe-card-footer">
+          ${shop}
+          <button class="button button-ghost button-sm wardrobe-unsave" data-piece-remove aria-label="Unsave piece" title="Unsave">
+            <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">bookmark_remove</span>
+          </button>
+        </div>
+      </div>
+    </article>
   `;
 }
 
@@ -704,6 +750,57 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
       console.warn("Saved fits skipped (guest/offline mode):", err);
     }
   })();
+
+  // Saved pieces (the Pieces tab of the grid).
+  const piecesBox = container.querySelector("#wardrobe-pieces-box");
+  const piecesEmpty = container.querySelector("#wardrobe-pieces-empty");
+  const piecesCount = container.querySelector("#wardrobe-piece-count");
+  const paintPieceCount = () => {
+    const n = piecesBox ? piecesBox.querySelectorAll("[data-saved-piece]").length : 0;
+    if (piecesCount) piecesCount.textContent = String(n);
+    if (piecesEmpty) piecesEmpty.hidden = n > 0;
+  };
+  (async () => {
+    try {
+      const page = await listSavedPieces(null, 50);
+      if (!piecesBox?.isConnected) return;
+      piecesBox.innerHTML = page.items.map(renderSavedPieceCard).join("");
+      paintPieceCount();
+      applyFilters();
+    } catch (err) {
+      console.warn("Saved pieces skipped (guest/offline mode):", err);
+      paintPieceCount();
+    }
+  })();
+
+  container.querySelectorAll("[data-saved-kind]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const pieces = tab.dataset.savedKind === "pieces";
+      container.querySelectorAll("[data-saved-kind]").forEach((other) => {
+        const on = other === tab;
+        other.classList.toggle("active", on);
+        other.setAttribute("aria-selected", String(on));
+      });
+      container.querySelector("#wardrobe-fits-panel").hidden = pieces;
+      container.querySelector("#wardrobe-pieces-panel").hidden = !pieces;
+    });
+  });
+
+  piecesBox?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-piece-remove]");
+    const card = button?.closest("[data-saved-piece]");
+    if (!card) return;
+    button.disabled = true;
+    try {
+      await unsavePiece(card.dataset.savedPiece);
+      card.remove();
+      paintPieceCount();
+      toast("Removed from saved pieces");
+    } catch {
+      button.disabled = false;
+      toast("Couldn't unsave that piece. Try again.");
+    }
+  });
 
   async function unsaveFit(id, button) {
     button.disabled = true;

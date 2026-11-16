@@ -1010,3 +1010,48 @@ html.comments-open #comments-drawer-backdrop { z-index: 96; }
 .tryon-tip .material-symbols-outlined { flex: none; font-size: 20px; color: var(--of-blue); }
 .tryon-tip p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--of-ink); }
 .tryon-tip b { font-weight: 700; }
+
+/* Saving single pieces: the piece popup (src/views/piece-sheet.js), shop chips that open it,
+   and saved pieces in My fits (src/wardrobe.js). */
+button.of-shop-chip { font-family: inherit; cursor: pointer; }
+.of-shop-chip.saved { border-color: var(--of-blue); }
+.of-shop-chip.saved svg:first-child { width: 14px; height: 14px; }
+.of-piece[data-piece-open] { cursor: pointer; }
+.of-piece[data-piece-open]:focus-visible { outline: 2px solid var(--of-blue); outline-offset: 2px; border-radius: 16px; }
+
+/* The bubble: small, next to the tapped chip or photo, with a tail pointing at it. */
+.of-piece-pop { position: fixed; z-index: 120; width: min(290px, calc(100vw - 24px)); padding: 12px; border-radius: 18px; background: var(--of-card); color: var(--of-ink); border: 1px solid var(--of-line); box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18); font-family: var(--of-font-ui); animation: ofPopIn 0.16s ease; transition: opacity 0.15s ease, transform 0.15s ease; }
+.of-piece-pop.out { opacity: 0; transform: scale(0.96); }
+.of-piece-pop::after { content: ""; position: absolute; left: var(--tail-x, 50%); width: 14px; height: 14px; margin-left: -7px; background: inherit; border: inherit; transform: rotate(45deg); }
+.of-piece-pop[data-side="above"]::after { bottom: -8px; border-top: 0; border-left: 0; }
+.of-piece-pop[data-side="below"]::after { top: -8px; border-bottom: 0; border-right: 0; }
+.of-piece-pop[data-side="none"]::after { display: none; }
+.of-piece-pop-row { display: flex; align-items: center; gap: 10px; }
+.of-piece-pop-photo { width: 52px; height: 52px; flex: none; border-radius: 12px; background-color: var(--of-fill); background-size: cover; background-repeat: no-repeat; }
+.of-piece-pop-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.of-piece-pop-kicker { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--of-blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-piece-pop-text b { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-piece-pop-text small { font-size: 12px; color: var(--of-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-piece-pop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.of-piece-pop-actions > span { display: flex; }
+.of-piece-pop-shop, .of-piece-pop-save { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 36px; border: 0; border-radius: 18px; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; text-decoration: none; cursor: pointer; }
+.of-piece-pop-shop { background: var(--of-ink-surface); color: var(--of-on-dark); }
+.of-piece-pop-shop svg { width: 14px; height: 14px; color: var(--of-lime); }
+.of-piece-pop-save { background: var(--of-button-soft); color: var(--of-ink); }
+.of-piece-pop-save svg { width: 15px; height: 15px; }
+.of-piece-pop-save.on { background: var(--of-blue-tint); color: var(--of-blue); }
+.of-piece-pop-shop:disabled { opacity: 0.4; cursor: not-allowed; }
+.of-shop-chip.nolink { color: var(--of-muted); }
+:root[data-theme="dark"] .of-piece-pop-shop { background: var(--of-lime); color: var(--of-on-lime); }
+:root[data-theme="dark"] .of-piece-pop-shop svg { color: var(--of-on-lime); }
+@keyframes ofPopIn { from { opacity: 0; transform: translateY(4px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+.of-saved-kind { display: flex; gap: 8px; margin: 14px 0 16px; }
+.of-myfits .of-saved-kind .of-chip.active { border: 0; background: var(--of-ink-surface); color: var(--of-on-dark); font-weight: 700; }
+.of-piece-card .wardrobe-card-media { position: relative; }
+/* The whole piece photo fits inside the card (no cropping), with a little room around it.
+   Pieces cut from a shared photo keep their zoom (set inline). */
+.of-piece-card-photo { position: absolute; inset: 0; padding: 14px; background-color: var(--of-fill); background-origin: content-box; background-size: contain; background-position: center; background-repeat: no-repeat; }
+.of-piece-card .status-pill { position: absolute; top: 10px; left: 10px; z-index: 1; }
+.of-myfits .wardrobe-card-footer a.button { text-decoration: none; }
+.of-myfits .wardrobe-card-footer .of-piece-nolink { flex: 1; color: var(--of-muted); cursor: default; }

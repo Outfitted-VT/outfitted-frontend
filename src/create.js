@@ -37,6 +37,17 @@ const SLOT_CATEGORIES = {
   accessory: ["bag", "accessory", "jewelry"],
 };
 
+// A tried-on piece's name when neither detection nor the source look names it.
+const SLOT_NAMES = {
+  head: "Hat",
+  top: "Top",
+  outerwear: "Jacket",
+  one_piece: "Dress",
+  bottom: "Bottoms",
+  feet: "Shoes",
+  accessory: "Accessory",
+};
+
 // One-tap polls. Picking one fills in the question and answers, which stay editable.
 const POLL_PRESETS = [
   { id: "wear", label: "Wear it?", question: "Would you wear it?", options: ["Wear it", "Rethink"] },
@@ -102,6 +113,7 @@ function freshState() {
       blurred: null,
       fitId: null,
       from: null,
+      sourceItems: null,
     },
   };
 }
@@ -307,6 +319,7 @@ function photosChanged() {
 // twice. Suggestions are marked `auto` until the user edits them; a new run replaces only those
 // and skips kinds of piece the user already has.
 async function findPieces() {
+  if (state.posting?.pieces?.length) return findTryOnPieces();
   const d = state.detect;
   const photos = [...state.photos];
   if (!photos.length) return;
@@ -354,6 +367,58 @@ async function findPieces() {
     console.error(err);
     d.status = "failed";
   }
+  renderItems();
+  renderTags();
+  renderDetectStatus();
+}
+
+// A pieces try-on post: one piece per photo that was tried on, with that photo as the piece's
+// own photo (shown in the shop / save bubble and on saved pieces), so clothes the person was
+// already wearing aren't tagged. Your own photos go to detection for a name, colour and tags;
+// pieces from someone's look ("Try this look") can't, so they copy that look's tagged piece.
+async function findTryOnPieces() {
+  const d = state.detect;
+  const run = ++d.run;
+  const stale = () => run !== d.run;
+  d.checked = [...state.photos];
+  d.status = "running";
+  renderDetectStatus();
+  const sourceItems = state.tryon.sourceItems || [];
+  const results = await Promise.all(
+    state.posting.pieces.map(async ({ slot, image, shared }) => {
+      const kinds = SLOT_CATEGORIES[slot] || ["other"];
+      const own = { image_id: image.id, preview: image.url, pin: null, auto: true };
+      const plain = { category: kinds[0], name: SLOT_NAMES[slot] || "Piece", source: "user", ...own };
+      if (shared) {
+        const posted = sourceItems.find((item) => kinds.includes(item.category));
+        if (!posted) return { item: plain };
+        const { id, image: _photo, saved_piece_id, pin, ...copy } = posted;
+        return { item: { ...copy, ...own } };
+      }
+      try {
+        const result = await detectPieces(image.id);
+        const found = result.items.find((item) => kinds.includes(item.category)) || result.items[0];
+        if (!found) return { item: plain, result };
+        return { item: { ...found, ...own, category: kinds.includes(found.category) ? found.category : kinds[0] }, result };
+      } catch {
+        return { item: plain };
+      }
+    })
+  );
+  if (stale()) return;
+  // Pieces the user added or edited stay; a new run doesn't add another of those kinds.
+  const kept = state.items.filter((item) => !item.auto).map((item) => item.category);
+  dropSuggestions();
+  const items = results.map(({ item }) => item).filter((item) => !kept.includes(item.category));
+  state.items.push(...items);
+  results.forEach(({ result }) => {
+    if (!result) return;
+    addTags("occasion", result.occasion_tags, true);
+    addTags("style", result.style_tags, true);
+  });
+  d.onlyTried = true;
+  d.status = "done";
+  d.found = items.length;
   renderItems();
   renderTags();
   renderDetectStatus();
@@ -428,7 +493,11 @@ function renderItems() {
         <div class="flex items-center gap-space-sm bg-surface-container-low rounded-DEFAULT p-space-xs pr-1">
           <button type="button" data-item-edit="${i}" class="flex items-center gap-space-sm min-w-0 flex-1 text-left" aria-label="Edit ${escapeHtml(item.name)}">
             <span class="relative w-10 h-10 rounded-full bg-surface-container-lowest flex items-center justify-center text-on-surface-variant flex-shrink-0">
-              <span class="material-symbols-outlined text-[20px]">${category.icon}</span>
+              ${
+                item.preview || item.image?.url
+                  ? `<img src="${escapeHtml(mediaUrl(item.preview || item.image.url))}" alt="" class="w-full h-full rounded-full object-cover" />`
+                  : `<span class="material-symbols-outlined text-[20px]">${category.icon}</span>`
+              }
               ${item.auto ? `<span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center" title="Detected automatically"><span class="material-symbols-outlined text-[11px] text-tertiary-fixed" style="font-variation-settings:'FILL' 1">auto_awesome</span></span>` : ""}
             </span>
             <span class="flex flex-col min-w-0 flex-1">
@@ -672,8 +741,10 @@ function pollFromFit(fit) {
 
 function itemsForPost(imageIds) {
   // id: a posted fit's pieces have one, but saving replaces them all.
-  return state.items.map(({ auto, id, ...item }) => ({
+  return state.items.map(({ auto, id, image, preview, saved_piece_id, ...item }) => ({
     ...item,
+    // A piece's own photo (a try-on's clothing photo); posted fits send it back as image.
+    image_id: item.image_id ?? image?.id ?? null,
     // A pin must point at one of this fit's photos (the cover may have been removed).
     pin: item.pin && imageIds.includes(item.pin.image_id) ? item.pin : null,
   }));
@@ -1070,6 +1141,11 @@ function postTryOn() {
       t.result.mode === "pieces"
         ? t.result.pieces.flatMap((p) => SLOT_CATEGORIES[p.slot] || [])
         : outfitCategories(t.outfit),
+    // A pieces try-on: the pieces tried on and their photos (findTryOnPieces tags exactly these).
+    pieces:
+      t.result.mode === "pieces"
+        ? t.result.pieces.filter((p) => p.image).map((p) => ({ slot: p.slot, image: p.image, shared: Boolean(t.pieces[p.slot]?.shared) }))
+        : null,
   };
   state.items = [];
   state.tags = { occasion: [], style: [] };
@@ -1112,6 +1188,7 @@ export function openTryOnFrom(fit) {
     if (source?.mode === "pieces") {
       t.mode = "pieces";
       source.pieces.forEach(({ slot, image }) => (t.pieces[slot] = shared(image)));
+      t.sourceItems = fit.items || [];
       t.postedPieces = { ...t.pieces }; // for Reset to all pieces
     } else {
       const outfit = source?.outfit_image || fit.images?.[0];
