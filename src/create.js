@@ -796,8 +796,14 @@ const blockedBy = (slot) => (CONFLICTS[slot] || []).filter((other) => state.tryo
 
 // Trying a posted look (Try this look on a post or a saved fit, yours included): the clothes are
 // fixed as posted. Only the photo of you can change; switching between Entire fit and Pieces,
-// swapping or removing pieces, and New outfit are for a new try-on from the + menu.
+// swapping or adding pieces, and New outfit are for a new try-on from the + menu. A pieces look
+// may leave pieces out (never the last one) and reset to all of them (postedPieces).
 const borrowedLook = () => Boolean(state.tryon.fitId);
+const canDropPieces = () => borrowedLook() && state.tryon.mode === "pieces" && Object.keys(state.tryon.pieces).length > 1;
+const droppedPieces = () =>
+  borrowedLook() && state.tryon.postedPieces
+    ? Object.keys(state.tryon.postedPieces).filter((slot) => !state.tryon.pieces[slot]).length
+    : 0;
 const lookOwner = () => (state.tryon.from ? `@${state.tryon.from}'s` : "Your posted");
 
 function renderTryOn() {
@@ -814,7 +820,9 @@ function renderTryOn() {
     panel.classList.toggle("hidden", panel.dataset.tryonPanel !== t.mode);
   });
   $("#tryon-intro").textContent = locked
-    ? t.from
+    ? t.mode === "pieces"
+      ? `Trying ${t.from ? `@${t.from}'s` : "your posted"} look. Add a photo of you. You can leave out any of the pieces.`
+      : t.from
       ? `Trying @${t.from}'s look as they posted it. Add a photo of you to see it on you.`
       : "Trying the look from your post as you posted it. To try different clothes, start a new try-on."
     : TRYON_INTRO[t.mode];
@@ -848,7 +856,7 @@ function renderPieces() {
   for (const slot of PIECE_SLOTS) {
     const piece = pieces[slot];
     const tile = $(`[data-piece-slot="${slot}"]`);
-    // A borrowed look shows only its own pieces, and they can't be swapped or removed.
+    // A borrowed look shows only its own pieces. They can't be swapped; they can be left out.
     $(`[data-piece="${slot}"]`).classList.toggle("hidden", locked && !piece);
     const preview = tile.querySelector("[data-piece-preview]");
     preview.classList.toggle("hidden", !piece);
@@ -856,7 +864,7 @@ function renderPieces() {
     tile.querySelector("[data-piece-icon]").classList.toggle("hidden", Boolean(piece));
     tile.querySelector("[data-piece-title]").classList.toggle("hidden", Boolean(piece));
     tile.classList.toggle("border-dashed", !piece);
-    $(`[data-piece-remove="${slot}"]`).classList.toggle("hidden", !piece || locked);
+    $(`[data-piece-remove="${slot}"]`).classList.toggle("hidden", !piece || (locked && !canDropPieces()));
 
     const blocked = blockedBy(slot);
     tile.disabled = locked || (!piece && blocked.length > 0);
@@ -864,8 +872,17 @@ function renderPieces() {
   }
 
   const note = $("#tryon-pieces-note");
+  if (locked) {
+    const dropped = droppedPieces();
+    note.innerHTML = dropped
+      ? `<span class="material-symbols-outlined text-[16px]">info</span><span>${dropped} piece${dropped === 1 ? "" : "s"} left out.</span><button type="button" class="ml-auto font-semibold text-secondary underline" data-tryon-reset>Reset to all pieces</button>`
+      : "";
+    note.classList.toggle("hidden", !dropped);
+    note.classList.toggle("flex", Boolean(dropped));
+    return;
+  }
   const message =
-    state.tryon.mode !== "pieces" || locked
+    state.tryon.mode !== "pieces"
       ? ""
       : pieces.one_piece
         ? "A dress replaces the top and bottom, so those are turned off."
@@ -1095,6 +1112,7 @@ export function openTryOnFrom(fit) {
     if (source?.mode === "pieces") {
       t.mode = "pieces";
       source.pieces.forEach(({ slot, image }) => (t.pieces[slot] = shared(image)));
+      t.postedPieces = { ...t.pieces }; // for Reset to all pieces
     } else {
       const outfit = source?.outfit_image || fit.images?.[0];
       // The post's tagged pieces say what's in the outfit (see outfitCategories).
@@ -1177,9 +1195,15 @@ export function initCreate({ onPosted, onDilemma, onStory, toast }) {
   });
   document.querySelectorAll("[data-piece-remove]").forEach((button) => {
     button.onclick = () => {
-      if (!borrowedLook()) removePiece(button.dataset.pieceRemove);
+      if (!borrowedLook() || canDropPieces()) removePiece(button.dataset.pieceRemove);
     };
   });
+  // A posted pieces look: put back every piece it was posted with.
+  $("#tryon-pieces-note").onclick = (event) => {
+    if (!event.target.closest("[data-tryon-reset]") || !state.tryon.postedPieces) return;
+    state.tryon.pieces = { ...state.tryon.postedPieces };
+    renderTryOn();
+  };
   $("#tryon-new").onclick = () => {
     // Keep the photo of you and the mode; start over on the clothes.
     const t = state.tryon;
