@@ -173,7 +173,17 @@ export function mountFitList({
     const fit = article && fits.get(article.dataset.fitId);
     if (!fit) return;
     const piece = event.target.closest("[data-piece-open]");
-    if (piece) return openPieceSheet({ fit, index: Number(piece.dataset.pieceOpen), toast, onChange: replaceCard, anchor: piece });
+    if (piece) {
+      const index = Number(piece.dataset.pieceOpen);
+      return openPieceSheet({
+        fit,
+        index,
+        toast,
+        onChange: replaceCard,
+        anchor: piece,
+        onEdit: isMine(fit) && onEdit ? () => onEdit(fit, { onSaved: replaceCard, item: index }) : null,
+      });
+    }
     const voteButton = event.target.closest("[data-fit-vote]");
     if (voteButton) vote(fit, Number(voteButton.dataset.fitVote));
     else if (event.target.closest("[data-fit-like]")) toggle(fit, "liked_by_me", setLiked);
