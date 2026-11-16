@@ -247,6 +247,12 @@ function tryonScreen() {
       </div>
       <p class="hidden flex items-start gap-1.5 font-label-sm text-label-sm text-on-surface-variant font-normal" id="tryon-pieces-note"></p>
       <input type="file" accept="image/*" class="hidden" id="tryon-file" />
+      <!-- The model struggles when what you're wearing clashes with the new clothes (a suit under a
+           sweater comes out stitched together), so say which photos of you work best. -->
+      <div class="tryon-tip" role="note">
+        <span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>
+        <p><b>Pick a photo that suits the clothes.</b> Wear something simple and close-fitting that the new pieces can go over, like a plain tee and jeans. Bulky or layered outfits (a suit, a coat, a hoodie) may not swap cleanly and can come out looking odd.</p>
+      </div>
       <p class="flex items-start gap-1.5 font-label-sm text-label-sm text-on-surface-variant font-normal">
         <span class="material-symbols-outlined text-[16px]">info</span>
         Only use photos of yourself. The result is AI-generated and is labeled as an AI try-on if you post it.
