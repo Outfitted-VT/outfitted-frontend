@@ -1453,7 +1453,15 @@ function showLanding(message = "") {
   app.innerHTML = renderLanding();
   mountLanding();
   if (message) window.dispatchEvent(new CustomEvent("of:start-onboarding", { detail: { mode: "login", message } }));
+  else openAuthFromHash();
 }
+
+// Direct links: /#login and /#signup open Log in / Create account over the landing page.
+function openAuthFromHash() {
+  const mode = { "#login": "login", "#signup": "signup" }[location.hash];
+  if (mode && document.querySelector("#landing")) window.dispatchEvent(new CustomEvent("of:start-onboarding", { detail: { mode } }));
+}
+window.addEventListener("hashchange", openAuthFromHash);
 
 async function start() {
   setSessionExpiredHandler(() => showLanding("Your session expired. Please log in again."));

@@ -335,6 +335,7 @@ async function createAccount() {
     state.password = '';
     window.dispatchEvent(new CustomEvent('of:signed-in'));
     state.busy = false;
+    setHash('');
     go('quiz');
   } catch (err) {
     state.error = authMessage(err);
@@ -402,8 +403,15 @@ async function loadPeople() {
   if (current === 'quiz' && state.step === 2) render();
 }
 
-function close() {
-  const closing = root;
+function setHash(hash) {
+  const url = location.pathname + location.search + hash;
+  if (location.hash !== hash) history.replaceState(history.state, '', url);
+}
+
+// el: the overlay to close (the start-up splash closes only itself).
+function close(el = root) {
+  if (el === root && fromLanding) setHash('');
+  const closing = el;
   closing.classList.add('ob-out');
   setTimeout(() => closing.remove(), 350);
 }
@@ -442,8 +450,8 @@ function nextStep() {
 }
 
 const actions = {
-  start() { state.returning = false; state.error = ''; go('signin'); },
-  signin() { state.returning = true; state.error = ''; go('signin'); },
+  start() { state.returning = false; state.error = ''; if (fromLanding) setHash('#signup'); go('signin'); },
+  signin() { state.returning = true; state.error = ''; if (fromLanding) setHash('#login'); go('signin'); },
   toWelcome() { if (fromLanding) close(); else go('welcome'); },
   toAccount() { state.error = ''; state.name = (root.querySelector('#ob-name')?.value || '').trim(); state.username = handle(); go('signin'); },
   create() { if (USERNAME.test(handle()) && !state.busy) createAccount(); },
@@ -505,18 +513,21 @@ function mount() {
 function boot() {
   mount();
   go('loading');
+  const splash = root;
   const welcome = new URLSearchParams(location.search).has('onboard');
-  setTimeout(() => (welcome ? go('welcome') : close()), 1900);
+  setTimeout(() => (welcome && root === splash ? go('welcome') : close(splash)), 1900);
 }
 
 // Get started (mode "signup": create an account, then the style quiz) or Log in ("login").
 window.addEventListener('of:start-onboarding', (event) => {
-  if (!root?.isConnected || root.classList.contains('ob-out')) mount();
+  // A fresh overlay unless one is already open for these steps (the start-up splash closes on its own).
+  if (!root?.isConnected || root.classList.contains('ob-out') || current === 'loading') mount();
   root.classList.add('ob-modal');
   fromLanding = true;
   state.returning = event.detail?.mode === 'login';
   state.error = event.detail?.message ? escapeHtml(event.detail.message) : '';
   state.step = 0;
+  setHash(state.returning ? '#login' : '#signup');
   go('signin');
 });
 
