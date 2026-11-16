@@ -136,9 +136,10 @@ function renderRightRail() {
       <div class="rail-fitcheck-card">
         <h3 class="fitcheck-title">The fit check.</h3>
         <p class="fitcheck-body">That outfit sitting in your cart? Let your friends weigh in before you hit buy.</p>
-        <button class="btn-ask-group" id="btn-ask-group-cart">
+        <!-- Posting a fit dilemma isn't ready yet: locked with a Coming soon label. -->
+        <button class="btn-ask-group" id="btn-ask-group-cart" disabled aria-disabled="true">
           <span>Ask the group</span>
-          <span>${icons.arrowRight}</span>
+          <span class="create-soon-tag">Coming soon</span>
         </button>
       </div>
 
@@ -922,7 +923,7 @@ function bindEvents() {
   if (btnNotifs) btnNotifs.onclick = openActivity;
 
   const btnAskGroup = document.querySelector("#btn-ask-group-cart");
-  if (btnAskGroup) btnAskGroup.onclick = postFitDilemma;
+  if (btnAskGroup && !btnAskGroup.disabled) btnAskGroup.onclick = postFitDilemma;
 
   // Post fit modal photo upload handling
   const postModal = document.querySelector("#post-fit-modal");

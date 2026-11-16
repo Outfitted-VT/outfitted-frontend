@@ -15,17 +15,18 @@ const secondaryButton =
   "h-12 w-full rounded-full bg-surface-container text-on-surface font-title-ui text-label-md font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all";
 
 function menuScreen() {
-  const option = (action, icon, title, text, accent) => `
-    <button type="button" data-create-go="${action}"
-      class="w-full text-left rounded-lg p-space-md flex items-center gap-space-md md:flex-col md:items-start md:gap-space-sm md:min-h-[220px] active:scale-[0.98] transition-transform ${accent}">
+  // soon: shown but locked, with a Coming soon tag (not wired up yet).
+  const option = (action, icon, title, text, accent, { soon = false } = {}) => `
+    <button type="button" ${soon ? `disabled aria-disabled="true"` : `data-create-go="${action}"`}
+      class="w-full text-left rounded-lg p-space-md flex items-center gap-space-md md:flex-col md:items-start md:gap-space-sm md:min-h-[220px] active:scale-[0.98] transition-transform ${accent} ${soon ? "create-soon" : ""}">
       <span class="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 bg-surface-container-lowest/15">
         <span class="material-symbols-outlined text-[28px]">${icon}</span>
       </span>
       <span class="flex flex-col gap-0.5">
-        <span class="font-title-ui text-title-ui font-semibold">${title}</span>
+        <span class="font-title-ui text-title-ui font-semibold">${title}${soon ? `<span class="create-soon-tag">Coming soon</span>` : ""}</span>
         <span class="font-body-md text-body-md opacity-80">${text}</span>
       </span>
-      <span class="material-symbols-outlined ml-auto md:mt-auto opacity-70">arrow_forward</span>
+      <span class="material-symbols-outlined ml-auto md:mt-auto opacity-70">${soon ? "lock" : "arrow_forward"}</span>
     </button>`;
   return `
     <section data-screen="menu" class="flex flex-col gap-space-sm px-margin pb-space-xl">
@@ -49,7 +50,8 @@ function menuScreen() {
         "forum",
         "Post a Fit Dilemma",
         "Send a photo and a question to a chat. Your circle votes wear it or rethink.",
-        "bg-surface-container-low text-on-surface border border-surface-container-high"
+        "bg-surface-container-low text-on-surface border border-surface-container-high",
+        { soon: true }
       )}
     </section>`;
 }

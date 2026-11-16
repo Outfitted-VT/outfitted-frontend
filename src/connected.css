@@ -1055,3 +1055,17 @@ button.of-shop-chip { font-family: inherit; cursor: pointer; }
 .of-piece-card .status-pill { position: absolute; top: 10px; left: 10px; z-index: 1; }
 .of-myfits .wardrobe-card-footer a.button { text-decoration: none; }
 .of-myfits .wardrobe-card-footer .of-piece-nolink { flex: 1; color: var(--of-muted); cursor: default; }
+
+/* 3D carousel tabs: Fits, then a tab per kind of saved piece (src/wardrobe.js). */
+.of-myfits .carousel-category-nav { justify-content: flex-start; gap: 8px; padding: 2px 0 4px; margin-bottom: 18px; scrollbar-width: none; }
+.of-myfits .carousel-cat-pill { flex: none; box-shadow: none; }
+.of-myfits .carousel-cat-pill.active { border: 0; background: var(--of-ink-surface); color: var(--of-on-dark); font-weight: 700; box-shadow: none; }
+.carousel-cat-count { margin-left: 2px; font-weight: 600; opacity: 0.6; }
+.carousel-piece-photo { position: absolute; inset: 0; padding: 14px; background-color: var(--of-fill); background-origin: content-box; background-size: contain; background-position: center; background-repeat: no-repeat; }
+
+/* Locked features: Post a Fit Dilemma (create menu) and Ask the group (feed rail). */
+.create-soon { opacity: 0.55; cursor: not-allowed; }
+.create-soon:active { transform: none; }
+.create-soon-tag { display: inline-flex; align-items: center; margin-left: 8px; height: 20px; padding: 0 8px; border-radius: 10px; background: var(--of-lime); color: var(--of-on-lime); font-family: var(--of-font-ui); font-size: 10px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; vertical-align: middle; }
+.btn-ask-group:disabled { opacity: 0.75; cursor: not-allowed; }
+.btn-ask-group .create-soon-tag { margin-left: 0; }
