@@ -14,180 +14,14 @@ const TABS = [
   ["saved", "Saved"],
 ];
 const THEMES = [
-  ["light", "Light"],
-  ["dark", "Dark"],
-  ["system", "Match system"],
+  ["light", "light_mode", "Light"],
+  ["dark", "dark_mode", "Dark"],
+  ["system", "contrast", "System"],
 ];
 const STICKER_STYLES = ["lime", "white"];
 const PAGE_SIZE = 20;
 
 const profile = { screen: "main", tab: "history", pages: new Map() };
-
-const studioTile = (icon, title, text, attr) => `
-  <button type="button" ${attr}
-    class="h-full w-full rounded bg-surface-container-low hover:bg-surface-container border border-surface-container-high text-left transition-colors active:scale-[0.98]">
-    <span class="h-full flex flex-col items-start gap-1.5 p-space-sm">
-      <span class="w-9 h-9 rounded-full bg-surface-container-lowest border border-surface-container-high flex items-center justify-center text-secondary flex-shrink-0">
-        <span class="material-symbols-outlined text-[20px]">${icon}</span>
-      </span>
-      <span class="font-title-ui text-label-md font-semibold text-on-surface leading-tight mt-0.5">${title}</span>
-      <span class="font-body-md text-[12px] leading-snug text-on-surface-variant line-clamp-2">${text}</span>
-    </span>
-  </button>`;
-
-
-function studioSections() {
-  return `
-      <!-- Returns Saved & Impact Counter Dashboard -->
-      <section class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col gap-space-sm border-l-4 border-secondary">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[20px] text-secondary">savings</span>
-            <span class="font-title-ui text-label-md font-semibold text-on-surface">Returns Saved & Impact</span>
-          </div>
-          <span class="font-micro-mono text-[10px] uppercase px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-bold" id="impact-badge-label">
-            Smart Shopper
-          </span>
-        </div>
-        <p class="font-body-md text-[12px] text-on-surface-variant leading-snug">
-          Estimated financial & environmental waste eliminated by sizing validation and peer feedback before checkout.
-        </p>
-
-        <div class="grid grid-cols-3 gap-space-2xs text-center pt-1">
-          <div class="p-2.5 rounded bg-surface-container-low flex flex-col items-center">
-            <span class="font-headline-md text-headline-md font-bold text-secondary" id="impact-dollars-saved">$96</span>
-            <span class="font-micro-mono text-[9px] uppercase tracking-wider text-on-surface-variant">Dollars Saved</span>
-          </div>
-          <div class="p-2.5 rounded bg-surface-container-low flex flex-col items-center">
-            <span class="font-headline-md text-headline-md font-bold text-on-surface" id="impact-trips-avoided">3</span>
-            <span class="font-micro-mono text-[9px] uppercase tracking-wider text-on-surface-variant">Trips Avoided</span>
-          </div>
-          <div class="p-2.5 rounded bg-surface-container-low flex flex-col items-center">
-            <span class="font-headline-md text-headline-md font-bold text-on-surface" id="impact-co2-saved">14.2 kg</span>
-            <span class="font-micro-mono text-[9px] uppercase tracking-wider text-on-surface-variant">CO₂ Spared</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- TrueSize Passport & Cross-Brand Translator -->
-      <section class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col gap-space-sm" id="passport-section">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[20px] text-primary">straighten</span>
-            <span class="font-title-ui text-label-md font-semibold text-on-surface">TrueSize Passport</span>
-          </div>
-          <button type="button" class="text-secondary font-label-sm text-label-sm font-semibold hover:underline flex items-center gap-0.5" id="btn-toggle-add-reference">
-            <span class="material-symbols-outlined text-[15px]">add</span>
-            <span>Add piece</span>
-          </button>
-        </div>
-
-        <p class="font-body-md text-[12px] text-on-surface-variant leading-snug">
-          Your calibrated baseline sizes from clothes you already own. We use these specs to map sizing across different vendors.
-        </p>
-
-        <!-- Benchmark reference garments list -->
-        <div class="flex flex-col gap-1.5" id="passport-garments-list">
-          <div class="flex items-center justify-between p-2 rounded bg-surface-container-low text-label-sm">
-            <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-secondary"></span>
-              <strong>Levi's 501</strong>
-              <span class="text-on-surface-variant">Bottom · 30W</span>
-            </div>
-            <span class="font-micro-mono text-[10px] text-secondary font-bold uppercase">Benchmark</span>
-          </div>
-          <div class="flex items-center justify-between p-2 rounded bg-surface-container-low text-label-sm">
-            <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-secondary"></span>
-              <strong>Zara Ribbed Tee</strong>
-              <span class="text-on-surface-variant">Top · Medium</span>
-            </div>
-            <span class="font-micro-mono text-[10px] text-secondary font-bold uppercase">Benchmark</span>
-          </div>
-        </div>
-
-        <!-- Add Reference Inline Drawer -->
-        <div class="hidden p-3 rounded-lg bg-surface-container-low flex flex-col gap-2 mt-1" id="add-reference-form">
-          <strong class="font-label-md text-on-surface">Add Well-Fitting Benchmark Piece</strong>
-          <div class="grid grid-cols-2 gap-2">
-            <input type="text" id="ref-brand" placeholder="Brand (e.g. Levi's, Zara)" class="p-2 rounded bg-surface-container-lowest border border-surface-container-high text-body-md text-on-surface" />
-            <input type="text" id="ref-item-name" placeholder="Item Name (e.g. 501 Jeans)" class="p-2 rounded bg-surface-container-lowest border border-surface-container-high text-body-md text-on-surface" />
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <select id="ref-category" class="p-2 rounded bg-surface-container-lowest border border-surface-container-high text-body-md text-on-surface">
-              <option value="top">Top</option>
-              <option value="bottom" selected>Bottom</option>
-              <option value="outerwear">Outerwear</option>
-              <option value="shoes">Shoes</option>
-            </select>
-            <input type="text" id="ref-size" placeholder="Size (e.g. M, 30W, 32L)" class="p-2 rounded bg-surface-container-lowest border border-surface-container-high text-body-md text-on-surface" />
-          </div>
-          <div class="flex justify-end gap-2 pt-1">
-            <button type="button" class="px-3 py-1.5 rounded-full text-label-sm font-semibold text-on-surface" id="btn-cancel-add-ref">Cancel</button>
-            <button type="button" class="px-4 py-1.5 rounded-full bg-primary text-on-primary text-label-sm font-semibold" id="btn-save-reference">Save Piece</button>
-          </div>
-        </div>
-
-        <!-- Cross-Brand Size Translator Tool -->
-        <div class="p-3 rounded-lg bg-surface-container-low/70 border border-surface-container-high flex flex-col gap-2 mt-2">
-          <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[17px] text-secondary">swap_horizontal_circle</span>
-            <strong class="font-label-md text-on-surface">Cross-Brand Size Translator</strong>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <select id="translate-brand" class="p-2 rounded bg-surface-container-lowest border border-surface-container-high text-body-md text-on-surface">
-              <option value="Aritzia">Aritzia</option>
-              <option value="Uniqlo">Uniqlo</option>
-              <option value="Everlane">Everlane</option>
-              <option value="The Frankie Shop">The Frankie Shop</option>
-              <option value="ASOS">ASOS</option>
-              <option value="Reformation">Reformation</option>
-            </select>
-            <select id="translate-category" class="p-2 rounded bg-surface-container-lowest border border-surface-container-high text-body-md text-on-surface">
-              <option value="top">Top</option>
-              <option value="bottom" selected>Bottom</option>
-              <option value="outerwear">Outerwear</option>
-              <option value="dress">Dress</option>
-            </select>
-          </div>
-          <button type="button" id="btn-run-translation" class="h-9 rounded-full bg-secondary text-on-secondary font-label-md font-semibold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
-            <span class="material-symbols-outlined text-[16px]">psychology</span>
-            <span>Translate Size</span>
-          </button>
-          <div id="translate-result-box" class="hidden p-2.5 rounded bg-surface-container-lowest border border-secondary/30 flex flex-col gap-1 text-label-sm">
-            <div class="flex items-center justify-between">
-              <span class="font-semibold text-on-surface">Recommended Size: <strong class="text-secondary" id="rec-size-output">Size 4 (S)</strong></span>
-              <span class="font-micro-mono text-[9px] bg-secondary-fixed text-on-secondary-fixed px-1.5 py-0.5 rounded-full font-bold" id="rec-confidence-output">94% Confidence</span>
-            </div>
-            <p class="text-[11px] text-on-surface-variant leading-snug" id="rec-notes-output">
-              Based on your Levi's 30W reference, Aritzia bottoms run slightly narrow in the hip. Ordering a Size 4 ensures relaxed drape.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Collaborative Fashion Hub -->
-      <section class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col gap-space-sm">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[20px] text-secondary">handshake</span>
-            <span class="font-title-ui text-label-md font-semibold text-on-surface">Peer Fashion Studio</span>
-          </div>
-          <span class="font-micro-mono text-[9px] uppercase px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-bold">New</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-space-xs pt-1">
-          ${studioTile("groups", "Dorm Closets", "Plan event looks & borrow pieces", "data-open-dorm-closet")}
-          ${studioTile("styler", "Style a Friend", "Dress your friend's avatar", "data-open-style-friend")}
-        </div>
-
-        <button type="button" class="w-full h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-2 transition-all active:scale-95" data-ai-mode>
-          <span class="material-symbols-outlined text-[17px] text-secondary">auto_awesome</span>
-          <span>Try this look</span>
-        </button>
-      </section>
-  `;
-}
 
 const capitalize = (text) => (text ? text.charAt(0).toUpperCase() + text.slice(1) : "");
 const STYLE_LABELS = { y2k: "Y2K" };
@@ -275,25 +109,50 @@ export function renderProfileView() {
   </section>`;
 }
 
-function themeOption([value, label]) {
-  return `<button type="button" role="radio" class="of-menu-row of-radio-row" data-theme-option="${value}" aria-checked="false">${label}<i aria-hidden="true"></i></button>`;
-}
+// Settings: the same page header as Friends and My fits, then grouped cards of rows. Styles:
+// .of-settings in src/connected.css. The theme buttons are wired in src/main.js
+// ([data-theme-option]); Edit profile, Notifications and Back by mountProfile below.
+const row = ({ icon, title, sub = "", attrs = "", cls = "", chevron = true }) =>
+  `<button type="button" class="of-set-row ${cls}" ${attrs}>
+    <span class="of-set-icon material-symbols-outlined" aria-hidden="true">${icon}</span>
+    <span class="of-set-text"><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</span>
+    ${chevron ? '<span class="of-set-chevron material-symbols-outlined" aria-hidden="true">chevron_right</span>' : ""}
+  </button>`;
+
+const themeOption = ([value, icon, label]) =>
+  `<button type="button" role="radio" data-theme-option="${value}" aria-checked="false"><span class="material-symbols-outlined" aria-hidden="true">${icon}</span>${label}</button>`;
 
 export function renderSettingsView() {
   return `<section class="of-screen of-settings" id="of-profile">
     <header class="of-profile-head">
       ${iconButton({ icon: ofIcons.back(20), label: "Back to profile", data: { "data-profile-back": true } })}
-      <h1 class="of-display of-settings-title">Settings</h1>
     </header>
-    <section class="of-settings-card" aria-label="Preferences">
-      <button type="button" class="of-menu-row of-nav-row" data-profile-go="notifications"><span class="of-menu-icon">${ofIcons.bell(18)}</span>Notifications${ofIcons.arrow(16)}</button>
-    </section>
-    <section class="of-settings-card" role="radiogroup" aria-label="Appearance">
-      <p class="of-meta-label">Appearance</p>
-      ${THEMES.map(themeOption).join("")}
-    </section>
-    <div class="of-settings-studio">${studioSections()}</div>
-    <button type="button" class="of-btn of-btn-ink of-signout" id="btn-profile-signout">Sign out</button>
+    <div class="of-settings-intro">
+      <span class="of-friends-kicker">YOUR ACCOUNT</span>
+      <h1 class="of-display">Settings</h1>
+      <p class="of-friends-sub">Signed in as @${escapeHtml(currentUser.username || "")}</p>
+    </div>
+
+    <p class="of-friends-label">Account</p>
+    <div class="of-set-card">
+      ${row({ icon: "person", title: "Edit profile", sub: "Name, bio and photo", attrs: "data-profile-edit" })}
+      ${row({ icon: "notifications", title: "Notifications", sub: "Votes, comments, follows and chats", attrs: 'data-profile-go="notifications"' })}
+    </div>
+
+    <p class="of-friends-label" id="settings-appearance">Appearance</p>
+    <div class="of-set-card of-set-pad">
+      <div class="of-account-theme of-set-theme" role="radiogroup" aria-labelledby="settings-appearance">${THEMES.map(themeOption).join("")}</div>
+    </div>
+
+    <p class="of-friends-label">With friends</p>
+    <div class="of-set-card">
+      ${row({ icon: "groups", title: "Dorm Closets", sub: "Plan event looks and borrow pieces", attrs: "data-open-dorm-closet" })}
+      ${row({ icon: "styler", title: "Style a Friend", sub: "Put together a look for someone", attrs: "data-open-style-friend" })}
+    </div>
+
+    <div class="of-set-card">
+      ${row({ icon: "logout", title: "Sign out", attrs: 'id="btn-profile-signout"', cls: "danger", chevron: false })}
+    </div>
   </section>`;
 }
 

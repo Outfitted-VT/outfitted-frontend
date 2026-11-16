@@ -489,8 +489,6 @@ body {
 .of-radio-row i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--of-nav-idle); display: grid; place-items: center; }
 .of-radio-row[aria-checked="true"] i { border-color: var(--of-blue); }
 .of-radio-row[aria-checked="true"] i::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--of-blue); }
-.of-settings-studio { display: flex; flex-direction: column; gap: 16px; }
-.of-settings-studio > section { border-radius: var(--of-r-card); box-shadow: none; }
 .of-signout { width: 100%; }
 
 .of-state {
