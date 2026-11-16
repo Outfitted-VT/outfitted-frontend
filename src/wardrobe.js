@@ -18,7 +18,37 @@ import { categoryLabel, savedPieceStyle } from "./views/piece-sheet.js";
 import { fitCollage } from "./views/fit-collage.js";
 
 let activeView = "grid"; // 'grid' | 'carousel' | 'calendar'
-let activeCarouselCategory = "clothing"; // 'clothing' (the grid's fits) | 'shoes' | 'accessories'
+let activeCarouselCategory = "clothing"; // 'clothing' (the grid's fits) or a PIECE_GROUPS id
+const savedPieces = new Map(); // saved piece id -> piece, filled by connectWardrobe
+
+// The carousel's piece tabs, each covering one or more piece categories. A tab shows only when
+// you have saved a piece of that kind.
+const PIECE_GROUPS = [
+  ["top", "Tops", ["top"]],
+  ["bottom", "Bottoms", ["bottom"]],
+  ["outerwear", "Outerwear", ["outerwear"]],
+  ["dress", "Dresses", ["dress"]],
+  ["shoes", "Shoes", ["shoes"]],
+  ["bag", "Bags", ["bag"]],
+  ["accessory", "Accessories", ["accessory", "jewelry", "headwear"]],
+  ["other", "Other", ["other"]],
+];
+const piecesIn = (groupId) => {
+  const kinds = PIECE_GROUPS.find(([id]) => id === groupId)?.[2] || [];
+  return [...savedPieces.values()].filter((piece) => kinds.includes(piece.category));
+};
+
+// Fits, then a tab per kind of saved piece you have.
+function renderCarouselNav() {
+  const pill = (id, label, count) =>
+    `<button type="button" class="of-chip carousel-cat-pill ${activeCarouselCategory === id ? "active" : ""}" data-cat="${id}">${label} <span class="carousel-cat-count"${id === "clothing" ? ' id="carousel-fit-count"' : ""}>${count}</span></button>`;
+  return [
+    pill("clothing", "Fits", savedFits.size),
+    ...PIECE_GROUPS.map(([id, label]) => [id, label, piecesIn(id).length])
+      .filter(([, , count]) => count > 0)
+      .map(([id, label, count]) => pill(id, label, count)),
+  ].join("");
+}
 let carouselIndex = 0;
 const savedFits = new Map(); // fit id -> fit, filled by connectWardrobe from GET /users/me/saved
 let selectedCalendarMemory = outfitMemories[0];
@@ -40,16 +70,8 @@ export function renderWardrobePage() {
 
       <!-- VIEW 1: 3D CAROUSEL COVERFLOW -->
       <section class="wardrobe-view-container ${activeView === "carousel" ? "" : "hidden"}" id="view-carousel">
-        <div class="carousel-category-nav">
-          <button class="carousel-cat-pill ${activeCarouselCategory === "clothing" ? "active" : ""}" data-cat="clothing">
-            👕 Clothing (<span id="carousel-fit-count">0</span>)
-          </button>
-          <button class="carousel-cat-pill ${activeCarouselCategory === "shoes" ? "active" : ""}" data-cat="shoes">
-            👟 Shoes (${wardrobeCatalog.shoes.length})
-          </button>
-          <button class="carousel-cat-pill ${activeCarouselCategory === "accessories" ? "active" : ""}" data-cat="accessories">
-            🕶️ Accessories (${wardrobeCatalog.accessories.length})
-          </button>
+        <div class="carousel-category-nav" id="carousel-cat-nav" role="tablist" aria-label="Show">
+          ${renderCarouselNav()}
         </div>
 
         <div class="carousel-3d-stage-wrapper">
@@ -178,7 +200,17 @@ function getActiveCarouselList() {
     }));
     return saved;
   }
-  return wardrobeCatalog[activeCarouselCategory] || [];
+  // A kind of saved piece: its photo whole, name, and where it came from.
+  return piecesIn(activeCarouselCategory).map((piece) => ({
+    id: piece.id,
+    piece: true,
+    name: piece.name,
+    brand: piece.source_username ? `@${piece.source_username}` : categoryLabel(piece.category),
+    media: `<span class="carousel-piece-photo" style="${savedPieceStyle(piece)}" role="img" aria-label="${escapeHtml(piece.name)}"></span>`,
+    details: [piece.brand, piece.color].filter(Boolean).join(" · ") || categoryLabel(piece.category),
+    url: piece.url,
+    category: piece.category,
+  }));
 }
 
 function renderCarouselStageItems() {
@@ -212,19 +244,17 @@ function renderCarouselStageItems() {
         transformStyle = "display: none;";
       }
 
-      const costPerWear = (item.price / Math.max(1, item.timesWorn)).toFixed(2);
-
       return `
         <div class="carousel-3d-card ${isCenter ? "active" : ""}" style="${transformStyle}" data-index="${idx}">
           <div class="carousel-card-img-wrap">
-            ${item.saved ? item.media : `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" />`}
+            ${item.media}
             <span class="carousel-badge-pill">${escapeHtml(item.brand)}</span>
-            <span class="carousel-cpw-pill">${item.saved ? "Saved" : `$${costPerWear}/wear`}</span>
+            <span class="carousel-cpw-pill">${item.piece ? escapeHtml(categoryLabel(item.category)) : "Saved"}</span>
           </div>
           <div class="carousel-card-brief">
             <h4>${escapeHtml(item.name)}</h4>
             <p class="truncate">${
-              item.saved ? escapeHtml(item.pieces.join(" · ") || "No pieces tagged") : `${escapeHtml(item.category)} · Worn ${item.timesWorn} times`
+              item.piece ? escapeHtml(item.details) : escapeHtml(item.pieces.join(" · ") || "No pieces tagged")
             }</p>
           </div>
         </div>
@@ -238,60 +268,27 @@ function renderActiveCarouselDetails() {
   if (!items.length) return "";
   const current = ((carouselIndex % items.length) + items.length) % items.length;
   const item = items[current];
-  if (item.saved) return renderSavedFitDetails(item);
+  return item.saved ? renderSavedFitDetails(item) : renderSavedPieceDetails(item);
+}
 
-  const cpw = (item.price / Math.max(1, item.timesWorn)).toFixed(2);
-  const valueVerdict =
-    item.price / item.timesWorn < 10
-      ? "High ROI • Staple Wardrobe Piece"
-      : item.price / item.timesWorn < 20
-      ? "Solid Rotation Value"
-      : "Underutilized • Wear this more!";
-
+// The carousel's panel for a saved piece: the same Shop and Unsave as its grid card.
+function renderSavedPieceDetails(item) {
+  const shop = item.url
+    ? `<a class="button button-dark button-sm flex-1" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${icons.bag || ""}<span>Shop</span></a>`
+    : `<span class="button button-ghost button-sm flex-1 of-piece-nolink">No shop link</span>`;
   return `
-    <div class="active-item-analytics-card">
+    <div class="active-item-analytics-card" data-saved-piece="${escapeHtml(item.id)}">
       <div class="analytics-head">
         <div>
-          <span class="font-micro-mono text-[10px] uppercase text-secondary font-bold tracking-wider">${escapeHtml(item.brand)}</span>
+          <span class="font-micro-mono text-[10px] uppercase text-secondary font-bold tracking-wider">${escapeHtml(categoryLabel(item.category))} · saved from ${escapeHtml(item.brand)}</span>
           <h3 class="font-headline-md text-headline-md font-semibold text-on-surface">${escapeHtml(item.name)}</h3>
-          <p class="font-label-sm text-on-surface-variant">${escapeHtml(item.tag || item.category)}</p>
-        </div>
-        <div class="text-right">
-          <span class="font-headline-md text-headline-md font-bold text-secondary">$${cpw}</span>
-          <small class="block font-micro-mono text-[9px] uppercase text-on-surface-variant">Cost Per Wear</small>
+          <p class="font-label-sm text-on-surface-variant">${escapeHtml(item.details)}</p>
         </div>
       </div>
-
-      <!-- Cost Per Wear Metrics Strip -->
-      <div class="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-surface-container-low text-center">
-        <div>
-          <strong class="block font-title-ui text-label-md text-on-surface font-semibold">$${item.price}</strong>
-          <span class="font-micro-mono text-[9px] uppercase text-on-surface-variant">Purchase Price</span>
-        </div>
-        <div>
-          <strong class="block font-title-ui text-label-md text-on-surface font-semibold">${item.timesWorn}x</strong>
-          <span class="font-micro-mono text-[9px] uppercase text-on-surface-variant">Times Worn</span>
-        </div>
-        <div>
-          <strong class="block font-title-ui text-label-md text-on-surface font-semibold">${item.lastWorn || "Recent"}</strong>
-          <span class="font-micro-mono text-[9px] uppercase text-on-surface-variant">Last Worn</span>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-1.5 px-1 font-micro-mono text-[11px] text-tertiary-fixed font-semibold">
-        <span class="material-symbols-outlined text-[15px]">trending_up</span>
-        <span>${valueVerdict}</span>
-      </div>
-
-      <!-- Quick Action Controls -->
-      <div class="grid grid-cols-2 gap-space-xs pt-1">
-        <button type="button" class="h-10 rounded-full bg-primary text-on-primary font-label-md font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all btn-carousel-tryon" data-img="${escapeHtml(item.image)}" data-name="${escapeHtml(item.name)}">
-          <span class="material-symbols-outlined text-[17px] text-tertiary-fixed">auto_awesome</span>
-          <span>Try on with Avatar</span>
-        </button>
-        <button type="button" class="h-10 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all btn-carousel-log-wear" data-id="${item.id}">
-          <span class="material-symbols-outlined text-[17px] text-secondary">check</span>
-          <span>Log Worn Today</span>
+      <div class="wardrobe-card-footer">
+        ${shop}
+        <button type="button" class="button button-ghost button-sm wardrobe-unsave" data-piece-remove aria-label="Unsave piece" title="Unsave">
+          <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">bookmark_remove</span>
         </button>
       </div>
     </div>
@@ -490,16 +487,27 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
     };
   });
 
-  // Carousel Category Switching
-  container.querySelectorAll(".carousel-cat-pill").forEach((pill) => {
-    pill.onclick = () => {
-      container.querySelectorAll(".carousel-cat-pill").forEach((p) => p.classList.remove("active"));
-      pill.classList.add("active");
+  // Carousel tabs (Fits and kinds of saved pieces).
+  const carouselNav = container.querySelector("#carousel-cat-nav");
+  if (carouselNav) {
+    carouselNav.onclick = (event) => {
+      const pill = event.target.closest("[data-cat]");
+      if (!pill) return;
       activeCarouselCategory = pill.dataset.cat;
       carouselIndex = 0;
+      refreshCarouselNav();
       refreshCarouselStage();
     };
-  });
+  }
+
+  // Redraw the tabs; if the open kind has no pieces left, go back to Fits.
+  function refreshCarouselNav() {
+    if (activeCarouselCategory !== "clothing" && !piecesIn(activeCarouselCategory).length) {
+      activeCarouselCategory = "clothing";
+      carouselIndex = 0;
+    }
+    if (carouselNav) carouselNav.innerHTML = renderCarouselNav();
+  }
 
   function refreshCarouselStage() {
     const stage = container.querySelector("#carousel-stage");
@@ -525,36 +533,6 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
         refreshCarouselStage();
       };
     }
-
-    // Try-on button from carousel
-    container.querySelectorAll(".btn-carousel-tryon").forEach((btn) => {
-      btn.onclick = () => {
-        const img = btn.dataset.img;
-        const name = btn.dataset.name;
-        openVirtualDressingRoom({ image: img, name });
-      };
-    });
-
-    // Log Worn Today button
-    container.querySelectorAll(".btn-carousel-log-wear").forEach((btn) => {
-      btn.onclick = () => {
-        const id = btn.dataset.id;
-        const items = getActiveCarouselList();
-        const item = items.find((i) => i.id === id);
-        if (item) {
-          item.timesWorn = (item.timesWorn || 0) + 1;
-          item.lastWorn = "Today";
-          toast(`Logged "${item.name}" as worn! Cost-per-wear updated.`);
-          refreshCarouselStage();
-
-          if (item.backendId) {
-            logWardrobeWear(item.backendId).catch((err) => {
-              console.warn("Could not sync wear count to backend:", err);
-            });
-          }
-        }
-      };
-    });
   }
 
   bindCarouselEvents();
@@ -764,9 +742,13 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
     try {
       const page = await listSavedPieces(null, 50);
       if (!piecesBox?.isConnected) return;
+      savedPieces.clear();
+      page.items.forEach((piece) => savedPieces.set(piece.id, piece));
       piecesBox.innerHTML = page.items.map(renderSavedPieceCard).join("");
       paintPieceCount();
       applyFilters();
+      refreshCarouselNav();
+      if (activeCarouselCategory !== "clothing") refreshCarouselStage();
     } catch (err) {
       console.warn("Saved pieces skipped (guest/offline mode):", err);
       paintPieceCount();
@@ -786,15 +768,18 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
     });
   });
 
-  piecesBox?.addEventListener("click", async (event) => {
+  container.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-piece-remove]");
-    const card = button?.closest("[data-saved-piece]");
-    if (!card) return;
+    const id = button?.closest("[data-saved-piece]")?.dataset.savedPiece;
+    if (!id) return;
     button.disabled = true;
     try {
-      await unsavePiece(card.dataset.savedPiece);
-      card.remove();
+      await unsavePiece(id);
+      savedPieces.delete(id);
+      piecesBox?.querySelector(`[data-saved-piece="${CSS.escape(id)}"]`)?.remove();
       paintPieceCount();
+      refreshCarouselNav();
+      refreshCarouselStage();
       toast("Removed from saved pieces");
     } catch {
       button.disabled = false;
