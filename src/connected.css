@@ -946,7 +946,9 @@ img[class*="w-"] {
 .of-share-section { display: flex; flex-direction: column; gap: 8px; }
 .of-share-section[hidden] { display: none; }
 .of-share-label { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--of-muted); }
-.of-share .share-search { margin-bottom: 0; }
+.of-share .share-search { margin-bottom: 0; height: 40px; gap: 8px; }
+.of-share .of-search.share-search input { font-size: 13px; }
+.of-share .of-search.share-search svg { width: 16px; height: 16px; }
 .of-share .share-people { max-height: 220px; }
 
 .of-share-link { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 4px 0 16px; border-radius: 22px; background: var(--of-fill); }
