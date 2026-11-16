@@ -1069,3 +1069,20 @@ button.of-shop-chip { font-family: inherit; cursor: pointer; }
 .create-soon-tag { display: inline-flex; align-items: center; margin-left: 8px; height: 20px; padding: 0 8px; border-radius: 10px; background: var(--of-lime); color: var(--of-on-lime); font-family: var(--of-font-ui); font-size: 10px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; vertical-align: middle; }
 .btn-ask-group:disabled { opacity: 0.75; cursor: not-allowed; }
 .btn-ask-group .create-soon-tag { margin-left: 0; }
+
+/* Needs your vote (src/views/feed-view.js): one light card of rows under the first post, like
+   the Friends list, instead of a stack of black cards. */
+.of-eye { border: 1px solid var(--of-line); border-radius: var(--of-r-card); background: var(--of-card); overflow: hidden; }
+.of-eye .of-eye-head { margin: 0; padding: 12px 16px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--of-line); font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--of-muted); }
+.of-eye-label { display: inline-flex; align-items: center; gap: 8px; }
+.of-eye-label i { width: 7px; height: 7px; border-radius: 4px; background: var(--of-blue); }
+.of-eye .of-eye-all { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; text-decoration: none; color: var(--of-blue); }
+.of-eye-list { display: flex; flex-direction: column; }
+.of-eye-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px 10px 16px; border: 0; background: transparent; color: var(--of-ink); text-align: left; font-family: var(--of-font-ui); }
+.of-eye-row + .of-eye-row { border-top: 1px solid var(--of-line); }
+.of-eye-row:hover { background: var(--of-fill); }
+.of-eye-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.of-eye-who { font-size: 13px; font-weight: 700; color: var(--of-ink); }
+.of-eye-who span { font-weight: 500; color: var(--of-muted); }
+.of-eye-q { font-size: 14px; color: var(--of-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-eye-go { flex: none; font-size: 20px; color: var(--of-muted); }

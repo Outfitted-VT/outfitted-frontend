@@ -7,6 +7,8 @@ import { isLiveFit } from "./fit-card.js";
 import { renderStoriesRow } from "./stories-row.js";
 
 const EYE_PREVIEW = 2;
+// "Needs your vote" only lists polls from the last 24 hours; older ones drop out on their own.
+const EYE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export const isLive = isLiveFit;
 
@@ -25,22 +27,30 @@ export function fitTally(fit) {
   return { total, pct: total ? Math.round((first * 100) / total) : 0 };
 }
 
+// "Needs your vote": one light card of rows (styles: .of-eye in src/connected.css). Each row
+// jumps to that post.
 function eyeCard(fit) {
-  return `<button type="button" class="of-eyecard" data-feed-open="${fit.id}">
-    ${avatar(fit.author, { size: 44 })}
-    <div class="of-eyecard-text">
-      <span class="of-eyecard-who">${escapeHtml(fit.author.username)} <span>· ${timeAgo(fit.created_at)}</span></span>
-      <span class="of-eyecard-q">${escapeHtml(fit.caption || fit.poll?.question || "What do you think?")}</span>
-    </div>
+  return `<button type="button" class="of-eye-row" data-feed-open="${fit.id}">
+    ${avatar(fit.author, { size: 36 })}
+    <span class="of-eye-text">
+      <span class="of-eye-who">@${escapeHtml(fit.author.username)} <span>· ${timeAgo(fit.created_at)}</span></span>
+      <span class="of-eye-q">${escapeHtml(fit.poll?.question || fit.caption || "What do you think?")}</span>
+    </span>
+    <span class="of-eye-go material-symbols-outlined" aria-hidden="true">chevron_right</span>
   </button>`;
 }
 
 function eyeSection() {
   if (!feed.eye.length) return "";
   const shown = feed.showAllEye ? feed.eye : feed.eye.slice(0, EYE_PREVIEW);
-  const seeAll = `<button type="button" class="of-eye-all" data-feed-see-all>${feed.showAllEye ? "Show less" : "See all"}</button>`;
-  return `<div class="of-eye-head"><span>NEEDS YOUR EYE · ${feed.eye.length}</span>${seeAll}</div>
-    <div class="of-eyelist">${shown.map(eyeCard).join("")}</div>`;
+  const seeAll =
+    feed.eye.length > EYE_PREVIEW
+      ? `<button type="button" class="of-eye-all" data-feed-see-all>${feed.showAllEye ? "Show less" : `See all ${feed.eye.length}`}</button>`
+      : "";
+  return `<div class="of-eye">
+    <div class="of-eye-head"><span class="of-eye-label"><i aria-hidden="true"></i>Needs your vote · ${feed.eye.length}</span>${seeAll}</div>
+    <div class="of-eye-list">${shown.map(eyeCard).join("")}</div>
+  </div>`;
 }
 
 function contextLine(weather) {
@@ -83,7 +93,8 @@ function paintEye(root) {
 }
 
 function collectEye(root, fits) {
-  feed.eye = fits.slice(1).filter((fit) => fit.poll && fit.poll.my_vote === null && !isMine(fit));
+  const recent = (fit) => Date.now() - new Date(fit.created_at).getTime() < EYE_MAX_AGE_MS;
+  feed.eye = fits.slice(1).filter((fit) => fit.poll && fit.poll.my_vote === null && !isMine(fit) && recent(fit));
   paintEye(root);
 }
 
