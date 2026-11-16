@@ -13,7 +13,7 @@ import { SplashScreen } from "@capacitor/splash-screen";
 import { ApiError, getMe, logIn, logOut, restoreSession, setSessionExpiredHandler, signUp } from "./auth.js";
 import { initCreate, openCreate, openEditFit, openTryOnFrom } from "./create.js";
 import { getProfile, getFollowing, followUser, unfollowUser, uploadImage, updateProfile, mediaUrl } from "./fits.js";
-import { escapeHtml, initialOf } from "./format.js";
+import { escapeHtml } from "./format.js";
 import { withPasswordToggle } from "./password-toggle.js";
 import { mountLanding, renderLanding } from "./views/landing.js";
 import { mountProfile, renderProfileView, resetProfile } from "./views/profile.js";
@@ -1209,14 +1209,13 @@ async function loadYourPeople() {
     }
     list.innerHTML = page.items
       .map((user) => {
+        // The app's avatar (photo or initial), like Friends. The row opens their profile
+        // (data-open-user); the Follow button does its own thing.
         const name = user.full_name || user.username;
-        const avatar = user.avatar?.url
-          ? `<img src="${escapeHtml(mediaUrl(user.avatar.url))}" alt="" class="w-full h-full object-cover rounded-full" />`
-          : escapeHtml(initialOf(user));
         return `
-          <div class="people-item">
+          <div class="people-item" data-open-user="${escapeHtml(user.username)}" role="link" tabindex="0" aria-label="Open ${escapeHtml(name)}'s profile">
             <div class="people-item-info">
-              <span class="avatar-chip micro overflow-hidden" style="background:#275038; color:#fff;">${avatar}</span>
+              ${ofAvatar(user, { size: 36 })}
               <div class="people-item-text">
                 <strong>${escapeHtml(name)}</strong>
                 <small>@${escapeHtml(user.username)}</small>
