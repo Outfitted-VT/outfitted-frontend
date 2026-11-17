@@ -118,3 +118,17 @@ The app talks to [outfitted-backend](https://github.com/Outfitted-VT/outfitted-b
 - **iOS Simulator**: reaches the backend at `http://localhost:8000` automatically.
 - **Android Emulator**: reaches it at `http://10.0.2.2:8000` (the host machine) automatically.
 - **Physical Device**: build with `VITE_API_BASE=http://<your-host-ip>:8000/api/v1` (see `apiBase()` in `src/auth.js`).
+
+---
+
+## Deploy on Cloudflare Pages
+
+The web app is hosted on Cloudflare Pages and the API on Render (`https://outfitted-api.onrender.com`).
+
+1. In Cloudflare: **Workers & Pages > Create > Pages > Connect to Git**, and pick this repository.
+2. Build settings: framework preset **Vite** (or none), build command `npm run build`, output directory `dist`, root directory left empty. `.node-version` picks Node 22.
+3. Save and deploy. Every push to `main` deploys again, and other branches get preview URLs.
+
+`functions/api/[[path]].js` forwards `/api/*` (and the messages WebSocket) to Render, the way `npm run dev` forwards it to your local backend. In the browser the API is on the same site, so the refresh cookie is first-party and needs no CORS. To point at another backend, set `API_ORIGIN` in the Pages project's environment variables.
+
+For the iOS and Android apps, build against the hosted API: `VITE_API_BASE=https://outfitted-api.onrender.com/api/v1 npm run cap:sync`.
