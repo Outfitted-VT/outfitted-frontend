@@ -1,31 +1,8 @@
 import { ApiError, logIn, signUp } from './auth.js';
-import { followUser, getSuggestions, mediaUrl, updateStyleProfile } from './fits.js';
 import { escapeHtml } from './format.js';
 import { withPasswordToggle } from './password-toggle.js';
 
 const DONE_KEY = 'of.onboarded';
-const QUIZ_KEY = 'of.quiz';
-
-const STYLES = [
-  ['Minimal', 'Clean, neutral, quiet', '#ECEAE2', ['#F7F4EC', '#BFB8A8', '#121212']],
-  ['Tailored', 'Blazers, sharp trousers', '#E3E5EC', ['#3B3F4A', '#8A8F9C', '#D9D3C7']],
-  ['Streetwear', 'Oversized, graphic, bold', '#1F1F1F', ['#DCEF63', '#2340E0', '#FFFFFF']],
-  ['Y2K', 'Shine, baby tees, color', '#EEDFF5', ['#E58BC3', '#B9A4F0', '#9AD7F0']],
-  ['Romantic', 'Satin, lace, soft lines', '#F4E5E1', ['#E7B9B1', '#FFFFFF', '#8C3B3B']],
-  ['Sporty', 'Track, knit, sneakers', '#DEE5FB', ['#2340E0', '#FFFFFF', '#DCEF63']]
-];
-const FITS = [
-  ['Fitted', 'Close to body', 'M14 6h12l-2 6 2 22H14l2-22z'],
-  ['True', 'As designed', 'M12 6h16l-2 6 3 22H11l3-22z'],
-  ['Relaxed', 'Room to move', 'M9 6h22l-2 6 5 22H6l5-22z']
-];
-const SIZES = ['XS', 'S', 'M', 'L', 'XL'];
-const TONES = [
-  ['10/10', 'Brutally honest', 'Tell me if it does not work.', 'honest'],
-  ['Kind', 'Kind but real', 'Honest, with a fix to try.', 'kind'],
-  ['Hype', 'Hype me up', 'Mostly cheers, light notes.', 'hype']
-];
-const AVATAR_TONES = ['ink', 'lime', 'blue'];
 const HERO = './assets/landing/outfitted-hero.jpg';
 
 const svg = (size, paths, width) =>
@@ -33,15 +10,11 @@ const svg = (size, paths, width) =>
 
 const icon = {
   arrow: svg(18, '<path d="M5 12h14M13 6l6 6-6 6"/>', 2.2),
-  back: svg(18, '<path d="M15 6l-6 6 6 6"/>', 2.2),
-  check: svg(14, '<path d="M5 12.5l4.5 4.5L19 7.5"/>', 3),
-  cube: svg(22, '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>', 1.8),
-  fit: path => `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`
+  back: svg(18, '<path d="M15 6l-6 6 6 6"/>', 2.2)
 };
 
 const state = {
-  step: 0, returning: false, styles: new Set(), fit: 'Relaxed', top: 'S', bottom: 'M', tone: 'Kind but real',
-  busy: false, error: '', scan: false, people: null, added: new Set(), signedIn: false,
+  returning: false, busy: false, error: '', signedIn: false,
   email: '', password: '', name: '', username: ''
 };
 const USERNAME = /^[a-z0-9_.]{3,30}$/;
@@ -59,8 +32,6 @@ const heading = (kicker, title, sub = '') => `<div class="ob-heading">
     <h1 class="ob-title">${title}</h1>
     ${sub ? `<p class="ob-sub">${sub}</p>` : ''}
   </div>`;
-
-const pressed = on => `aria-pressed="${on}"`;
 
 function loadingView() {
   return `<section class="ob-screen ob-load">
@@ -88,18 +59,15 @@ function welcomeView() {
       <h1 class="ob-welcome-title">Ask your circle <span class="ob-italic">before</span> you buy.</h1>
       <p class="ob-welcome-sub">Try it on in 3D, post the fit, get honest votes from the people whose taste you trust.</p>
       <div class="ob-pager" aria-hidden="true"><span class="on"></span><span></span><span></span></div>
-      ${cta('Build my style profile', 'start', 'lime')}
+      ${cta('Create my account', 'start', 'lime')}
       <button type="button" class="ob-welcome-link" data-act="signin">I already have an account</button>
     </div>
   </section>`;
 }
 
-function head(back, count = '') {
-  const prog = count
-    ? `<div class="ob-prog">${[0, 1, 2].map(i => `<span class="${i <= state.step ? 'on' : ''}"></span>`).join('')}</div><div class="ob-count">${count}</div>`
-    : '';
+function head(back) {
   const button = back ? `<button type="button" class="ob-back" data-act="${back}" aria-label="Back">${icon.back}</button>` : "";
-  return `<div class="ob-head">${button}${prog}</div>`;
+  return `<div class="ob-head">${button}</div>`;
 }
 
 function signinView() {
@@ -138,101 +106,7 @@ function profileView() {
   </section>`;
 }
 
-function styleTile([name, words, tint, dots]) {
-  const on = state.styles.has(name);
-  const check = on ? `<span class="ob-tile-check">${icon.check}</span>` : '';
-  return `<button type="button" class="ob-tile ${on ? 'on' : ''}" data-act="style" data-val="${name}" ${pressed(on)}>
-    <div class="ob-tile-vis" style="background:${tint}">${dots.map(d => `<span class="ob-tile-dot" style="background:${d}"></span>`).join('')}${check}</div>
-    <div class="ob-tile-text"><span class="ob-tile-name">${name}</span><span class="ob-tile-words">${words}</span></div>
-  </button>`;
-}
-
-function styleStep() {
-  return heading('STEP 1 · YOUR STYLE', 'What do you reach for most?', 'Pick up to 3. We tune your feed and fit picks to match.') +
-    `<div class="ob-grid">${STYLES.map(styleTile).join('')}</div>`;
-}
-
-function fitCard([name, sub, path]) {
-  const on = state.fit === name;
-  return `<button type="button" class="ob-fit ${on ? 'on' : ''}" data-act="fit" data-val="${name}" ${pressed(on)}>
-    ${icon.fit(path)}<span class="ob-fit-name">${name}</span><span class="ob-fit-sub">${sub}</span>
-  </button>`;
-}
-
-function sizeSection(label, key, note, cls) {
-  const chips = SIZES.map(z => `<button type="button" class="ob-size ${state[key] === z ? 'on' : ''}" data-act="${key}" data-val="${z}" ${pressed(state[key] === z)}>${z}</button>`).join('');
-  const labelRow = note
-    ? `<div class="ob-label-row"><span class="ob-label">${label}</span><span class="ob-label-note">${note}</span></div>`
-    : `<div class="ob-label">${label}</div>`;
-  return `<div class="ob-size-sec ${cls}">${labelRow}<div class="ob-sizes">${chips}</div></div>`;
-}
-
-function scanBanner() {
-  return `<div class="ob-scan">
-    <div class="ob-scan-icon">${icon.cube}<span class="ob-scan-dot"></span></div>
-    <div class="ob-scan-text"><span class="ob-scan-title">Skip the tape measure</span><span class="ob-scan-sub">A 5-second video scan builds your 3D avatar.</span></div>
-    <button type="button" class="ob-scan-btn" data-act="scan" ${pressed(state.scan)}>${state.scan ? 'After setup' : 'Scan'}</button>
-  </div>`;
-}
-
-function fitStep() {
-  return heading('STEP 2 · YOUR FIT', 'How do you like things to sit?') +
-    `<div class="ob-fits">${FITS.map(fitCard).join('')}</div>` +
-    sizeSection('TOPS', 'top', 'US sizing', 'tops') +
-    sizeSection('BOTTOMS', 'bottom', '', 'bottoms') +
-    scanBanner();
-}
-
-function toneRow([tag, name, sub]) {
-  const on = state.tone === name;
-  return `<button type="button" class="ob-tone ${on ? 'on' : ''}" data-act="tone" data-val="${name}" ${pressed(on)}>
-    <span class="ob-tone-tag">${tag}</span>
-    <span class="ob-tone-text"><span class="ob-tone-name">${name}</span><span class="ob-tone-sub">${sub}</span></span>
-    <span class="ob-radio"><span class="ob-radio-dot"></span></span>
-  </button>`;
-}
-
-function toneStep() {
-  return heading('STEP 3 · YOUR CIRCLE', 'How should your circle talk to you?') +
-    `<div class="ob-tones">${TONES.map(toneRow).join('')}</div>` + circleCard();
-}
-
-function personAvatar(user, i) {
-  if (user.avatar?.url) return `<span class="ob-av"><img src="${escapeHtml(mediaUrl(user.avatar.url))}" alt=""></span>`;
-  const name = user.full_name || user.username;
-  const letters = name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-  return `<span class="ob-av ${AVATAR_TONES[i % 3]}" aria-hidden="true">${escapeHtml(letters)}</span>`;
-}
-
-function personRow(user, i) {
-  const on = state.added.has(user.username);
-  const mutuals = user.mutual_count ? ` · ${user.mutual_count} mutual${user.mutual_count === 1 ? '' : 's'}` : '';
-  return `<div class="ob-person">${personAvatar(user, i)}
-    <span class="ob-person-text"><span class="ob-person-name">${escapeHtml(user.full_name || user.username)}</span><span class="ob-person-handle">@${escapeHtml(user.username)}${mutuals}</span></span>
-    <button type="button" class="ob-add ${on ? 'on' : ''}" data-act="friend" data-val="${escapeHtml(user.username)}" ${pressed(on)}>${on ? 'Added' : 'Add'}</button>
-  </div>`;
-}
-
-function circleCard() {
-  const people = state.people;
-  const body = people === null
-    ? '<p class="ob-note">Finding people you know…</p>'
-    : people.length ? people.map(personRow).join('') : '<p class="ob-note">No suggestions yet. Invite friends once you are in.</p>';
-  return `<div class="ob-circle"><div class="ob-label-row"><span class="ob-label">START YOUR CIRCLE</span><span class="ob-label-note">${state.added.size} added</span></div>${body}</div>`;
-}
-
-function quizView() {
-  const s = state.step;
-  const last = s === 2;
-  const label = last ? 'Finish and open my feed' : s === 0 ? `Continue · ${state.styles.size} picked` : 'Continue';
-  return `<section class="ob-screen ob-quiz">
-    ${head(s === 0 && state.signedIn ? '' : 'back', `${s + 1} / 3`)}
-    <div class="ob-body">${[styleStep, fitStep, toneStep][s]()}</div>
-    <div class="ob-foot">${last ? errorLine() : ''}${cta(state.busy ? 'Saving…' : label, 'next', last ? 'lime' : 'dark', state.busy ? 'disabled' : '')}</div>
-  </section>`;
-}
-
-const views = { loading: loadingView, welcome: welcomeView, signin: signinView, profile: profileView, quiz: quizView };
+const views = { loading: loadingView, welcome: welcomeView, signin: signinView, profile: profileView };
 
 function fieldValues() {
   return [...root.querySelectorAll('.ob-field')].map(field => [field.id, field.value]);
@@ -264,18 +138,6 @@ const handle = () => (root.querySelector('#ob-username')?.value || '').trim().to
 function go(screen) {
   current = screen;
   render(true);
-}
-
-function set(key, value) {
-  state[key] = value;
-  render();
-}
-
-function toggleStyle(name) {
-  const s = state.styles;
-  if (s.has(name)) s.delete(name);
-  else if (s.size < 3) s.add(name);
-  render();
 }
 
 function credentials() {
@@ -311,7 +173,7 @@ function profileMessage(err) {
   return escapeHtml(err.message);
 }
 
-// Sign-up step 2: create the account with the chosen name and username, sign in, then the quiz.
+// Sign-up step 2: create the account with the chosen name and username, sign in, open the app.
 async function createAccount() {
   state.name = (root.querySelector('#ob-name')?.value || '').trim();
   state.username = handle();
@@ -335,8 +197,7 @@ async function createAccount() {
     state.password = '';
     window.dispatchEvent(new CustomEvent('of:signed-in'));
     state.busy = false;
-    setHash('');
-    go('quiz');
+    finish();
   } catch (err) {
     state.error = authMessage(err);
     setBusy(false);
@@ -367,40 +228,11 @@ async function authenticate() {
     state.signedIn = true;
     window.dispatchEvent(new CustomEvent('of:signed-in'));
     state.busy = false;
-    if (state.returning) finish();
-    else go('quiz');
+    finish();
   } catch (err) {
     state.error = authMessage(err);
     setBusy(false);
   }
-}
-
-function quizAnswers() {
-  const { styles, fit, top, bottom, tone } = state;
-  return {
-    styles: [...styles].map(name => name.toLowerCase()),
-    fit: fit.toLowerCase(),
-    top,
-    bottom,
-    tone: TONES.find(t => t[1] === tone)[3]
-  };
-}
-
-async function saveQuiz() {
-  const answers = quizAnswers();
-  localStorage.setItem(QUIZ_KEY, JSON.stringify(answers));
-  await updateStyleProfile(answers);
-  await Promise.all([...state.added].map(name => followUser(name)));
-}
-
-async function loadPeople() {
-  if (state.people !== null) return;
-  try {
-    state.people = (await getSuggestions(3)).slice(0, 3);
-  } catch {
-    state.people = [];
-  }
-  if (current === 'quiz' && state.step === 2) render();
 }
 
 function setHash(hash) {
@@ -419,34 +251,7 @@ function close(el = root) {
 function finish() {
   localStorage.setItem(DONE_KEY, '1');
   close();
-  window.dispatchEvent(new CustomEvent('of:onboarded', { detail: { scan: state.scan, signedIn: state.signedIn } }));
-}
-
-async function complete() {
-  state.error = '';
-  setBusy(true);
-  try {
-    await saveQuiz();
-    state.busy = false;
-    finish();
-  } catch {
-    state.error = 'Could not save your answers. Check your connection and try again.';
-    setBusy(false);
-  }
-}
-
-function toggleFriend(username) {
-  if (state.added.has(username)) state.added.delete(username);
-  else state.added.add(username);
-  render();
-}
-
-function nextStep() {
-  if (state.busy) return;
-  if (state.step === 2) return complete();
-  state.step++;
-  render();
-  if (state.step === 2) loadPeople();
+  window.dispatchEvent(new CustomEvent('of:onboarded', { detail: { signedIn: state.signedIn } }));
 }
 
 const actions = {
@@ -456,16 +261,7 @@ const actions = {
   toAccount() { state.error = ''; state.name = (root.querySelector('#ob-name')?.value || '').trim(); state.username = handle(); go('signin'); },
   create() { if (USERNAME.test(handle()) && !state.busy) createAccount(); },
   skip: finish,
-  auth() { if (authReady()) authenticate(); },
-  back() { if (state.step === 0) { if (!state.signedIn) go('signin'); } else { state.step--; state.error = ''; render(); } },
-  next: nextStep,
-  scan() { state.scan = !state.scan; render(); },
-  friend: toggleFriend,
-  style: toggleStyle,
-  fit: v => set('fit', v),
-  top: v => set('top', v),
-  bottom: v => set('bottom', v),
-  tone: v => set('tone', v)
+  auth() { if (authReady()) authenticate(); }
 };
 
 function onClick(e) {
@@ -518,7 +314,7 @@ function boot() {
   setTimeout(() => (welcome && root === splash ? go('welcome') : close(splash)), 1900);
 }
 
-// Get started (mode "signup": create an account, then the style quiz) or Log in ("login").
+// Get started (mode "signup": create an account) or Log in ("login").
 window.addEventListener('of:start-onboarding', (event) => {
   // A fresh overlay unless one is already open for these steps (the start-up splash closes on its own).
   if (!root?.isConnected || root.classList.contains('ob-out') || current === 'loading') mount();
@@ -526,7 +322,6 @@ window.addEventListener('of:start-onboarding', (event) => {
   fromLanding = true;
   state.returning = event.detail?.mode === 'login';
   state.error = event.detail?.message ? escapeHtml(event.detail.message) : '';
-  state.step = 0;
   setHash(state.returning ? '#login' : '#signup');
   go('signin');
 });

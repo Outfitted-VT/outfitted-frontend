@@ -1442,8 +1442,7 @@ window.addEventListener("of:navigate", (event) => {
 window.addEventListener("of:onboarded", async (event) => {
   if (!event.detail?.signedIn) return;
   await enterAppFromSession();
-  if (event.detail?.scan) openCreate("tryon");
-  else askForPushLater();
+  askForPushLater();
 });
 
 // Signed out: what Outfitted is, with Get started / Log in (src/views/landing.js). With a
