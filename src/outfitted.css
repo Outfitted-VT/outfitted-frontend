@@ -1082,6 +1082,11 @@ body {
 .of-follow-back::before { content: ""; position: absolute; inset: -6px 0; }
 .of-follow-back.done { background: var(--of-fill); color: var(--of-ink); }
 
+/* Shown by src/auth.js while it retries requests until the API wakes up. Above everything,
+   including the sign-up/login modal (.ob-modal, z-index 99999), where waking is most likely. */
+.of-waking { position: fixed; z-index: 100000; top: calc(var(--of-safe-top) + 10px); left: 12px; right: 12px; max-width: 520px; margin: 0 auto; padding: 12px 16px; border-radius: 20px; background: var(--of-card); color: var(--of-ink); box-shadow: var(--of-shadow-float); display: flex; align-items: center; gap: 12px; font-family: var(--of-font-ui); font-size: 14px; font-weight: 600; animation: ofToastIn 0.3s ease; }
+.of-waking-spinner { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--of-line); border-top-color: var(--of-blue); animation: ofWakingSpin 0.8s linear infinite; }
+@keyframes ofWakingSpin { to { transform: rotate(360deg); } }
 .of-note-toast { position: fixed; z-index: 110; top: calc(var(--of-safe-top) + 10px); left: 12px; right: 12px; max-width: 520px; margin: 0 auto; min-height: 64px; padding: 12px 14px; border-radius: 20px; background: var(--of-card); color: var(--of-ink); box-shadow: var(--of-shadow-float); display: flex; align-items: center; gap: 12px; text-align: left; font-family: var(--of-font-ui); animation: ofToastIn 0.3s ease; transition: transform 0.25s ease, opacity 0.25s ease; }
 .of-note-toast.out { transform: translateY(-120%); opacity: 0; }
 .of-note-toast .of-note-pair { width: 40px; height: 40px; }

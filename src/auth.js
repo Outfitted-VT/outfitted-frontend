@@ -43,11 +43,81 @@ export class ApiError extends Error {
   }
 }
 
+// Temporary, while the API is on Render's free plan: it sleeps after 15 minutes without
+// requests, and for up to a minute while it wakes, requests fail with 502/503/504 or don't
+// connect at all. Retry those for a while, with a "waking up" banner, instead of failing at once.
+// Remove once the API runs on a plan that doesn't sleep.
+const WAKING_STATUSES = new Set([502, 503, 504]);
+const WAKE_TIMEOUT_MS = 90_000;
+const RETRY_DELAYS_MS = [2000, 3000, 5000];
+
+// Requests through the Cloudflare Pages proxy (functions/api/[[path]].js) get a 502 from a
+// sleeping Render service without waking it; a request straight to Render does wake it. So the
+// hosted web app also pings Render directly while it waits. Dev and the native apps already talk
+// to the API directly, so they don't need it.
+const DEFAULT_WAKE_URL = "https://outfitted-api.onrender.com/api/v1/health";
+const WAKE_PING_INTERVAL_MS = 20_000;
+let lastWakePing = 0;
+
+function wakeUrl() {
+  if (window.__API_WAKE_URL__) return window.__API_WAKE_URL__;
+  if (import.meta.env.VITE_API_WAKE_URL) return import.meta.env.VITE_API_WAKE_URL;
+  return import.meta.env.PROD && !/^https?:/.test(apiBase()) ? DEFAULT_WAKE_URL : null;
+}
+
+// At most one ping every 20 seconds, however many requests are waiting. "no-cors" because only
+// the request matters: the response (another site's) is never read, so it needs no CORS headers.
+function wakeApi() {
+  const url = wakeUrl();
+  if (!url || Date.now() - lastWakePing < WAKE_PING_INTERVAL_MS) return;
+  lastWakePing = Date.now();
+  fetch(url, { mode: "no-cors", cache: "no-store" }).catch(() => {});
+}
+
+let waitingRequests = 0;
+
+function showWakingBanner() {
+  waitingRequests++;
+  if (document.querySelector(".of-waking")) return;
+  const banner = document.createElement("div");
+  banner.className = "of-waking";
+  banner.setAttribute("role", "status");
+  banner.innerHTML = `<span class="of-waking-spinner" aria-hidden="true"></span><span>Waking up the server… this can take up to a minute.</span>`;
+  document.body.appendChild(banner);
+}
+
+function hideWakingBanner() {
+  waitingRequests = Math.max(0, waitingRequests - 1);
+  if (!waitingRequests) document.querySelector(".of-waking")?.remove();
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function send(path, init = {}) {
+  const started = Date.now();
+  let waking = false;
   try {
-    return await fetch(`${apiBase()}${path}`, init);
-  } catch {
-    throw new ApiError(0, "Can't reach the server. Is the backend running?");
+    for (let attempt = 0; ; attempt++) {
+      let res = null;
+      try {
+        res = await fetch(`${apiBase()}${path}`, init);
+        if (!WAKING_STATUSES.has(res.status)) return res;
+      } catch {
+        // Couldn't connect; while the server wakes that's expected, so retry below.
+      }
+      if (Date.now() - started > WAKE_TIMEOUT_MS) {
+        if (res) return res;
+        throw new ApiError(0, "Can't reach the server. Please try again in a minute.");
+      }
+      if (!waking) {
+        waking = true;
+        showWakingBanner();
+      }
+      wakeApi();
+      await sleep(RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)]);
+    }
+  } finally {
+    if (waking) hideWakingBanner();
   }
 }
 
