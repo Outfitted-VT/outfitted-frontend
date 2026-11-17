@@ -1102,3 +1102,11 @@ button.of-shop-chip { font-family: inherit; cursor: pointer; }
 /* Piece bubble on your own post: Edit piece under the buttons (src/views/piece-sheet.js). */
 .of-piece-pop-edit { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 8px; padding: 6px 0 0; border: 0; border-top: 1px solid var(--of-line); background: transparent; color: var(--of-muted); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .of-piece-pop-edit:hover { color: var(--of-ink); }
+
+/* Stylist AI, locked until it's ready: sidebar link and account-menu row (src/main.js). */
+.app-sidebar .nav-item.nav-item-soon { cursor: default; opacity: 0.55; }
+.app-sidebar .nav-item.nav-item-soon:hover { background: transparent; color: inherit; }
+.nav-item-soon .create-soon-tag { height: 18px; padding: 0 7px; font-size: 9px; }
+.of-account-row.is-soon { cursor: default; opacity: 0.6; }
+.of-account-row.is-soon:hover { background: transparent; }
+.of-account-row.is-soon .create-soon-tag { margin-left: auto; }

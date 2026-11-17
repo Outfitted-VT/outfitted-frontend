@@ -106,9 +106,10 @@ function renderSidebar() {
           ${icons.message}
           <span class="sidebar-label">Messages</span>
         </a>
-        <a href="#assistant" class="nav-item ${activeTab === "assistant" ? "active" : ""}" data-nav="assistant" title="Stylist AI">
+        <!-- Stylist AI isn't ready yet: shown locked with a Coming soon label. -->
+        <a class="nav-item nav-item-soon" role="link" aria-disabled="true" title="Stylist AI (coming soon)">
           ${icons.wand}
-          <span class="sidebar-label">✦ Stylist AI</span>
+          <span class="sidebar-label">✦ Stylist AI<span class="create-soon-tag">Coming soon</span></span>
         </a>
         <a href="#profile" class="nav-item ${activeTab === "profile" ? "active" : ""}" data-nav="profile" title="Profile">
           ${icons.users}
@@ -259,11 +260,12 @@ function renderCommentsDialog() {
 // data attributes are the ones the handlers in connectApp use.
 const MENU_CHEVRON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>`;
 
-function accountMenuRow({ attrs, icon, label }) {
-  return `<button type="button" class="of-account-row" ${attrs}>
+// soon: not ready yet, shown locked with a Coming soon tag instead of the chevron.
+function accountMenuRow({ attrs, icon, label, soon = false }) {
+  return `<button type="button" class="of-account-row${soon ? " is-soon" : ""}" ${attrs}>
     <span class="of-account-row-icon">${icon}</span>
     <span class="of-account-row-label">${label}</span>
-    ${MENU_CHEVRON}
+    ${soon ? '<span class="create-soon-tag">Coming soon</span>' : MENU_CHEVRON}
   </button>`;
 }
 
@@ -284,7 +286,7 @@ function renderAccountDrawer() {
         <nav class="of-account-rows" aria-label="Account">
           ${accountMenuRow({ attrs: 'data-nav="profile"', icon: icons.hanger, label: "Your profile" })}
           ${accountMenuRow({ attrs: 'data-nav="friends"', icon: icons.users, label: "Friends" })}
-          ${accountMenuRow({ attrs: 'data-nav="assistant"', icon: icons.wand, label: "Stylist AI" })}
+          ${accountMenuRow({ attrs: 'disabled aria-disabled="true"', icon: icons.wand, label: "Stylist AI", soon: true })}
           ${accountMenuRow({ attrs: 'id="account-open-branding"', icon: icons.sparkleIcon, label: "Brand & splash" })}
         </nav>
 
