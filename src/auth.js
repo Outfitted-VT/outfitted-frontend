@@ -51,6 +51,29 @@ const WAKING_STATUSES = new Set([502, 503, 504]);
 const WAKE_TIMEOUT_MS = 90_000;
 const RETRY_DELAYS_MS = [2000, 3000, 5000];
 
+// Requests through the Cloudflare Pages proxy (functions/api/[[path]].js) get a 502 from a
+// sleeping Render service without waking it; a request straight to Render does wake it. So the
+// hosted web app also pings Render directly while it waits. Dev and the native apps already talk
+// to the API directly, so they don't need it.
+const DEFAULT_WAKE_URL = "https://outfitted-api.onrender.com/api/v1/health";
+const WAKE_PING_INTERVAL_MS = 20_000;
+let lastWakePing = 0;
+
+function wakeUrl() {
+  if (window.__API_WAKE_URL__) return window.__API_WAKE_URL__;
+  if (import.meta.env.VITE_API_WAKE_URL) return import.meta.env.VITE_API_WAKE_URL;
+  return import.meta.env.PROD && !/^https?:/.test(apiBase()) ? DEFAULT_WAKE_URL : null;
+}
+
+// At most one ping every 20 seconds, however many requests are waiting. "no-cors" because only
+// the request matters: the response (another site's) is never read, so it needs no CORS headers.
+function wakeApi() {
+  const url = wakeUrl();
+  if (!url || Date.now() - lastWakePing < WAKE_PING_INTERVAL_MS) return;
+  lastWakePing = Date.now();
+  fetch(url, { mode: "no-cors", cache: "no-store" }).catch(() => {});
+}
+
 let waitingRequests = 0;
 
 function showWakingBanner() {
@@ -90,6 +113,7 @@ async function send(path, init = {}) {
         waking = true;
         showWakingBanner();
       }
+      wakeApi();
       await sleep(RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)]);
     }
   } finally {
