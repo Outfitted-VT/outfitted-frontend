@@ -259,6 +259,8 @@ function renderCommentsDialog() {
 // A small dropdown under the avatar (styles: .of-account-* in src/connected.css). The ids and
 // data attributes are the ones the handlers in connectApp use.
 const MENU_CHEVRON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>`;
+// Your profile: a person, like the Profile tab (the hanger is My fits).
+const MENU_PERSON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>`;
 
 // soon: not ready yet, shown locked with a Coming soon tag instead of the chevron.
 function accountMenuRow({ attrs, icon, label, soon = false }) {
@@ -284,7 +286,8 @@ function renderAccountDrawer() {
         </div>
 
         <nav class="of-account-rows" aria-label="Account">
-          ${accountMenuRow({ attrs: 'data-nav="profile"', icon: icons.hanger, label: "Your profile" })}
+          ${accountMenuRow({ attrs: 'data-nav="profile"', icon: MENU_PERSON, label: "Your profile" })}
+          ${accountMenuRow({ attrs: 'data-nav="wardrobe"', icon: icons.hanger, label: "My fits" })}
           ${accountMenuRow({ attrs: 'data-nav="friends"', icon: icons.users, label: "Friends" })}
           ${accountMenuRow({ attrs: 'disabled aria-disabled="true"', icon: icons.wand, label: "Stylist AI", soon: true })}
           ${accountMenuRow({ attrs: 'id="account-open-branding"', icon: icons.sparkleIcon, label: "Brand & splash" })}
