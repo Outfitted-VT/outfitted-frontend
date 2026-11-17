@@ -43,11 +43,57 @@ export class ApiError extends Error {
   }
 }
 
+// Temporary, while the API is on Render's free plan: it sleeps after 15 minutes without
+// requests, and for up to a minute while it wakes, requests fail with 502/503/504 or don't
+// connect at all. Retry those for a while, with a "waking up" banner, instead of failing at once.
+// Remove once the API runs on a plan that doesn't sleep.
+const WAKING_STATUSES = new Set([502, 503, 504]);
+const WAKE_TIMEOUT_MS = 90_000;
+const RETRY_DELAYS_MS = [2000, 3000, 5000];
+
+let waitingRequests = 0;
+
+function showWakingBanner() {
+  waitingRequests++;
+  if (document.querySelector(".of-waking")) return;
+  const banner = document.createElement("div");
+  banner.className = "of-waking";
+  banner.setAttribute("role", "status");
+  banner.innerHTML = `<span class="of-waking-spinner" aria-hidden="true"></span><span>Waking up the server… this can take up to a minute.</span>`;
+  document.body.appendChild(banner);
+}
+
+function hideWakingBanner() {
+  waitingRequests = Math.max(0, waitingRequests - 1);
+  if (!waitingRequests) document.querySelector(".of-waking")?.remove();
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function send(path, init = {}) {
+  const started = Date.now();
+  let waking = false;
   try {
-    return await fetch(`${apiBase()}${path}`, init);
-  } catch {
-    throw new ApiError(0, "Can't reach the server. Is the backend running?");
+    for (let attempt = 0; ; attempt++) {
+      let res = null;
+      try {
+        res = await fetch(`${apiBase()}${path}`, init);
+        if (!WAKING_STATUSES.has(res.status)) return res;
+      } catch {
+        // Couldn't connect; while the server wakes that's expected, so retry below.
+      }
+      if (Date.now() - started > WAKE_TIMEOUT_MS) {
+        if (res) return res;
+        throw new ApiError(0, "Can't reach the server. Please try again in a minute.");
+      }
+      if (!waking) {
+        waking = true;
+        showWakingBanner();
+      }
+      await sleep(RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)]);
+    }
+  } finally {
+    if (waking) hideWakingBanner();
   }
 }
 
