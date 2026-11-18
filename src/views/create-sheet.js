@@ -248,6 +248,8 @@ function tryonScreen() {
         </div>
       </div>
       <p class="hidden flex items-start gap-1.5 font-label-sm text-label-sm text-on-surface-variant font-normal" id="tryon-pieces-note"></p>
+      <!-- How each photo's clothes should fit ("relaxed, oversized tee"), sent to the model with it. -->
+      <div class="tryon-notes hidden" id="tryon-notes"></div>
       <input type="file" accept="image/*" class="hidden" id="tryon-file" />
       <!-- The model struggles when what you're wearing clashes with the new clothes (a suit under a
            sweater comes out stitched together), so say which photos of you work best. -->
