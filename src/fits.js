@@ -233,10 +233,11 @@ export async function getProfile(username) {
 // Pass either `outfitImageId` (one photo of a whole outfit) or `pieces`
 // ([{ slot, imageId }], slot being "head", "top", "outerwear", "one_piece", "bottom", "feet", or "accessory").
 // fitId: "Try this look" on that fit, which allows its clothing photos (uploaded by its author).
-export async function createTryOn(personImageId, { outfitImageId, pieces, fitId = null }) {
+// note / outfitNote: the user's description of how the clothes fit ("relaxed, oversized tee").
+export async function createTryOn(personImageId, { outfitImageId, outfitNote = null, pieces, fitId = null }) {
   const body = { person_image_id: personImageId, fit_id: fitId };
-  if (pieces) body.pieces = pieces.map(({ slot, imageId }) => ({ slot, image_id: imageId }));
-  else body.outfit_image_id = outfitImageId;
+  if (pieces) body.pieces = pieces.map(({ slot, imageId, note = null }) => ({ slot, image_id: imageId, note }));
+  else Object.assign(body, { outfit_image_id: outfitImageId, outfit_note: outfitNote });
   return parse(await apiFetch("/tryons", json("POST", body)));
 }
 

@@ -48,6 +48,19 @@ const SLOT_NAMES = {
   accessory: "Accessory",
 };
 
+// Examples for the "How should it fit?" fields, per photo.
+const NOTE_EXAMPLES = {
+  outfit: "e.g. relaxed tee, baggy jeans",
+  head: "e.g. worn backwards",
+  top: "e.g. relaxed, oversized tee",
+  outerwear: "e.g. cropped, boxy jacket",
+  one_piece: "e.g. loose, midi length",
+  bottom: "e.g. wide-leg, high-waisted",
+  feet: "e.g. chunky sneakers",
+  accessory: "e.g. worn crossbody",
+};
+const NOTE_MAX_LENGTH = 100;
+
 // One-tap polls. Picking one fills in the question and answers, which stay editable.
 const POLL_PRESETS = [
   { id: "wear", label: "Wear it?", question: "Would you wear it?", options: ["Wear it", "Rethink"] },
@@ -919,6 +932,31 @@ function renderTryOn() {
   }
   const ready = t.mode === "outfit" ? Boolean(t.outfit) : Object.keys(t.pieces).length > 0;
   $("#tryon-start").disabled = !(t.person && ready);
+  renderNotes();
+}
+
+// "How should it fit?": an optional description for each clothing photo, sent with the
+// try-on so a relaxed tee doesn't come out tight. Kept on the photo's state (note).
+function renderNotes() {
+  const t = state.tryon;
+  const rows =
+    t.mode === "outfit"
+      ? t.outfit ? [["outfit", "Outfit", t.outfit]] : []
+      : chosenPieces().map(([slot, piece]) => [slot, SLOT_NAMES[slot], piece]);
+  const box = $("#tryon-notes");
+  box.classList.toggle("hidden", rows.length === 0);
+  box.innerHTML = rows.length
+    ? `<p class="tryon-notes-title">How should it fit? <span>Optional</span></p>` +
+      rows
+        .map(
+          ([key, label, photo]) => `<label class="tryon-note">
+            <span class="tryon-note-label">${label}</span>
+            <input type="text" data-tryon-note="${key}" maxlength="${NOTE_MAX_LENGTH}" autocomplete="off"
+              placeholder="${NOTE_EXAMPLES[key]}" value="${escapeHtml(photo.note || "")}" />
+          </label>`
+        )
+        .join("")
+    : "";
 }
 
 function renderPieces() {
@@ -978,7 +1016,7 @@ async function pickTryOnPhoto(slot) {
   if (!file) return;
   const previous = state.tryon[slot];
   if (previous?.file) URL.revokeObjectURL(previous.preview);
-  state.tryon[slot] = { file, preview: URL.createObjectURL(file) };
+  state.tryon[slot] = { file, preview: URL.createObjectURL(file), note: previous?.note };
   showError("#tryon-error");
   renderTryOn();
 }
@@ -987,8 +1025,9 @@ async function pickPiece(slot) {
   if (borrowedLook()) return;
   const [file] = await pickFiles($("#tryon-file"));
   if (!file) return;
+  const note = state.tryon.pieces[slot]?.note;
   removePiece(slot, { render: false });
-  state.tryon.pieces[slot] = { file, preview: URL.createObjectURL(file) };
+  state.tryon.pieces[slot] = { file, preview: URL.createObjectURL(file), note };
   showError("#tryon-error");
   renderTryOn();
 }
@@ -1003,6 +1042,9 @@ function removePiece(slot, { render = true } = {}) {
 // The chosen pieces head to toe, as [slot, piece] pairs.
 const chosenPieces = () =>
   PIECE_SLOTS.filter((slot) => state.tryon.pieces[slot]).map((slot) => [slot, state.tryon.pieces[slot]]);
+
+// One line, trimmed; blank means none.
+const cleanNote = (note) => (note || "").replace(/\s+/g, " ").trim().slice(0, NOTE_MAX_LENGTH) || null;
 
 async function runTryOn() {
   const t = state.tryon;
@@ -1028,7 +1070,7 @@ async function runTryOn() {
     let clothing;
     if (t.mode === "outfit") {
       if (!t.outfit.image) t.outfit.image = await uploadImage(t.outfit.file);
-      clothing = { outfitImageId: t.outfit.image.id };
+      clothing = { outfitImageId: t.outfit.image.id, outfitNote: cleanNote(t.outfit.note) };
     } else {
       const pieces = chosenPieces();
       await Promise.all(
@@ -1036,7 +1078,7 @@ async function runTryOn() {
           if (!piece.image) piece.image = await uploadImage(piece.file);
         })
       );
-      clothing = { pieces: pieces.map(([slot, piece]) => ({ slot, imageId: piece.image.id })) };
+      clothing = { pieces: pieces.map(([slot, piece]) => ({ slot, imageId: piece.image.id, note: cleanNote(piece.note) })) };
     }
     if (stale()) return;
     t.result = await createTryOn(t.person.image.id, { ...clothing, fitId: t.fitId });
@@ -1187,13 +1229,16 @@ export function openTryOnFrom(fit) {
     t.from = mine ? null : fit.author.username;
     if (source?.mode === "pieces") {
       t.mode = "pieces";
-      source.pieces.forEach(({ slot, image }) => (t.pieces[slot] = shared(image)));
+      source.pieces.forEach(({ slot, image, note }) => (t.pieces[slot] = { ...shared(image), note }));
       t.sourceItems = fit.items || [];
       t.postedPieces = { ...t.pieces }; // for Reset to all pieces
     } else {
       const outfit = source?.outfit_image || fit.images?.[0];
       // The post's tagged pieces say what's in the outfit (see outfitCategories).
-      if (outfit) t.outfit = { ...shared(outfit), categories: (fit.items || []).map((item) => item.category) };
+      if (outfit) {
+        const note = source?.mode === "outfit" ? source.outfit_note : null;
+        t.outfit = { ...shared(outfit), note, categories: (fit.items || []).map((item) => item.category) };
+      }
     }
   });
 }
@@ -1275,6 +1320,11 @@ export function initCreate({ onPosted, onDilemma, onStory, toast }) {
       if (!borrowedLook() || canDropPieces()) removePiece(button.dataset.pieceRemove);
     };
   });
+  $("#tryon-notes").oninput = (event) => {
+    const key = event.target.dataset.tryonNote;
+    const photo = key === "outfit" ? state.tryon.outfit : state.tryon.pieces[key];
+    if (photo) photo.note = event.target.value;
+  };
   // A posted pieces look: put back every piece it was posted with.
   $("#tryon-pieces-note").onclick = (event) => {
     if (!event.target.closest("[data-tryon-reset]") || !state.tryon.postedPieces) return;

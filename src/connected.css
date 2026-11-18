@@ -1110,3 +1110,13 @@ button.of-shop-chip { font-family: inherit; cursor: pointer; }
 .of-account-row.is-soon { cursor: default; opacity: 0.6; }
 .of-account-row.is-soon:hover { background: transparent; }
 .of-account-row.is-soon .create-soon-tag { margin-left: auto; }
+
+/* Try-on: "How should it fit?" per clothing photo (src/create.js renderNotes). */
+.tryon-notes { display: flex; flex-direction: column; gap: 8px; }
+.tryon-notes-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--of-ink); }
+.tryon-notes-title span { margin-left: 4px; font-weight: 500; color: var(--of-muted); }
+.tryon-note { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 6px 0 14px; border-radius: 14px; background: var(--of-fill); }
+.tryon-note-label { flex: none; width: 66px; font-size: 12px; font-weight: 700; color: var(--of-muted); }
+.tryon-note input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--of-ink); font: inherit; font-size: 14px; outline: none; }
+.tryon-note input::placeholder { color: var(--of-muted); opacity: 0.8; }
+.tryon-note:focus-within { box-shadow: 0 0 0 2px var(--of-blue); }
