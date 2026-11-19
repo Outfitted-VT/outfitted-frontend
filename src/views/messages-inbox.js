@@ -149,7 +149,10 @@ export function renderInbox() {
   return `<section class="of-screen of-inbox" id="of-inbox">
     <header class="of-inbox-head">
       <h1>Messages</h1>
-      ${iconButton({ icon: ofIcons.compose(), label: "New chat", data: { "data-inbox-compose": true } })}
+      <span class="of-inbox-actions">
+        <button type="button" class="of-inbox-style" data-open-style-friend>${ofIcons.sparkle(16)}<span>Style me</span></button>
+        ${iconButton({ icon: ofIcons.compose(), label: "New chat", data: { "data-inbox-compose": true } })}
+      </span>
     </header>
     <label class="of-search">
       ${ofIcons.search()}

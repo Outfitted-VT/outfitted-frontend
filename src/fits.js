@@ -165,6 +165,18 @@ export async function listSavedPieces(cursor = null, limit = 50) {
   return parse(await apiFetch(`/users/me/saved-pieces?${query}`));
 }
 
+// Whole styled looks friends sent you in chat and you saved (Style a Friend). They show with
+// your saved fits.
+export async function listSavedLooks(cursor = null, limit = 50) {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (cursor) query.set("cursor", cursor);
+  return parse(await apiFetch(`/users/me/saved-looks?${query}`));
+}
+
+export async function unsaveLook(lookId) {
+  return parse(await apiFetch(`/users/me/saved-looks/${encodeURIComponent(lookId)}`, { method: "DELETE" }));
+}
+
 export async function setSaved(fitId, saved) {
   return parse(await apiFetch(`/fits/${fitId}/save`, { method: saved ? "PUT" : "DELETE" }));
 }

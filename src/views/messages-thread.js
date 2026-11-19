@@ -174,7 +174,7 @@ function lookPiece(piece, index, mine, local) {
   const saved = Boolean(piece.saved_piece_id);
   const save = mine
     ? ""
-    : `<button type="button" class="of-look-save ${saved ? "on" : ""}" data-look-save="${index}" aria-pressed="${saved}" aria-label="${saved ? "Saved" : "Save"} ${escapeHtml(piece.name)}" ${saved || local ? "disabled" : ""}>${BOOKMARK(saved)}</button>`;
+    : `<button type="button" class="of-look-save ${saved ? "on" : ""}" data-look-save="${index}" aria-pressed="${saved}" aria-label="${saved ? "Unsave" : "Save"} ${escapeHtml(piece.name)} ${saved ? "from" : "to"} your pieces" ${local ? "disabled" : ""}>${BOOKMARK(saved)}</button>`;
   return `<li class="of-look-piece">
     <span class="of-look-thumb" style="${piece.photo ? savedPieceStyle(piece) : ""}"></span>
     <span class="of-look-text"><b>${escapeHtml(piece.name)}</b>${detail ? `<small>${detail}</small>` : ""}${shop}</span>
@@ -185,13 +185,13 @@ function lookPiece(piece, index, mine, local) {
 function styledLookCard(message, mine) {
   const payload = message.payload || {};
   const pieces = payload.pieces || [];
-  const allSaved = pieces.length > 0 && pieces.every((p) => p.saved_piece_id);
+  const lookSaved = Boolean(payload.saved_look_id);
   const hero = payload.tryon_image
     ? `<div class="of-look-hero"><img src="${escapeHtml(imageUrl(payload.tryon_image))}" alt="The look, tried on" /><span>${ofIcons.sparkle(12)}AI try-on</span></div>`
     : "";
   const saveAll = mine
     ? ""
-    : `<button type="button" class="of-look-save-all ${allSaved ? "on" : ""}" data-look-save-all ${allSaved || message.local ? "disabled" : ""}>${BOOKMARK(allSaved)}${allSaved ? "Look saved" : "Save the look"}</button>`;
+    : `<button type="button" class="of-look-save-all ${lookSaved ? "on" : ""}" data-look-save-all aria-pressed="${lookSaved}" ${message.local ? "disabled" : ""}>${BOOKMARK(lookSaved)}${lookSaved ? "Saved to your fits" : "Save the look"}</button>`;
   return `<div class="of-look">
     <span class="of-style-kicker">${ofIcons.sparkle(14)}${mine ? "YOUR LOOK" : "STYLED FOR YOU"}</span>
     ${hero}
@@ -478,9 +478,10 @@ function handleClick(event, options) {
   if (saveOne || saveAll) {
     const id = (saveOne || saveAll).closest("[data-msg]").dataset.msg;
     (saveOne || saveAll).disabled = true;
-    return messages
-      .saveLookPieces(id, saveOne ? Number(saveOne.dataset.lookSave) : null)
-      .then((saved) => toast(saved.length === 1 ? "Saved to your pieces" : `Saved ${saved.length} pieces`))
+    const request = saveOne ? messages.toggleLookPiece(id, Number(saveOne.dataset.lookSave)) : messages.toggleLook(id);
+    const where = saveOne ? "your pieces" : "your fits";
+    return request
+      .then((on) => toast(on ? `Saved to ${where}` : `Removed from ${where}`))
       .catch((err) => {
         (saveOne || saveAll).disabled = false;
         toast(err.message || "Couldn't save. Try again.");

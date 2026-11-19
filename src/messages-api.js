@@ -58,14 +58,18 @@ export async function voteMessage(id, vote) {
   return parse(await apiFetch(`/messages/${encodeURIComponent(id)}/vote`, json("POST", { vote })));
 }
 
-// A styled look a friend sent: save one piece (index in the look) or all of them to your saved
-// pieces. Returns the saved piece, or the list.
+// A styled look a friend sent: save one piece (index in the look) to your saved pieces, or the
+// whole look, which is listed with your saved fits. Return the saved piece / saved look.
 export async function saveLookPiece(id, index) {
   return parse(await apiFetch(`/messages/${encodeURIComponent(id)}/look/pieces/${index}/save`, { method: "POST" }));
 }
 
 export async function saveLook(id) {
   return parse(await apiFetch(`/messages/${encodeURIComponent(id)}/look/save`, { method: "POST" }));
+}
+
+export async function unsaveLook(savedLookId) {
+  return parse(await apiFetch(`/users/me/saved-looks/${encodeURIComponent(savedLookId)}`, { method: "DELETE" }));
 }
 
 export async function deleteMessage(id) {

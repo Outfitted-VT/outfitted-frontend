@@ -39,6 +39,13 @@ function menuScreen() {
         "bg-surface-container-low text-on-surface border border-surface-container-high"
       )}
       ${option(
+        "style",
+        "styler",
+        "Get styled by a friend",
+        "Ask a friend to put a look together for you, with links to shop it.",
+        "bg-surface-container-low text-on-surface border border-surface-container-high"
+      )}
+      ${option(
         "story",
         "auto_stories",
         "Post a story",

@@ -24,6 +24,7 @@ import { openStyleRequestSheet } from "./views/style-request-sheet.js";
 import { applyTheme, getThemePreference, isDarkTheme, onThemeChange, setThemePreference } from "./theme.js";
 import { appHeader, avatar as ofAvatar, paintStreakChip, setBellDot, setChatUnreadDot, tabBar } from "./views/components.js";
 import { mountFeed, renderFeedScreen } from "./views/feed-view.js";
+import { mountPost, renderPostScreen } from "./views/post-view.js";
 import { initKeyboard } from "./keyboard.js";
 import { startConversation, startMessaging, stopMessaging, subscribe as onMessagesChange, unreadTotal } from "./messages-store.js";
 import * as stories from "./stories-store.js";
@@ -105,6 +106,11 @@ function renderSidebar() {
         <a href="#messages" class="nav-item ${activeTab === "messages" ? "active" : ""}" data-nav="messages" title="Messages">
           ${icons.message}
           <span class="sidebar-label">Messages</span>
+        </a>
+        <!-- Style a Friend: ask a friend to put a look together for you (src/views/style-request-sheet.js). -->
+        <a href="#style" class="nav-item" data-open-style-friend title="Style a Friend">
+          ${icons.sparkleIcon}
+          <span class="sidebar-label">Style a Friend</span>
         </a>
         <!-- Stylist AI isn't ready yet: shown locked with a Coming soon label. -->
         <a class="nav-item nav-item-soon" role="link" aria-disabled="true" title="Stylist AI (coming soon)">
@@ -289,6 +295,7 @@ function renderAccountDrawer() {
           ${accountMenuRow({ attrs: 'data-nav="profile"', icon: MENU_PERSON, label: "Your profile" })}
           ${accountMenuRow({ attrs: 'data-nav="wardrobe"', icon: icons.hanger, label: "My fits" })}
           ${accountMenuRow({ attrs: 'data-nav="friends"', icon: icons.users, label: "Friends" })}
+          ${accountMenuRow({ attrs: "data-open-style-friend", icon: icons.sparkleIcon, label: "Style a Friend" })}
           ${accountMenuRow({ attrs: 'disabled aria-disabled="true"', icon: icons.wand, label: "Stylist AI", soon: true })}
           ${accountMenuRow({ attrs: 'id="account-open-branding"', icon: icons.sparkleIcon, label: "Brand & splash" })}
         </nav>
@@ -396,6 +403,9 @@ let releaseThreadDialog = () => {};
 let releaseStoriesRow = () => {};
 let returnTab = "feed";
 let personReturnTab = "feed";
+// The post page: a fit opened from chat, and where Back goes.
+let postFitId = null;
+let postReturnTab = "messages";
 
 // An open conversation sits over the inbox: full screen on phones, a small dialog from 861px
 // (styles: .of-thread-backdrop in src/outfitted.css).
@@ -420,7 +430,7 @@ function connectChat() {
       toast: showToast,
       onBack: close,
       onOpenStory: openUserStories,
-      onOpenFit: openFit,
+      onOpenFit: openPost,
     });
     // Clicking outside the dialog or pressing Escape closes it.
     const backdrop = document.querySelector("[data-thread-backdrop]");
@@ -470,6 +480,21 @@ async function openUserStories(userId, storyId = null) {
   } catch {
     showToast("Story expired");
   }
+}
+
+// A fit shared in chat opens as its post (a full page, like in the feed). Back returns to the
+// chat, which is still open underneath.
+function openPost(fitId) {
+  if (activeTab !== "post") postReturnTab = activeTab;
+  postFitId = fitId;
+  activeTab = "post";
+  render();
+  window.scrollTo({ top: 0 });
+}
+
+function closePost() {
+  activeTab = postReturnTab;
+  render();
 }
 
 function openFit(fitId) {
@@ -614,6 +639,8 @@ function render() {
               ? renderActivity()
               : activeTab === "person"
               ? renderUserProfile()
+              : activeTab === "post"
+              ? renderPostScreen()
               : renderFeedScreen()
           }
         </main>
@@ -686,7 +713,8 @@ function bindEvents() {
     connectWardrobe(
       (outfit) => openVirtualDressingRoom(outfit),
       (outfit) => openShareModalForPost(outfit),
-      showToast
+      showToast,
+      openChat
     );
   } else if (activeTab === "person") {
     mountUserProfile({
@@ -1271,20 +1299,24 @@ function connectBackend() {
     },
     toast: showToast,
   });
+  const fitListOptions = {
+    toast: showToast,
+    onOpenComments: (fit, onUpdated) => {
+      openCommentsDrawer(fit, {
+        toast: showToast,
+        onCommentAdded: onUpdated,
+      });
+    },
+    onOpenTryOn: openTryOnFrom,
+    onEdit: openEditFit,
+  };
   mountFeed({
     listOptions: {
+      ...fitListOptions,
       empty: emptyState("No fits yet", "Be the first: post what you're wearing, or try an outfit on."),
-      toast: showToast,
-      onOpenComments: (fit, onUpdated) => {
-        openCommentsDrawer(fit, {
-          toast: showToast,
-          onCommentAdded: onUpdated,
-        });
-      },
-      onOpenTryOn: openTryOnFrom,
-      onEdit: openEditFit,
     },
   });
+  if (activeTab === "post") mountPost({ fitId: postFitId, onBack: closePost, listOptions: fitListOptions });
 
   mountProfile({ toast: showToast, rerender: render });
   if (document.querySelector("#profile-fit-count")) loadProfileCounts();
@@ -1292,6 +1324,7 @@ function connectBackend() {
   initCreate({
     toast: showToast,
     onDilemma: postFitDilemma,
+    onStyle: () => openStyleRequestSheet({ onSent: openChat, toast: showToast }),
     onStory: openStoryComposerSheet,
     onPosted: () => {
       activeTab = "feed";
@@ -1356,6 +1389,8 @@ document.addEventListener("click", (e) => {
   }
   if (e.target.closest("[data-open-style-friend]")) {
     e.preventDefault();
+    // From the account menu: close it so the sheet isn't underneath.
+    document.querySelector("#account-sheet-dialog[open]")?.close();
     openStyleRequestSheet({ onSent: openChat, toast: showToast });
   }
 });
