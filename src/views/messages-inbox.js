@@ -47,6 +47,8 @@ function previewText(message) {
   if (message.kind === "image") return "Photo";
   if (message.kind === "product") return `Suggested: ${message.payload?.product?.name || "a piece"}`;
   if (message.kind === "fit") return "Shared a fit";
+  if (message.kind === "style_request") return message.body ? `Style me: ${message.body}` : "Style me";
+  if (message.kind === "styled_look") return "Sent a styled look";
   if (message.kind === "story_reply") return `Story reply: ${message.body || ""}`;
   return message.body || "";
 }

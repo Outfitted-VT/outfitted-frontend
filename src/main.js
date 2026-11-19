@@ -20,7 +20,7 @@ import { mountProfile, renderProfileView, resetProfile } from "./views/profile.j
 import { renderCommentsDrawer, openCommentsDrawer } from "./views/comments-drawer.js";
 import { renderCreateSheet } from "./views/create-sheet.js";
 import { openDormCloset } from "./dorm-closet.js";
-import { openStyleFriend } from "./style-friend.js";
+import { openStyleRequestSheet } from "./views/style-request-sheet.js";
 import { applyTheme, getThemePreference, isDarkTheme, onThemeChange, setThemePreference } from "./theme.js";
 import { appHeader, avatar as ofAvatar, paintStreakChip, setBellDot, setChatUnreadDot, tabBar } from "./views/components.js";
 import { mountFeed, renderFeedScreen } from "./views/feed-view.js";
@@ -624,7 +624,6 @@ function render() {
       ${tabBar({ active: activeTab, chatUnread: unreadTotal() > 0 })}
       ${renderCreateSheet()}
       <div id="dorm-closet-modal-root" class="hidden"></div>
-      <div id="style-friend-modal-root" class="hidden"></div>
       ${renderPostYourFitModal()}
       ${renderVirtualDressingRoomModal()}
       ${renderShareModal()}
@@ -697,6 +696,8 @@ function bindEvents() {
         render();
       },
       onMessage: messageUser,
+      onAskStyle: (profile) =>
+        openStyleRequestSheet({ userId: profile.id, name: profile.full_name?.split(/\s+/)[0] || `@${profile.username}`, onSent: openChat, toast: showToast }),
       onOpenFit: openFit,
       onFollowChanged: loadProfileCounts,
     });
@@ -1355,7 +1356,7 @@ document.addEventListener("click", (e) => {
   }
   if (e.target.closest("[data-open-style-friend]")) {
     e.preventDefault();
-    openStyleFriend(null, showToast);
+    openStyleRequestSheet({ onSent: openChat, toast: showToast });
   }
 });
 
