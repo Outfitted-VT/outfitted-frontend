@@ -13,8 +13,10 @@ import {
   mediaUrl,
   listSavedPieces,
   unsavePiece,
+  listSavedLooks,
+  unsaveLook,
 } from "./fits.js";
-import { categoryLabel, savedPieceStyle } from "./views/piece-sheet.js";
+import { categoryLabel, savedPieceStyle, shopHost } from "./views/piece-sheet.js";
 import { fitCollage } from "./views/fit-collage.js";
 
 let activeView = "grid"; // 'grid' | 'carousel' | 'calendar'
@@ -43,7 +45,7 @@ function renderCarouselNav() {
   const pill = (id, label, count) =>
     `<button type="button" class="of-chip carousel-cat-pill ${activeCarouselCategory === id ? "active" : ""}" data-cat="${id}">${label} <span class="carousel-cat-count"${id === "clothing" ? ' id="carousel-fit-count"' : ""}>${count}</span></button>`;
   return [
-    pill("clothing", "Fits", savedFits.size),
+    pill("clothing", "Fits", savedFits.size + savedLooks.size),
     ...PIECE_GROUPS.map(([id, label]) => [id, label, piecesIn(id).length])
       .filter(([, , count]) => count > 0)
       .map(([id, label, count]) => pill(id, label, count)),
@@ -51,6 +53,8 @@ function renderCarouselNav() {
 }
 let carouselIndex = 0;
 const savedFits = new Map(); // fit id -> fit, filled by connectWardrobe from GET /users/me/saved
+// Whole looks friends styled for you in chat (Style a Friend), shown with the saved fits.
+const savedLooks = new Map(); // saved look id -> look, from GET /users/me/saved-looks
 let selectedCalendarMemory = outfitMemories[0];
 
 export function renderWardrobePage() {
@@ -198,7 +202,15 @@ function getActiveCarouselList() {
       media: fitCollage(fit),
       pieces: savedFitPieces(fit),
     }));
-    return saved;
+    const looks = [...savedLooks.values()].map((look) => ({
+      id: look.id,
+      look: true,
+      name: savedLookTitle(look),
+      brand: lookStylist(look),
+      media: lookMedia(look),
+      pieces: look.pieces.map((piece) => [piece.brand, piece.name].filter(Boolean).join(" ")),
+    }));
+    return [...looks, ...saved];
   }
   // A kind of saved piece: its photo whole, name, and where it came from.
   return piecesIn(activeCarouselCategory).map((piece) => ({
@@ -249,7 +261,7 @@ function renderCarouselStageItems() {
           <div class="carousel-card-img-wrap">
             ${item.media}
             <span class="carousel-badge-pill">${escapeHtml(item.brand)}</span>
-            <span class="carousel-cpw-pill">${item.piece ? escapeHtml(categoryLabel(item.category)) : "Saved"}</span>
+            <span class="carousel-cpw-pill">${item.piece ? escapeHtml(categoryLabel(item.category)) : item.look ? "Styled" : "Saved"}</span>
           </div>
           <div class="carousel-card-brief">
             <h4>${escapeHtml(item.name)}</h4>
@@ -268,7 +280,85 @@ function renderActiveCarouselDetails() {
   if (!items.length) return "";
   const current = ((carouselIndex % items.length) + items.length) % items.length;
   const item = items[current];
+  if (item.look) return renderSavedLookDetails(savedLooks.get(item.id));
   return item.saved ? renderSavedFitDetails(item) : renderSavedPieceDetails(item);
+}
+
+// --- Saved looks (Style a Friend) --------------------------------------------------------------
+
+const lookStylist = (look) => (look.stylist ? `@${look.stylist.username}` : "A friend");
+const savedLookTitle = (look) => look.note?.split("\n")[0] || `Styled by ${lookStylist(look)}`;
+
+// The try-on of the look, or its pieces' photos side by side.
+function lookMedia(look) {
+  if (look.tryon_image) {
+    return `<img class="of-saved-look-photo" src="${escapeHtml(mediaUrl(look.tryon_image.url))}" alt="${escapeHtml(savedLookTitle(look))}" loading="lazy" />`;
+  }
+  const pieces = look.pieces.filter((piece) => piece.photo).slice(0, 4);
+  if (!pieces.length) {
+    return `<div class="fit-collage-empty"><span class="material-symbols-outlined" aria-hidden="true">checkroom</span><span>No piece photos</span></div>`;
+  }
+  return `<div class="of-saved-look-grid">${pieces
+    .map((piece) => `<span style="${savedPieceStyle(piece)}" role="img" aria-label="${escapeHtml(piece.name)}"></span>`)
+    .join("")}</div>`;
+}
+
+// Each piece with its shop link.
+function lookPieceRows(look) {
+  return `<ul class="of-saved-look-pieces">${look.pieces
+    .map((piece) => {
+      const shop = piece.url
+        ? `<a href="${escapeHtml(piece.url)}" target="_blank" rel="noopener noreferrer">Shop${shopHost(piece.url) ? ` · ${escapeHtml(shopHost(piece.url))}` : ""}</a>`
+        : "";
+      const detail = [piece.brand, piece.color].filter(Boolean).join(" · ");
+      return `<li><span class="of-saved-look-thumb" style="${piece.photo ? savedPieceStyle(piece) : ""}"></span>
+        <span><b>${escapeHtml(piece.name)}</b>${detail ? `<small>${escapeHtml(detail)}</small>` : ""}${shop}</span></li>`;
+    })
+    .join("")}</ul>`;
+}
+
+function lookButtons(look) {
+  return `<div class="wardrobe-card-footer">
+    ${look.conversation_id ? `<button type="button" class="button button-dark button-sm flex-1" data-look-chat>${icons.message || ""}<span>Open chat</span></button>` : ""}
+    <button type="button" class="button button-ghost button-sm wardrobe-unsave" data-look-remove aria-label="Unsave look" title="Unsave">
+      <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">bookmark_remove</span>
+    </button>
+  </div>`;
+}
+
+function renderSavedLookCard(look) {
+  return `
+    <article class="wardrobe-card of-saved-look" data-category="" data-status="Saved" data-saved-look="${escapeHtml(look.id)}">
+      <div class="wardrobe-card-media">
+        ${lookMedia(look)}
+        <span class="status-pill">Styled</span>
+      </div>
+      <div class="wardrobe-card-meta">
+        <div class="meta-top">
+          <h4 class="truncate">${escapeHtml(savedLookTitle(look))}</h4>
+          <span class="vibe-badge">${escapeHtml(lookStylist(look))}</span>
+        </div>
+        ${lookPieceRows(look)}
+        ${lookButtons(look)}
+      </div>
+    </article>
+  `;
+}
+
+function renderSavedLookDetails(look) {
+  if (!look) return "";
+  return `
+    <div class="active-item-analytics-card" data-saved-look="${escapeHtml(look.id)}">
+      <div class="analytics-head">
+        <div>
+          <span class="font-micro-mono text-[10px] uppercase text-secondary font-bold tracking-wider">Styled by ${escapeHtml(lookStylist(look))}</span>
+          <h3 class="font-headline-md text-headline-md font-semibold text-on-surface">${escapeHtml(savedLookTitle(look))}</h3>
+        </div>
+      </div>
+      ${lookPieceRows(look)}
+      ${lookButtons(look)}
+    </div>
+  `;
 }
 
 // The carousel's panel for a saved piece: the same Shop and Unsave as its grid card.
@@ -464,7 +554,8 @@ function renderSavedFitCard(fit) {
   `;
 }
 
-export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}) {
+// onOpenChat(conversationId): a saved look's Open chat.
+export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}, onOpenChat = () => {}) {
   const container = document.querySelector("#wardrobe-page");
   if (!container) return;
 
@@ -701,7 +792,7 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
       card.hidden = !(matchesFilter && matchesSearch);
     });
     const empty = container.querySelector("#wardrobe-saved-empty");
-    if (empty) empty.hidden = Boolean(query) || Boolean(container.querySelector("[data-saved-fit]"));
+    if (empty) empty.hidden = Boolean(query) || Boolean(container.querySelector("[data-saved-fit], #wardrobe-grid-box [data-saved-look]"));
   }
 
   // Fits the user saved from the feed go first in the grid and the carousel's Full Outfits
@@ -709,7 +800,7 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
   savedFits.clear();
   const grid = container.querySelector("#wardrobe-grid-box");
   const updateFitCounts = () => {
-    const total = String(savedFits.size);
+    const total = String(savedFits.size + savedLooks.size);
     container.querySelectorAll("#wardrobe-fit-count, #carousel-fit-count").forEach((count) => {
       count.textContent = total;
     });
@@ -728,6 +819,45 @@ export function connectWardrobe(onTryOnRequest, onShareRequest, toast = () => {}
       console.warn("Saved fits skipped (guest/offline mode):", err);
     }
   })();
+
+  // Saved looks go first among the fits.
+  savedLooks.clear();
+  (async () => {
+    try {
+      const page = await listSavedLooks(null, 50);
+      if (!grid?.isConnected) return;
+      page.items.forEach((look) => savedLooks.set(look.id, look));
+      grid.insertAdjacentHTML("afterbegin", page.items.map(renderSavedLookCard).join(""));
+      updateFitCounts();
+      applyFilters();
+      refreshCarouselNav();
+      if (activeCarouselCategory === "clothing") refreshCarouselStage();
+    } catch (err) {
+      console.warn("Saved looks skipped (guest/offline mode):", err);
+    }
+  })();
+
+  container.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-look-chat], [data-look-remove]");
+    const id = button?.closest("[data-saved-look]")?.dataset.savedLook;
+    const look = savedLooks.get(id);
+    if (!look) return;
+    if (button.matches("[data-look-chat]")) return onOpenChat(look.conversation_id);
+    button.disabled = true;
+    try {
+      await unsaveLook(id);
+      savedLooks.delete(id);
+      grid?.querySelector(`[data-saved-look="${CSS.escape(id)}"]`)?.remove();
+      updateFitCounts();
+      applyFilters();
+      refreshCarouselNav();
+      if (activeCarouselCategory === "clothing") refreshCarouselStage();
+      toast("Removed from saved");
+    } catch {
+      button.disabled = false;
+      toast("Couldn't unsave that look. Try again.");
+    }
+  });
 
   // Saved pieces (the Pieces tab of the grid).
   const piecesBox = container.querySelector("#wardrobe-pieces-box");

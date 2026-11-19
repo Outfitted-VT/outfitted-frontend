@@ -1253,13 +1253,18 @@ function startStory() {
   hooks.onStory?.();
 }
 
-const MENU_ACTIONS = { dilemma: startDilemma, story: startStory };
+function startStyle() {
+  closeCreate();
+  hooks.onStyle?.();
+}
+
+const MENU_ACTIONS = { dilemma: startDilemma, story: startStory, style: startStyle };
 
 // --- wiring ----------------------------------------------------------------------------
 
 // Call after the sheet's markup is in the page.
-export function initCreate({ onPosted, onDilemma, onStory, toast }) {
-  hooks = { onPosted, onDilemma, onStory, toast };
+export function initCreate({ onPosted, onDilemma, onStory, onStyle, toast }) {
+  hooks = { onPosted, onDilemma, onStory, onStyle, toast };
   state = freshState();
 
   $("#create-close").onclick = closeCreate;

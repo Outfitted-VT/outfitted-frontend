@@ -30,6 +30,8 @@ const spinner = `<span class="material-symbols-outlined animate-spin text-on-sur
  * @param {(fit: object, options: { onSaved: (fit: object) => void, item?: number }) => void} [options.onEdit]
  * @param {(fit: object) => boolean} [options.filter] - only fits that pass are shown
  * @param {(fits: object[]) => void} [options.onFirstPage] - the fits shown from the first page
+ * @param {(cursor: string|null) => Promise<{items: object[], next_cursor: string|null}>} [options.fetchPage]
+ *   - loads a page instead of GET path (e.g. one post)
  */
 export function mountFitList({
   list,
@@ -44,6 +46,7 @@ export function mountFitList({
   onEdit,
   filter = () => true,
   onFirstPage = () => {},
+  fetchPage = (cursor) => listFits(path, cursor),
 }) {
   const fits = new Map();
   let cursor = null;
@@ -66,7 +69,7 @@ export function mountFitList({
     const current = generation;
     status.innerHTML = spinner;
     try {
-      const page = await listFits(path, cursor);
+      const page = await fetchPage(cursor);
       if (current !== generation) return;
       const first = cursor === null;
       page.items.forEach((fit) => {

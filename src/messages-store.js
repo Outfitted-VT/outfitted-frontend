@@ -1,5 +1,5 @@
 import { currentUser } from "./data.js";
-import { uploadImage } from "./fits.js";
+import { unsavePiece, uploadImage } from "./fits.js";
 import * as api from "./messages-api.js";
 import { setDraft } from "./message-drafts.js";
 import { connectSocket, disconnectSocket, onSocketEvent, send as socketSend } from "./messages-socket.js";
@@ -332,19 +332,30 @@ export async function vote(messageId, choice) {
   }
 }
 
-// Saving pieces of a styled look (index, or every piece when index is null). The card shows
-// them as saved right away.
-export async function saveLookPieces(messageId, index = null) {
-  const saved = index === null ? await api.saveLook(messageId) : [await api.saveLookPiece(messageId, index)];
+// A styled look's bookmarks. One piece saves to (or unsaves from) your saved pieces; the whole
+// look saves to your saved fits. Each returns true when it is now saved.
+function setLookPayload(messageId, change) {
   const message = findMessage(messageId);
-  if (!message?.payload?.pieces) return saved;
-  const indexes = index === null ? message.payload.pieces.map((_, i) => i) : [index];
-  const pieces = message.payload.pieces.map((piece, i) => {
-    const at = indexes.indexOf(i);
-    return at === -1 ? piece : { ...piece, saved_piece_id: saved[at].id };
-  });
-  replaceMessage({ ...message, payload: { ...message.payload, pieces } });
-  return saved;
+  if (message?.payload) replaceMessage({ ...message, payload: change(message.payload) });
+}
+
+export async function toggleLookPiece(messageId, index) {
+  const piece = findMessage(messageId)?.payload?.pieces?.[index];
+  if (!piece) return false;
+  const savedId = piece.saved_piece_id ? (await unsavePiece(piece.saved_piece_id), null) : (await api.saveLookPiece(messageId, index)).id;
+  setLookPayload(messageId, (payload) => ({
+    ...payload,
+    pieces: payload.pieces.map((p, i) => (i === index ? { ...p, saved_piece_id: savedId } : p)),
+  }));
+  return Boolean(savedId);
+}
+
+export async function toggleLook(messageId) {
+  const payload = findMessage(messageId)?.payload;
+  if (!payload) return false;
+  const savedId = payload.saved_look_id ? (await api.unsaveLook(payload.saved_look_id), null) : (await api.saveLook(messageId)).id;
+  setLookPayload(messageId, (p) => ({ ...p, saved_look_id: savedId }));
+  return Boolean(savedId);
 }
 
 export function findThreadMessage(messageId) {

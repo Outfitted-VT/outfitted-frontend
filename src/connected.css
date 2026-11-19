@@ -1201,3 +1201,22 @@ button.of-shop-chip { font-family: inherit; cursor: pointer; }
 .of-stylist-note { min-height: 64px; resize: vertical; }
 .of-stylist-actions { display: flex; gap: 8px; }
 .of-stylist-actions .of-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* Saved looks in My fits (src/wardrobe.js renderSavedLookCard), the Style me button in Messages,
+   and the post page (src/views/post-view.js). */
+.of-saved-look-photo { display: block; width: 100%; height: 100%; object-fit: cover; }
+.of-saved-look-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; width: 100%; height: 100%; padding: 6px; background: var(--of-fill); }
+.of-saved-look-grid span { border-radius: 10px; background-color: var(--of-card); background-size: cover; background-repeat: no-repeat; min-height: 0; }
+.of-saved-look-pieces { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.of-saved-look-pieces li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.of-saved-look-pieces li > span:last-child { min-width: 0; display: flex; flex-direction: column; }
+.of-saved-look-pieces b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-saved-look-pieces small { font-size: 11px; color: var(--of-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-saved-look-pieces a { font-size: 12px; font-weight: 700; color: var(--of-blue); text-decoration: none; }
+.of-saved-look-thumb { flex: none; width: 36px; height: 36px; border-radius: 9px; background-color: var(--of-fill); background-size: cover; background-repeat: no-repeat; }
+
+.of-inbox-actions { display: flex; align-items: center; gap: 8px; }
+.of-inbox-style { height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: var(--of-ink-surface); color: var(--of-on-dark); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.of-inbox-style svg { color: var(--of-lime); }
+
+.of-post-page .of-person-head { margin-bottom: 8px; }
