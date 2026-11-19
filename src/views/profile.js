@@ -147,7 +147,7 @@ export function renderSettingsView() {
     <p class="of-friends-label">With friends</p>
     <div class="of-set-card">
       ${row({ icon: "groups", title: "Dorm Closets", sub: "Plan event looks and borrow pieces", attrs: "data-open-dorm-closet" })}
-      ${row({ icon: "styler", title: "Style a Friend", sub: "Put together a look for someone", attrs: "data-open-style-friend" })}
+      ${row({ icon: "styler", title: "Style a Friend", sub: "Ask a friend to put a look together for you", attrs: "data-open-style-friend" })}
     </div>
 
     <div class="of-set-card">

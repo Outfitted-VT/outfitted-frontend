@@ -215,6 +215,9 @@ function localPayload(draft) {
   if (draft.kind === "image") return { image };
   if (draft.kind === "fit_check") return { image, question: draft.question, context: draft.context || null };
   if (draft.kind === "product") return { product: { ...draft.product, image: null } };
+  if (draft.kind === "style_request") return { image };
+  // A look shows as sent while it uploads; the server's copy replaces it.
+  if (draft.kind === "styled_look") return draft.preview;
   return null;
 }
 
@@ -227,6 +230,8 @@ function requestBody(draft, clientId) {
     context: draft.context,
     fit_id: draft.fitId,
     product: draft.product,
+    request_id: draft.requestId,
+    look: draft.look,
     client_id: clientId,
   };
   Object.keys(body).forEach((key) => (body[key] === undefined || body[key] === null) && delete body[key]);
@@ -325,6 +330,25 @@ export async function vote(messageId, choice) {
     replaceMessage(message);
     throw err;
   }
+}
+
+// Saving pieces of a styled look (index, or every piece when index is null). The card shows
+// them as saved right away.
+export async function saveLookPieces(messageId, index = null) {
+  const saved = index === null ? await api.saveLook(messageId) : [await api.saveLookPiece(messageId, index)];
+  const message = findMessage(messageId);
+  if (!message?.payload?.pieces) return saved;
+  const indexes = index === null ? message.payload.pieces.map((_, i) => i) : [index];
+  const pieces = message.payload.pieces.map((piece, i) => {
+    const at = indexes.indexOf(i);
+    return at === -1 ? piece : { ...piece, saved_piece_id: saved[at].id };
+  });
+  replaceMessage({ ...message, payload: { ...message.payload, pieces } });
+  return saved;
+}
+
+export function findThreadMessage(messageId) {
+  return findMessage(messageId);
 }
 
 export async function removeMessage(messageId) {

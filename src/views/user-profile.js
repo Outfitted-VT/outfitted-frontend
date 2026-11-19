@@ -9,6 +9,8 @@ import { avatar, displayName, iconButton, ofIcons, stateBlock } from "./componen
 import { fitCard } from "./profile.js";
 
 const PAGE_SIZE = 20;
+// "Ask them to style me": a Style me request in your chat with them (src/views/style-request-sheet.js).
+const SPARKLE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l1.6 4.6L16 9.2l-4.4 1.6L10 15.4l-1.6-4.6L4 9.2l4.4-1.6z"/><path d="M18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8z"/></svg>`;
 const CHAT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>`;
 
 const person = { username: null, profile: null, error: false, fits: [], cursor: null, done: false, loading: false, fitsError: false };
@@ -46,6 +48,7 @@ function body() {
     <div class="of-profile-actions">
       <button type="button" class="of-profile-btn ${p?.is_following ? "soft" : "ink"}" data-person-follow ${p ? "" : "disabled"}>${p?.is_following ? "Following" : "Follow"}</button>
       <button type="button" class="of-profile-btn soft" data-person-message ${p ? "" : "disabled"}>${CHAT}Message</button>
+      <button type="button" class="of-profile-btn soft of-person-style" data-person-style ${p ? "" : "disabled"}>${SPARKLE}Ask ${escapeHtml(p ? displayName(p).split(/\s+/)[0] : "them")} to style me</button>
     </div>
     <p class="of-friends-label of-person-label">Fits</p>
     <div class="of-grid" id="person-grid"></div>
@@ -132,7 +135,7 @@ async function toggleFollow(root, button, { toast, onFollowChanged }) {
   }
 }
 
-// options: { toast, onBack, onMessage(userId), onOpenFit(fitId), onFollowChanged }
+// options: { toast, onBack, onMessage(userId), onAskStyle(profile), onOpenFit(fitId), onFollowChanged }
 export function mountUserProfile(options) {
   const root = document.querySelector("#of-person");
   if (!root) return;
@@ -143,6 +146,7 @@ export function mountUserProfile(options) {
     const fit = event.target.closest("[data-open-fit]");
     if (fit) return options.onOpenFit?.(fit.dataset.openFit);
     if (event.target.closest("[data-person-message]") && person.profile) return options.onMessage?.(person.profile.id);
+    if (event.target.closest("[data-person-style]") && person.profile) return options.onAskStyle?.(person.profile);
     const follow = event.target.closest("[data-person-follow]");
     if (follow) toggleFollow(root, follow, options);
   });

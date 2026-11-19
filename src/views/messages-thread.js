@@ -7,6 +7,9 @@ import { openFitCheckSheet, openProductSheet } from "./fit-check-sheet.js";
 import { conversationTitle, deleteChatMessage } from "./messages-inbox.js";
 import { getDraft, setDraft } from "../message-drafts.js";
 import { openSheet } from "./sheet.js";
+import { savedPieceStyle, shopHost } from "./piece-sheet.js";
+import { openStyleRequestSheet } from "./style-request-sheet.js";
+import { openStylist } from "./stylist.js";
 
 const GROUP_MS = 2 * 60 * 1000;
 const NEAR_BOTTOM_PX = 120;
@@ -134,6 +137,70 @@ function fitShareCard(message) {
   </button>`;
 }
 
+// Style a Friend (src/views/stylist.js): "Style me" asks the chat for a look, and the look comes
+// back as its own card.
+const looksFor = (message) =>
+  messages.thread(message.conversation_id).messages.filter((m) => m.kind === "styled_look" && !m.deleted_at && m.payload?.request_id === message.id);
+
+function styleRequestCard(message, mine) {
+  const looks = looksFor(message);
+  const photo = message.payload?.image;
+  const asker = firstName(message.sender);
+  let foot;
+  if (mine) {
+    foot = looks.length
+      ? `<span class="of-style-status done">${ofIcons.check(12)}${looks.length === 1 ? "Styled" : `${looks.length} looks`}</span>`
+      : `<span class="of-style-status">Waiting for a look</span>`;
+  } else {
+    const styled = looks.some(isMine);
+    foot = `<button type="button" class="of-style-go" data-style-them ${message.local ? "disabled" : ""}>${ofIcons.sparkle(16)}${styled ? "Style again" : `Style ${escapeHtml(asker)}`}</button>`;
+  }
+  return `<div class="of-style-req">
+    <span class="of-style-kicker">${ofIcons.sparkle(14)}STYLE ME</span>
+    ${photo ? `<img class="of-style-req-photo" src="${escapeHtml(imageUrl(photo))}" alt="" />` : ""}
+    <p class="of-style-req-note">${escapeHtml(message.body || (mine ? "Put a look together for me" : `${asker} wants you to put a look together`))}</p>
+    ${foot}
+  </div>`;
+}
+
+const BOOKMARK = (on) =>
+  `<svg width="16" height="16" viewBox="0 0 24 24" fill="${on ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/></svg>`;
+
+function lookPiece(piece, index, mine, local) {
+  const detail = [piece.brand, piece.color].filter(Boolean).map(escapeHtml).join(" · ");
+  const shop = piece.url
+    ? `<a class="of-look-shop" href="${escapeHtml(piece.url)}" target="_blank" rel="noopener noreferrer">Shop${shopHost(piece.url) ? ` · ${escapeHtml(shopHost(piece.url))}` : ""}</a>`
+    : "";
+  const saved = Boolean(piece.saved_piece_id);
+  const save = mine
+    ? ""
+    : `<button type="button" class="of-look-save ${saved ? "on" : ""}" data-look-save="${index}" aria-pressed="${saved}" aria-label="${saved ? "Saved" : "Save"} ${escapeHtml(piece.name)}" ${saved || local ? "disabled" : ""}>${BOOKMARK(saved)}</button>`;
+  return `<li class="of-look-piece">
+    <span class="of-look-thumb" style="${piece.photo ? savedPieceStyle(piece) : ""}"></span>
+    <span class="of-look-text"><b>${escapeHtml(piece.name)}</b>${detail ? `<small>${detail}</small>` : ""}${shop}</span>
+    ${save}
+  </li>`;
+}
+
+function styledLookCard(message, mine) {
+  const payload = message.payload || {};
+  const pieces = payload.pieces || [];
+  const allSaved = pieces.length > 0 && pieces.every((p) => p.saved_piece_id);
+  const hero = payload.tryon_image
+    ? `<div class="of-look-hero"><img src="${escapeHtml(imageUrl(payload.tryon_image))}" alt="The look, tried on" /><span>${ofIcons.sparkle(12)}AI try-on</span></div>`
+    : "";
+  const saveAll = mine
+    ? ""
+    : `<button type="button" class="of-look-save-all ${allSaved ? "on" : ""}" data-look-save-all ${allSaved || message.local ? "disabled" : ""}>${BOOKMARK(allSaved)}${allSaved ? "Look saved" : "Save the look"}</button>`;
+  return `<div class="of-look">
+    <span class="of-style-kicker">${ofIcons.sparkle(14)}${mine ? "YOUR LOOK" : "STYLED FOR YOU"}</span>
+    ${hero}
+    ${message.body ? `<p class="of-look-note">${escapeHtml(message.body)}</p>` : ""}
+    <ul class="of-look-pieces">${pieces.map((piece, i) => lookPiece(piece, i, mine, message.local)).join("")}</ul>
+    ${saveAll}
+  </div>`;
+}
+
 function storyQuote(message, mine) {
   const payload = message.payload || {};
   const owner = mine ? firstName(messages.otherMembers(messages.getConversation(message.conversation_id))[0]?.user) : "";
@@ -150,6 +217,8 @@ function content(message, mine) {
   if (message.kind === "fit_check") return fitCheckCard(message, mine);
   if (message.kind === "product") return productBubble(message);
   if (message.kind === "fit") return fitShareCard(message);
+  if (message.kind === "style_request") return styleRequestCard(message, mine);
+  if (message.kind === "styled_look") return styledLookCard(message, mine);
   if (message.kind === "image") {
     const caption = message.body ? `<div class="of-bubble">${escapeHtml(message.body)}</div>` : "";
     return `<img class="of-msg-photo" src="${escapeHtml(imageUrl(message.payload?.image))}" alt="Photo" />${caption}`;
@@ -295,7 +364,7 @@ function attachMenu() {
     `<button type="button" class="of-menu-row" data-attach-option="${action}"><span class="of-menu-icon">${icon}</span>${label}</button>`;
   const { root, close } = openSheet({
     title: "Share",
-    body: `<div class="of-sheet-body">${option("photo", ofIcons.image(), "Photo")}${option("fit", ofIcons.sparkle(20), "Fit check")}${option("product", ofIcons.cube(20), "Suggest a piece")}</div>`,
+    body: `<div class="of-sheet-body">${option("photo", ofIcons.image(), "Photo")}${option("fit", ofIcons.sparkle(20), "Fit check")}${option("style", ofIcons.sparkle(20), "Style me")}${option("product", ofIcons.cube(20), "Suggest a piece")}</div>`,
   });
   root.addEventListener("click", (event) => {
     const option = event.target.closest("[data-attach-option]")?.dataset.attachOption;
@@ -304,6 +373,7 @@ function attachMenu() {
     if (option === "photo") $("#thread-photo").click();
     if (option === "fit") openFitCheckSheet({ conversationId: view.id });
     if (option === "product") openProductSheet({ conversationId: view.id });
+    if (option === "style") openStyleRequestSheet({ conversationId: view.id, toast: view.toast });
   });
 }
 
@@ -398,6 +468,24 @@ function handleClick(event, options) {
   if (event.target.closest("#thread-new")) return scrollToBottom($("#thread-body"));
   const retry = event.target.closest("[data-retry]");
   if (retry) return messages.retry(retry.dataset.retry);
+  const styleThem = event.target.closest("[data-style-them]");
+  if (styleThem) {
+    const request = messages.findThreadMessage(styleThem.closest("[data-msg]").dataset.msg);
+    return request && openStylist({ request, toast });
+  }
+  const saveOne = event.target.closest("[data-look-save]");
+  const saveAll = event.target.closest("[data-look-save-all]");
+  if (saveOne || saveAll) {
+    const id = (saveOne || saveAll).closest("[data-msg]").dataset.msg;
+    (saveOne || saveAll).disabled = true;
+    return messages
+      .saveLookPieces(id, saveOne ? Number(saveOne.dataset.lookSave) : null)
+      .then((saved) => toast(saved.length === 1 ? "Saved to your pieces" : `Saved ${saved.length} pieces`))
+      .catch((err) => {
+        (saveOne || saveAll).disabled = false;
+        toast(err.message || "Couldn't save. Try again.");
+      });
+  }
   const cue = event.target.closest("[data-cue]");
   if (cue) return sendText(cue.dataset.cue);
   const voteButton = event.target.closest("[data-msg-vote]");
@@ -443,6 +531,7 @@ export function mountThread({ id, toast, onBack, onOpenStory, onOpenFit }) {
   if (!root) return;
   unmountThread();
   view.id = id;
+  view.toast = toast;
   const options = { toast, onBack, onOpenStory, onOpenFit };
   root.addEventListener("click", (event) => handleClick(event, options));
   bindComposer();
